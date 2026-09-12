@@ -59,7 +59,14 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/alarm_tone.wav"
+            "./assets/alarm_tone.wav",
+            "./assets/sounds/timer_done.wav",
+            "./assets/sounds/subtask_done.wav",
+            "./assets/sounds/reminder.wav",
+            "./assets/sounds/success.wav",
+            "./assets/sounds/morning.wav",
+            "./assets/sounds/evening.wav",
+            "./assets/sounds/overdue.wav"
           ]
         }
       ],
@@ -75,7 +82,7 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": false,
             "enableMinifyInReleaseBuilds": true
           }
         }

@@ -7,7 +7,8 @@ import useTheme, { ShadowPreset } from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { getServerNow } from '@/utils/offlineStorage';
 import { showTaskCompletedNotification } from '@/utils/notifications';
-import { buildPauseUpdates, buildSubtaskPauseUpdates, buildSubtaskStartUpdates, startUpdate } from '@/utils/timerActions';
+import { useSubtaskTimerNotifications } from '@/hooks/useSubtaskTimerNotifications';
+import { buildParentStartUpdates, buildPauseUpdates, buildSubtaskPauseUpdates, buildSubtaskStartUpdates, rollupSubTimers } from '@/utils/timerActions';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -133,6 +134,12 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
   const subtasks = useOfflineQuery<any[]>('todos.getSubtasks', api.todos.getSubtasks, { parentId: todo._id });
 
   const [timeLeft, setTimeLeft] = useState(todo.timerDuration || 0);
+  const hasOwnTimer = !!todo.timerDuration || todo.timerDirection === 'up';
+  // Roll-up: a parent with no own timer shows the sum of subtask timers.
+  const rollupTotal = useMemo(
+    () => (!todo.timerDuration && todo.timerDirection !== 'up' ? rollupSubTimers((subtasks || []) as any[]).total : 0),
+    [subtasks, todo.timerDuration, todo.timerDirection]
+  );
   const hasAutoCompletedRef = useRef(false);
   const hasAutoCompletedSubtasksRef = useRef(false);
   // Optimistic status: updates immediately on user action, syncs from server
@@ -174,34 +181,41 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
   useEffect(() => {
     const effectiveStatus = optimisticStatus;
     let interval: any;
-    if (effectiveStatus === 'in_progress' && todo.timerStartTime) {
-      const tick = () => {
-        const elapsed = Math.max(0, getServerNow() - todo.timerStartTime!);
+    if (hasOwnTimer) {
+      if (effectiveStatus === 'in_progress' && todo.timerStartTime) {
+        const tick = () => {
+          const elapsed = Math.max(0, getServerNow() - todo.timerStartTime!);
+          if (todo.timerDirection === 'up') {
+            setTimeLeft(elapsed);
+          } else if (todo.timerDuration) {
+            setTimeLeft(Math.max(0, todo.timerDuration - elapsed));
+          }
+        };
+        tick();
+        interval = setInterval(tick, 1000);
+      } else if (effectiveStatus === 'paused' && todo.timeLeftAtPause !== undefined) {
+        setTimeLeft(todo.timeLeftAtPause);
+      } else if (effectiveStatus === 'not_started' || effectiveStatus === 'not_done') {
         if (todo.timerDirection === 'up') {
-          setTimeLeft(elapsed);
+          setTimeLeft(0);
         } else if (todo.timerDuration) {
-          setTimeLeft(Math.max(0, todo.timerDuration - elapsed));
+          setTimeLeft(todo.timerDuration);
         }
-      };
+      } else if (effectiveStatus === 'done') {
+        if (todo.timerDirection === 'up') {
+          setTimeLeft(todo.timeLeftAtPause || 0);
+        } else if (todo.timerDuration) {
+          setTimeLeft(todo.timerDuration);
+        }
+      }
+    } else if (rollupTotal > 0) {
+      // Roll-up parent (no own timer): display the live sum of subtask clocks.
+      const tick = () => setTimeLeft(rollupSubTimers((subtasks || []) as any[]).remaining);
       tick();
       interval = setInterval(tick, 1000);
-    } else if (effectiveStatus === 'paused' && todo.timeLeftAtPause !== undefined) {
-      setTimeLeft(todo.timeLeftAtPause);
-    } else if (effectiveStatus === 'not_started' || effectiveStatus === 'not_done') {
-      if (todo.timerDirection === 'up') {
-        setTimeLeft(0);
-      } else if (todo.timerDuration) {
-        setTimeLeft(todo.timerDuration);
-      }
-    } else if (effectiveStatus === 'done') {
-      if (todo.timerDirection === 'up') {
-        setTimeLeft(todo.timeLeftAtPause || 0);
-      } else if (todo.timerDuration) {
-        setTimeLeft(todo.timerDuration);
-      }
     }
     return () => clearInterval(interval);
-  }, [optimisticStatus, todo.timerStartTime, todo.timerDuration, todo.timeLeftAtPause, todo.timerDirection]);
+  }, [optimisticStatus, todo.timerStartTime, todo.timerDuration, todo.timeLeftAtPause, todo.timerDirection, hasOwnTimer, rollupTotal, subtasks]);
 
   // Keep optimistic status in sync with server (server is source of truth)
   useEffect(() => {
@@ -223,6 +237,10 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
   };
 
   const hasSubtasks = subtasks && subtasks.length > 0;
+
+  // Subtask countdowns finish silently without this — the home sweeper only
+  // sees top-level tasks. Same identifiers as anywhere else: idempotent.
+  useSubtaskTimerNotifications(subtasks as any[], isArabic ? 'ar' : 'en');
 
   const handleShare = async () => {
     let message = `Task: ${todo.text}`;
@@ -292,7 +310,8 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
 
   const handleStartTimer = async () => {
     setOptimisticStatus('in_progress'); // instant UI feedback
-    setTimerRunState({ updates: [startUpdate(todo)] });
+    // Parent start wakes paused subtasks frozen with it (roll-up model).
+    setTimerRunState({ updates: buildParentStartUpdates(todo, (subtasks || []) as any[]) });
   };
 
   const handlePauseTimer = async () => {
@@ -320,10 +339,17 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
   }, [setTimerRunState, subtasks, todo]);
 
   const handleToggleSubComplete = useCallback((subId: Id<"todos">, currentStatus: string) => {
+    if (currentStatus !== 'done') {
+      import('@/utils/notifications').then(n => n.cancelTaskNotification(subId as string)).catch(() => {});
+    }
     updateStatus({ id: subId, status: currentStatus === 'done' ? 'not_started' : 'done' });
   }, [updateStatus]);
 
   const handleDeleteSub = useCallback((subId: Id<"todos">) => {
+    import('@/utils/notifications').then(n => {
+      n.cancelTaskNotification(subId as string);
+      n.cancelDeadlineReminder(subId as string);
+    }).catch(() => {});
     deleteTodo({ id: subId });
   }, [deleteTodo]);
 
@@ -348,7 +374,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
     setShowSubtasks(!showSubtasks);
   };
 
-  const isTimerSet = !!todo.timerDuration || todo.timerDirection === 'up';
+  const isTimerSet = hasOwnTimer || rollupTotal > 0;
   const isDueSoon = todo.status === 'not_started' && todo.dueDate && (todo.dueDate - Date.now() < 86400000);
   const dueDateEnd = todo.dueDate ? new Date(todo.dueDate).setHours(23, 59, 59, 999) : 0;
   const isPastDue = todo.status === 'not_started' && todo.dueDate && dueDateEnd < Date.now();
@@ -361,14 +387,15 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
 
   // Timer circular progress calculation
   const timerCircularProgress = useMemo(() => {
-    if (isTimerSet && todo.timerDuration) {
-      return Math.min(100, Math.max(0, ((todo.timerDuration - timeLeft) / todo.timerDuration) * 100));
+    const displayTotal = hasOwnTimer && todo.timerDuration ? todo.timerDuration : rollupTotal;
+    if (displayTotal > 0) {
+      return Math.min(100, Math.max(0, ((displayTotal - timeLeft) / displayTotal) * 100));
     }
     if (isTimerSet && todo.timerDirection === 'up' && timeLeft > 0) {
       return 100;
     }
     return optimisticStatus === 'done' ? 100 : 0;
-  }, [isTimerSet, todo.timerDuration, todo.timerDirection, timeLeft, optimisticStatus]);
+  }, [isTimerSet, hasOwnTimer, rollupTotal, todo.timerDuration, todo.timerDirection, timeLeft, optimisticStatus]);
 
   const circularProgressColor = optimisticStatus === 'done' ? colors.success
     : (optimisticStatus === 'not_done' || isPastDue) ? colors.danger

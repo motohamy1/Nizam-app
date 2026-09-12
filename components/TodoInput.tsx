@@ -7,10 +7,11 @@ import { getServerNow } from "@/utils/offlineStorage";
 import useTheme from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TaskDetailModal from "./TaskDetailModal";
 import TimerModal from "./TimerModal";
+import UniversalLinkPickerModal, { UniversalLinkSelection } from "./UniversalLinkPickerModal";
 import CircularProgress from "./CircularProgress";
 
 interface TodoInputProps {
@@ -41,12 +42,18 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [status, setStatus] = useState<string>("not_started");
 
-  const [pendingSubtasks, setPendingSubtasks] = useState<{ text: string, timerDuration?: number }[]>([]);
+  const [pendingSubtasks, setPendingSubtasks] = useState<{ text: string, timerDuration?: number, link?: UniversalLinkSelection | null }[]>([]);
   const [newSubtaskText, setNewSubtaskText] = useState("");
   const [activeTimerIndex, setActiveTimerIndex] = useState<number | null>(null);
+  const [editingSubIdx, setEditingSubIdx] = useState<number | null>(null);
+  const [editingSubText, setEditingSubText] = useState("");
+  const [linkSubIdx, setLinkSubIdx] = useState<number | null>(null);
 
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<Id<"todos"> | null>(null);
+  // Synchronous submit guard: setIsAdding state goes stale within the same
+  // tick, so keyboard-submit + button-tap together would double-create.
+  const addingRef = useRef(false);
 
   useEffect(() => {
     if (initialDate) {
@@ -57,13 +64,14 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
   const addTodo = useOfflineMutation(api.todos.addTodo, "todos:addTodo");
 
   const handleAddTodo = async () => {
-    if (isAdding) return;
     if (!userId) {
       Alert.alert(t.authError, t.authFailed);
       return;
     }
+    if (isAdding || addingRef.current) return;
     const todoText = newTodo.trim();
     if (!todoText) return;
+    addingRef.current = true;
 
     try {
       setIsAdding(true);
@@ -84,13 +92,20 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
         const createdId = typeof todoIdResult === 'string' ? todoIdResult : (todoIdResult as any)?._id;
 
         for (const sub of pendingSubtasks) {
+          const subLink = sub.link && sub.link.type !== 'none' ? {
+            ...(sub.link.categoryId ? { categoryId: sub.link.categoryId as any } : {}),
+            ...(sub.link.subCategoryId ? { subCategoryId: sub.link.subCategoryId as any } : {}),
+            ...(sub.link.projectId ? { projectId: sub.link.projectId } : {}),
+            ...(sub.link.goalId ? { goalId: sub.link.goalId as any } : {}),
+          } : {};
           await addTodo({
             userId,
             text: sub.text,
             status: "not_started",
             parentId: createdId,
-            ...(sub.timerDuration && { timerDuration: sub.timerDuration }),
-            ...(projectId ? { projectId } : {}),
+            ...(sub.timerDuration ? { timerDuration: sub.timerDuration, timerDirection: 'down' as const } : {}),
+            ...(Object.keys(subLink).length === 0 && projectId ? { projectId } : {}),
+            ...subLink,
           });
         }
 
@@ -113,6 +128,7 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
         console.log("Error adding a todo", error);
         Alert.alert(t.authError, t.authFailed);
       } finally {
+        addingRef.current = false;
         setIsAdding(false);
       }
   };
@@ -213,7 +229,26 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
               <View key={idx} style={[{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 8, borderRadius: 8 }]}>
                 <Ionicons name="ellipse-outline" size={16} color={colors.surfaceText} style={isArabic ? { marginLeft: 8 } : { marginRight: 8 }} />
 
-                <Text style={[{ flex: 1, color: colors.surfaceText, fontSize: 14, fontWeight: '600' }, isArabic && { textAlign: 'right' }]}>{sub.text}</Text>
+                {editingSubIdx === idx ? (
+                  <TextInput
+                    style={[{ flex: 1, color: colors.surfaceText, fontSize: 14, fontWeight: '600', borderBottomWidth: 1, borderBottomColor: colors.primary, paddingVertical: 2 }, isArabic && { textAlign: 'right' }]}
+                    value={editingSubText}
+                    onChangeText={setEditingSubText}
+                    autoFocus
+                    onSubmitEditing={() => {
+                      if (editingSubText.trim()) setPendingSubtasks(prev => prev.map((s, i) => i === idx ? { ...s, text: editingSubText.trim() } : s));
+                      setEditingSubIdx(null);
+                    }}
+                    onBlur={() => {
+                      if (editingSubText.trim()) setPendingSubtasks(prev => prev.map((s, i) => i === idx ? { ...s, text: editingSubText.trim() } : s));
+                      setEditingSubIdx(null);
+                    }}
+                  />
+                ) : (
+                  <TouchableOpacity style={{ flex: 1 }} onPress={() => { setEditingSubIdx(idx); setEditingSubText(sub.text); }}>
+                    <Text style={[{ color: colors.surfaceText, fontSize: 14, fontWeight: '600' }, isArabic && { textAlign: 'right' }]}>{sub.text}</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                   style={[{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 4, backgroundColor: sub.timerDuration ? colors.primary + '20' : 'transparent', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6 }, isArabic ? { marginLeft: 8 } : { marginRight: 8 }]}
@@ -222,6 +257,10 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
                   <Ionicons name="timer-outline" size={14} color={sub.timerDuration ? colors.primary : colors.surfaceText} />
 
                   {!!sub.timerDuration && <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700' }}>{Math.floor(sub.timerDuration / 60000)}m</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setLinkSubIdx(idx)} style={isArabic ? { marginLeft: 8 } : { marginRight: 8 }}>
+                  <Ionicons name="folder-open-outline" size={16} color={sub.link ? colors.primary : colors.surfaceText} />
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setPendingSubtasks(prev => prev.filter((_, i) => i !== idx))}>
@@ -374,22 +413,53 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
           if (activeTimerIndex === null) {
             const totalSubTime = pendingSubtasks.reduce((acc, sub) => acc + (sub.timerDuration || 0), 0);
             if (ms > 0 && totalSubTime > ms) {
-              Alert.alert(isArabic ? 'توقيت غير صالح' : "Invalid Timer", isArabic ? 'لا يمكن أن يكون وقت المهمة الرئيسية أقل من مجموع المهام الفرعية.' : "The main task timer cannot be less than the sum of its subtask timers.");
+              Alert.alert(t.budgetExceededTitle || "Time Budget Exceeded", `${t.available || 'Available'}: 0m`,
+                [
+                  { text: t.adjustTimer || 'Adjust', style: 'cancel' },
+                  { text: t.expandMainTimer || 'Expand main timer', onPress: () => { setTimerDuration(totalSubTime); setTimerModalVisible(false); } },
+                ]);
               return;
             }
             setTimerDuration(ms);
             if (ms === 0) setAutoStart(false);
           } else {
-            const currentSubTime = pendingSubtasks[activeTimerIndex].timerDuration || 0;
+            const saveIdx = activeTimerIndex;
+            const currentSubTime = pendingSubtasks[saveIdx].timerDuration || 0;
             const otherSubTime = pendingSubtasks.reduce((acc, sub) => acc + (sub.timerDuration || 0), 0) - currentSubTime;
             if (timerDuration && (otherSubTime + ms) > timerDuration) {
-              Alert.alert(isArabic ? 'توقيت غير صالح' : "Invalid Timer", isArabic ? 'لا يمكن أن يتجاوز مجموع توقيت المهام الفرعية توقيت المهمة الرئيسية.' : "The sum of all subtask timers cannot exceed the main task timer.");
+              const availMs = Math.max(0, timerDuration - otherSubTime);
+              const availTxt = isArabic ? `${Math.floor(availMs / 60000)}د` : `${Math.floor(availMs / 60000)}m`;
+              Alert.alert(t.budgetExceededTitle || "Time Budget Exceeded", `${t.available || 'Available'}: ${availTxt}`,
+                [
+                  { text: t.adjustTimer || 'Adjust', style: 'cancel' },
+                  {
+                    text: t.expandMainTimer || 'Expand main timer',
+                    onPress: () => {
+                      setTimerDuration(otherSubTime + ms);
+                      setPendingSubtasks(prev => prev.map((sub, i) => i === saveIdx ? { ...sub, timerDuration: ms > 0 ? ms : undefined } : sub));
+                      setTimerModalVisible(false);
+                    }
+                  },
+                ]);
               return;
             }
-            setPendingSubtasks(prev => prev.map((sub, i) => i === activeTimerIndex ? { ...sub, timerDuration: ms > 0 ? ms : undefined } : sub));
+            setPendingSubtasks(prev => prev.map((sub, i) => i === saveIdx ? { ...sub, timerDuration: ms > 0 ? ms : undefined } : sub));
           }
           setTimerModalVisible(false);
         }}
+      />
+
+      <UniversalLinkPickerModal
+        visible={linkSubIdx !== null}
+        onClose={() => setLinkSubIdx(null)}
+        onSelect={(sel) => {
+          if (linkSubIdx !== null) {
+            const li = linkSubIdx;
+            setPendingSubtasks(prev => prev.map((s, i) => i === li ? { ...s, link: sel.type === 'none' ? null : sel } : s));
+          }
+          setLinkSubIdx(null);
+        }}
+        currentProjectId={projectId}
       />
 
       <TaskDetailModal

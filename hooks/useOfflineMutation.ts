@@ -15,6 +15,10 @@ NetInfo.fetch().then((state) => {
 
 const recentMutations = new Map<string, { timestamp: number; result: any }>();
 
+// Same-tick executions sharing one promise: the reservation MUST happen
+// synchronously at entry, before the first await below.
+const inflightMutations = new Map<string, Promise<any>>();
+
 // Volatile fields differ between two taps of the "same" action, so they must
 // be excluded from the duplicate-tap hash or rapid-tap suppression never hits.
 const VOLATILE_ARG_KEYS = new Set(['timerStartTime', 'localId', 'timestamp']);
@@ -86,13 +90,25 @@ export function useOfflineMutation(mutationFn: any, mutationPath: string) {
       queryArgs?: any;
     }
   ) => {
-    // Rapid duplicate tap suppression (1000ms window)
+    // Same-tick double-submit guard: two invocations with identical args
+    // before the first awaits anything must share ONE execution. A
+    // check-then-set AFTER awaits races, and each execution mints its own
+    // temp id — different localIds defeat the server replay guard, producing
+    // two temp docs AND two server docs from one double-tap.
     const mutationHash = `${mutationPath}_${hashArgs(rawArgs)}`;
+    const inflight = inflightMutations.get(mutationHash);
+    if (inflight) {
+      console.log(`Sharing in-flight mutation: ${mutationPath}`);
+      return inflight;
+    }
+    // Rapid duplicate tap suppression (1000ms window, completed executions)
     const last = recentMutations.get(mutationHash);
     if (last && Date.now() - last.timestamp < 1000) {
       console.log(`Debounced rapid duplicate mutation tap: ${mutationPath}`);
       return last.result;
     }
+
+    const run = (async () => {
 
     // Carry any previously-synced temp ids forward as real server ids.
     const args = await remapArgs(rawArgs);
@@ -227,6 +243,23 @@ export function useOfflineMutation(mutationFn: any, mutationPath: string) {
       const itemId = await pushMutationToQueue(mutationPath, mutationPath, serverArgs, createdTempId);
       pendingQueueRef.current = itemId;
       return fallbackResult;
+    }
+    })();
+
+    inflightMutations.set(mutationHash, run);
+    try {
+      const res = await run;
+      // Refresh the debounce cache with the real result so a third tap in
+      // the window returns the server doc, not the optimistic fallback.
+      recentMutations.set(mutationHash, { timestamp: Date.now(), result: res });
+      return res;
+    } catch (e) {
+      // A failed execution must not poison the debounce window — the user
+      // retrying immediately needs a real re-execution.
+      recentMutations.delete(mutationHash);
+      throw e;
+    } finally {
+      inflightMutations.delete(mutationHash);
     }
   };
 }

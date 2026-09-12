@@ -157,7 +157,13 @@ export const addTodo = mutation({
     if (args.parentId) {
       const parent = await ctx.db.get(args.parentId);
       if (parent && parent.status === "done") {
-        await ctx.db.patch(args.parentId, { status: "in_progress", completedAt: undefined });
+        await ctx.db.patch(args.parentId, {
+          status: "in_progress",
+          completedAt: undefined,
+          ...((parent.timerDuration || parent.timerDirection === "up") && !parent.timerStartTime
+            ? { timerStartTime: Date.now() }
+            : {}),
+        });
       }
     }
 
@@ -170,11 +176,29 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const todo = await ctx.db.get(args.id);
     if (!todo) return;
-    
-    await ctx.db.patch(args.id, { 
+
+    const now = Date.now();
+    const patch: Record<string, any> = {
       status: args.status as any,
-      completedAt: args.status === 'done' ? Date.now() : undefined 
-    });
+      completedAt: args.status === 'done' ? now : undefined,
+    };
+    if (args.status === 'paused' && todo.status === 'in_progress' && todo.timerStartTime) {
+      // Freeze the clock on status-only pauses. Without this the elapsed time
+      // is lost and the next start resumes from the full duration — the
+      // parent "gaining back" time (looking like a sum with the subtask).
+      const elapsed = Math.max(0, now - todo.timerStartTime);
+      if (todo.timerDirection === 'up') {
+        patch.timeLeftAtPause = elapsed;
+      } else if (todo.timerDuration) {
+        patch.timeLeftAtPause = Math.max(0, todo.timerDuration - elapsed);
+      }
+      patch.timerStartTime = undefined;
+    } else if (args.status === 'not_started') {
+      patch.timerStartTime = undefined;
+      patch.timeLeftAtPause = undefined;
+    }
+
+    await ctx.db.patch(args.id, patch);
 
     // If a parent is marked done or not_done or paused, cascade to subtasks.
     if (args.status === "done" || args.status === "not_done" || args.status === "paused" || args.status === "not_started") {
@@ -249,6 +273,19 @@ export const setTimer = mutation({
         }
       }
 
+      // Parent-side guard: a parent envelope must never shrink below the
+      // sum of its subtasks' allocated timers. Client offers "expand to fit".
+      if (!todo.parentId && args.duration > 0) {
+        const children = await ctx.db
+          .query("todos")
+          .withIndex("by_parent", (q) => q.eq("parentId", args.id))
+          .collect();
+        const subsTotal = children.reduce((sum, s) => sum + (s.timerDuration || 0), 0);
+        if (subsTotal > args.duration) {
+          throw new Error(`SUBTASK_BUDGET_EXCEEDED:${subsTotal}`);
+        }
+      }
+
       // Calculate elapsed time
       let elapsed = 0;
       if (todo.status === "in_progress" && todo.timerStartTime) {
@@ -309,6 +346,10 @@ export const startTimer = mutation({
   handler: async (ctx, args) => {
     const todo = await ctx.db.get(args.id);
     if (!todo) return;
+    // Never restart a clock that is already running — a duplicate start
+    // (double-tap, notification action replay) must be a no-op, otherwise
+    // elapsed time is silently discarded.
+    if (todo.status === "in_progress" && todo.timerStartTime) return;
     
     let newStartTime = Date.now();
     if ((todo.status === "paused" || todo.status === "not_done") && todo.timeLeftAtPause !== undefined) {
@@ -327,6 +368,32 @@ export const startTimer = mutation({
       timeLeftAtPause: undefined,
       ...(!todo.timerFirstStartTime && { timerFirstStartTime: Date.now() }),
     });
+
+    // Parent resume wakes frozen subtasks (roll-up model): paused timed
+    // children restart from their frozen remaining value.
+    const children = await ctx.db
+      .query("todos")
+      .withIndex("by_parent", (q) => q.eq("parentId", args.id))
+      .collect();
+    for (const child of children) {
+      if (child.status !== "paused") continue;
+      if (!(child.timerDuration || child.timerDirection === "up")) continue;
+      let childStart = Date.now();
+      if (child.timeLeftAtPause !== undefined) {
+        if (child.timerDirection === "up") {
+          childStart = Date.now() - child.timeLeftAtPause;
+        } else if (child.timerDuration) {
+          childStart = Date.now() - (child.timerDuration - child.timeLeftAtPause);
+        }
+      } else if (child.timerStartTime) {
+        childStart = child.timerStartTime;
+      }
+      await ctx.db.patch(child._id, {
+        status: "in_progress",
+        timerStartTime: childStart,
+        timeLeftAtPause: undefined,
+      });
+    }
   },
 });
 
@@ -404,7 +471,11 @@ export const setTimerRunState = mutation({
       if (update.status === "in_progress") {
         if (todoHasTimer) {
           patch.timerStartTime =
-            typeof update.timerStartTime === "number" ? update.timerStartTime : serverTime;
+            typeof update.timerStartTime === "number"
+              ? update.timerStartTime
+              : todo.status === "in_progress" && typeof todo.timerStartTime === "number"
+                ? todo.timerStartTime
+                : serverTime;
           patch.timeLeftAtPause = undefined;
           if (!todo.timerFirstStartTime) patch.timerFirstStartTime = serverTime;
         }

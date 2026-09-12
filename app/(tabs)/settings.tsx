@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useScreenGuide } from '@/hooks/useScreenGuide';
 import ScreenGuide from '@/components/ScreenGuide';
 import type { GuideTip } from '@/components/ScreenGuide';
-import { getNotificationSound, setNotificationSound, NotificationSound } from '@/utils/soundPreferences';
+import { getNotificationSound, setNotificationSound, SOUND_META, NotificationSound } from '@/utils/soundPreferences';
 import { updateNotificationSoundPreference } from '@/utils/notifications';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
 
@@ -287,23 +287,28 @@ const Settings = () => {
                 <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
                 <Text style={styles.modalTitle}>{isArabic ? 'اختر النغمة' : 'Select Sound'}</Text>
                 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.soundOption, notificationSound === 'default' && styles.soundOptionActive]}
                   onPress={() => handleSoundChange('default')}
                 >
                   <Ionicons name="notifications-outline" size={22} color={notificationSound === 'default' ? colors.primary : colors.textMuted} />
-                  <Text style={styles.soundOptionLabel}>{isArabic ? 'النغمة الافتراضية' : 'Default'}</Text>
+                  <Text style={styles.soundOptionLabel}>{isArabic ? 'أصوات مخصصة لكل نوع (موصى به)' : 'Curated per-type sounds (recommended)'}</Text>
                   {notificationSound === 'default' && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.soundOption, notificationSound === 'alarm_tone.wav' && styles.soundOptionActive]}
-                  onPress={() => handleSoundChange('alarm_tone.wav')}
-                >
-                  <Ionicons name="musical-note-outline" size={22} color={notificationSound === 'alarm_tone.wav' ? colors.primary : colors.textMuted} />
-                  <Text style={styles.soundOptionLabel}>{isArabic ? 'نغمة مخصصة' : 'Custom Sound'}</Text>
-                  {notificationSound === 'alarm_tone.wav' && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
-                </TouchableOpacity>
+                {SOUND_META.map((s) => (
+                  <TouchableOpacity
+                    key={s.file}
+                    style={[styles.soundOption, notificationSound === s.file && styles.soundOptionActive]}
+                    onPress={() => handleSoundChange(s.file)}
+                  >
+                    <Ionicons name="musical-note-outline" size={22} color={notificationSound === s.file ? colors.primary : colors.textMuted} />
+                    <Text style={styles.soundOptionLabel}>
+                      {isArabic ? s.labelAr : s.labelEn} — {isArabic ? s.purposeAr : s.purposeEn}
+                    </Text>
+                    {notificationSound === s.file && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
 
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setIsSoundModalVisible(false)}>
                   <Text style={styles.cancelButtonText}>{t.cancel || 'Cancel'}</Text>
@@ -340,7 +345,7 @@ const Settings = () => {
               <SettingItem 
                 icon="musical-notes-outline" 
                 label={isArabic ? 'نغمة الإشعار' : 'Notification Sound'}
-                value={notificationSound === 'default' ? (isArabic ? 'الافتراضية' : 'Default') : (isArabic ? 'مخصصة' : 'Custom')}
+                value={notificationSound === 'default' ? (isArabic ? 'مخصصة لكل نوع' : 'Per-type') : (SOUND_META.find(s => s.file === notificationSound)?.[isArabic ? 'labelAr' : 'labelEn'] ?? (isArabic ? 'مخصصة' : 'Custom'))}
                 onPress={() => setIsSoundModalVisible(true)}
                 color={colors.warning} 
               />

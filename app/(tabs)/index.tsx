@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/utils/i18n";
 import { getServerNow } from "@/utils/offlineStorage";
 import { useDailyReminders } from "@/hooks/useDailyReminders";
+import { useDeadlineReminders } from "@/hooks/useDeadlineReminders";
 import { useScreenGuide } from "@/hooks/useScreenGuide";
 import { useTaskTimers } from "@/hooks/useTaskTimers";
 
@@ -116,6 +117,7 @@ const Index = () => {
   const { showGuide, dismissGuide } = useScreenGuide('home');
   useTaskTimers(todos, updateStatus);
   useDailyReminders(todos, language);
+  useDeadlineReminders(todos, language);
 
   const homeTips: GuideTip[] = isArabic ? [
     { icon: 'add-circle-outline', title: 'أضف مهمة', description: 'اكتب مهمتك في الحقل بالأسفل واضغط إرسال لإضافتها.', accentColor: '#dbd4fd' },
