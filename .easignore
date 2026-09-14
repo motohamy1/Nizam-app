@@ -38,6 +38,24 @@ app-example
 .idea
 .playwright-mcp
 .impeccable
+.argent
+.specify
 specs
 graphify-out
 graphify
+
+# planning / docs / assets not needed at build time
+.planning
+goldie
+build
+terminal_logs
+*.md
+
+# app store marketing assets & misc
+todo-app-redesign.html
+todo-app-redesign.html.artifact.json
+patch_modal.js
+nizam.json
+prodo.json
+skills-lock.json
+test_pause.ts
