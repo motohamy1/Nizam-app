@@ -110,6 +110,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Linked Space / Project State
   const [linkedCategoryId, setLinkedCategoryId] = useState<Id<'projectCategories'> | undefined>(undefined);
@@ -197,6 +198,18 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   };
 
   const handleSave = async () => {
+    // Synchronous guard: a state flag alone is stale within the same tick, so
+    // two rapid taps could both run this handler (duplicate creates).
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await runSave();
+    } finally {
+      savingRef.current = false;
+    }
+  };
+
+  const runSave = async () => {
     const trimmedText = text.trim();
     if (!trimmedText) {
       Alert.alert(

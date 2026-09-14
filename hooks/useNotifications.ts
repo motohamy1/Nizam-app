@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { requestPermissionsAsync, ensureNotificationChannels, Notifications } from '../utils/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requestPermissionsAsync, ensureNotificationChannels, cleanupLegacyScheduledNotifications, Notifications } from '../utils/notifications';
+
+const CLEANUP_FLAG = 'NOTIF_CHANNEL_MIGRATION_V2';
 
 export function useNotifications() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -16,7 +19,17 @@ export function useNotifications() {
       // channel config permanently. Never gate this behind the granted check.
       try {
         await ensureNotificationChannels();
-      } catch (_) {}
+      } catch {}
+
+      // One-time: purge scheduled notifications pointing at pre-v2 channels
+      // so they can't fire with the old/missing sound after this update.
+      try {
+        const done = await AsyncStorage.getItem(CLEANUP_FLAG);
+        if (!done) {
+          await cleanupLegacyScheduledNotifications();
+          await AsyncStorage.setItem(CLEANUP_FLAG, '1');
+        }
+      } catch {}
 
       // First check existing status
       const { status: existingStatus } = await Notifications.getPermissionsAsync();

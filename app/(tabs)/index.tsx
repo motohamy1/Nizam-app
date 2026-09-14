@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 
 import { createHomeStyles } from "@/assets/styles/home.styles";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
+import { useGuardedSubmit } from "@/hooks/useSubmitGuard";
 import { useOfflineQuery } from "@/hooks/useOfflineQuery";
 import useTheme from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,7 +116,7 @@ const Index = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const homeStyles = createHomeStyles(colors, isArabic);
   const { showGuide, dismissGuide } = useScreenGuide('home');
-  useTaskTimers(todos, updateStatus);
+  useTaskTimers(todos, updateStatus, linkedChildren as any[], setTimerMutation, language);
   useDailyReminders(todos, language);
   useDeadlineReminders(todos, language);
 
@@ -140,21 +141,20 @@ const Index = () => {
       }));
   }, [todos]);
 
-  // Upcoming Events from Todos (meetings, appointments, reminders, and timed events)
+  // Upcoming Events from Todos (meetings, appointments, reminders, and timed events).
+  // Done items stay in the list — the card splits them into an expandable
+  // "Completed" section instead of hiding them, and completion is manual.
   const upcomingEvents: UpcomingEventDisplay[] = useMemo(() => {
     if (!todos) return [];
     const nowTs = Date.now();
     return todos
       .filter(t =>
-        !(t.status === 'done' || t.isCompleted) &&
-        (
-          t.type === 'reminder' ||
-          t.type === 'meeting' ||
-          t.type === 'appointment' ||
-          Boolean(t.meetingLink) ||
-          Boolean(t.location) ||
-          (t.dueDate && t.dueDate >= todayStart && t.type !== 'task')
-        )
+        t.type === 'reminder' ||
+        t.type === 'meeting' ||
+        t.type === 'appointment' ||
+        Boolean(t.meetingLink) ||
+        Boolean(t.location) ||
+        (t.dueDate && t.dueDate >= todayStart && t.type !== 'task')
       )
       .sort((a, b) => (a.dueDate || a.date || 0) - (b.dueDate || b.date || 0))
       .map(t => ({
@@ -168,6 +168,9 @@ const Index = () => {
         priority: t.priority,
         type: t.type,
         description: t.description,
+        repeatPeriod: t.repeatPeriod,
+        repeatCount: t.repeatCount,
+        status: t.status || (t.isCompleted ? 'done' : 'not_started'),
       }));
   }, [todos, todayStart]);
 
@@ -393,6 +396,8 @@ const Index = () => {
         priority: evt.priority,
         type: evt.type === 'meeting' || evt.type === 'appointment' ? evt.type : 'reminder',
         description: evt.description,
+        repeatPeriod: (evt.repeatPeriod as EventData['repeatPeriod']) || 'none',
+        repeatCount: evt.repeatCount || 1,
       });
     } else {
       setEventToEdit(null);
@@ -402,6 +407,30 @@ const Index = () => {
 
   const handleSaveEvent = async (evt: EventData) => {
     const itemType = evt.type || 'reminder';
+    // Only send repeat args when repeat is actually set. Sending
+    // `repeatPeriod: ''` / `repeatCount: undefined` on every save made
+    // creates fail on deployments whose validators predate the repeat
+    // feature (unknown/empty args), which surfaced as "Failed to save".
+    // The '' clear-signal is sent only when turning repeat OFF on a doc
+    // that had it (server nulls both columns for that case).
+    const repeatOn = !!evt.repeatPeriod && evt.repeatPeriod !== 'none';
+    const hadRepeat =
+      !!eventToEdit?.repeatPeriod && (eventToEdit.repeatPeriod as string) !== 'none';
+    const repeatFields: Record<string, unknown> = repeatOn
+      ? {
+          repeatPeriod: evt.repeatPeriod,
+          repeatCount: Math.max(1, Math.min(60, evt.repeatCount || 1)),
+        }
+      : evt._id && hadRepeat
+        ? { repeatPeriod: '' }
+        : {};
+    // Cancel the previous series before writing the new one so shrinking the
+    // count or turning repeat off can't leave orphaned future notifications.
+    if (evt._id && eventToEdit?.repeatPeriod && eventToEdit.repeatPeriod !== 'none') {
+      import('@/utils/notifications').then(n =>
+        n.cancelReminderSeries(String(evt._id))
+      ).catch(() => {});
+    }
     if (evt._id) {
       await updateTodoMutation({
         id: evt._id,
@@ -413,6 +442,7 @@ const Index = () => {
         meetingLink: evt.meetingLink,
         description: evt.description,
         priority: evt.priority,
+        ...repeatFields,
       });
     } else {
       if (!userId) return;
@@ -427,6 +457,7 @@ const Index = () => {
         description: evt.description,
         priority: evt.priority,
         status: 'not_started',
+        ...repeatFields,
       });
     }
   };
@@ -434,6 +465,14 @@ const Index = () => {
   const handleDeleteEvent = async (id: Id<"todos">) => {
     await deleteTodo({ id });
   };
+
+  // Manual completion — reminders/events never auto-complete when their time
+  // passes; only the user's confirm moves them to the Completed section.
+  // Guarded: status is an absolute value, so an unguarded double-tap flips it
+  // twice (done → not_started) and the item silently stays incomplete.
+  const handleToggleEventDone = useGuardedSubmit(async (id: Id<"todos">, currentStatus?: string) => {
+    await updateStatus({ id, status: currentStatus === 'done' ? 'not_started' : 'done' });
+  });
 
   const handleStartFocusTimer = () => {
     setFocusTimerModalVisible(true);
@@ -536,6 +575,7 @@ const Index = () => {
               <UpcomingEventsCard
                 events={upcomingEvents}
                 onOpenEventModal={handleOpenEventModal}
+                onToggleDone={handleToggleEventDone}
               />
 
               {/* Card 3: Monthly Overview */}

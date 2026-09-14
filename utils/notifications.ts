@@ -2,11 +2,149 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type * as NotificationsType from 'expo-notifications';
 import { resolveKindSound, TYPE_SOUND, type NotificationKind } from './soundPreferences';
+import { translations } from './i18n';
 
 export const getTimerNotificationId = (taskId: string) => `timer_${taskId}`;
 export const getMorningNotificationId = () => `daily_morning_9am`;
 export const getEveningNotificationId = () => `daily_evening_8pm`;
 export const getDeadlineNotificationId = (taskId: string) => `deadline_${taskId}`;
+
+/** Repeat periods supported for reminders/meetings. */
+export type RepeatPeriod = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none';
+
+export const REPEAT_PERIODS: Exclude<RepeatPeriod, 'none'>[] = ['hourly', 'daily', 'weekly', 'monthly', 'yearly'];
+
+/** Hard cap on scheduled occurrences — protects the OS notification budget. */
+export const MAX_REPEAT_COUNT = 60;
+
+/**
+ * Stable per-task+date id for a reminder occurrence. Using the date (not an
+ * index) makes rescheduling idempotent: the same occurrence replaces its
+ * previous entry instead of stacking a duplicate. The same scheme covers
+ * one-shot reminders (single occurrence) and repeat series alike, so a
+ * repeat can be turned off without leaving orphans.
+ */
+export const getReminderNotificationId = (taskId: string, occurrenceMs: number) =>
+  `reminder_${taskId}_${Math.floor(occurrenceMs)}`;
+
+/**
+ * Nth occurrence of a repeat series, anchored on the first occurrence.
+ * monthly/yearly clamp the day so e.g. Jan 31 + 1 month lands on the last
+ * day of February instead of overflowing into March.
+ */
+export function computeRepeatOccurrence(firstMs: number, period: RepeatPeriod, index: number): number {
+  if (period === 'none' || index <= 0) return firstMs;
+  const d = new Date(firstMs);
+  switch (period) {
+    case 'hourly':
+      return firstMs + index * 3600000;
+    case 'daily':
+      return firstMs + index * 86400000;
+    case 'weekly':
+      return firstMs + index * 7 * 86400000;
+    case 'monthly': {
+      const day = d.getDate();
+      const target = new Date(d.getFullYear(), d.getMonth() + index, 1, d.getHours(), d.getMinutes(), 0, 0);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+      target.setDate(Math.min(day, lastDay));
+      return target.getTime();
+    }
+    case 'yearly': {
+      const target = new Date(d.getFullYear() + index, d.getMonth(), 1, d.getHours(), d.getMinutes(), 0, 0);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+      target.setDate(Math.min(d.getDate(), lastDay));
+      return target.getTime();
+    }
+    default:
+      return firstMs;
+  }
+}
+
+/** Last occurrence timestamp of a repeat series (== first for one-shots). */
+export function computeRepeatEnd(firstMs: number, period: RepeatPeriod, count: number): number {
+  if (period === 'none' || !count || count <= 1) return firstMs;
+  return computeRepeatOccurrence(firstMs, period, count - 1);
+}
+
+const clampRepeatCount = (count: number) => Math.max(1, Math.min(MAX_REPEAT_COUNT, Math.floor(count) || 1));
+
+/**
+ * Schedule every occurrence of a repeat series. Each occurrence is an
+ * independent DATE trigger with a date-keyed identifier, so re-running this
+ * (app relaunch, edit) replaces instead of duplicating. Past occurrences are
+ * skipped; nothing is scheduled when the whole series is in the past.
+ */
+export async function scheduleRepeatingReminder(
+  taskId: string,
+  title: string,
+  firstOccurrenceMs: number,
+  repeatPeriod: RepeatPeriod = 'none',
+  repeatCount: number = 1,
+  language: string = 'en'
+): Promise<number> {
+  if (!Notifications) return 0;
+  if (repeatPeriod === 'none') return 0; // one-shots go through scheduleReminderNotification
+
+  const t: any = translations[language as keyof typeof translations] || translations.en;
+  const count = clampRepeatCount(repeatCount);
+  const now = Date.now();
+
+  try {
+    const file = await resolveKindSound('reminder').catch(() => TYPE_SOUND.reminder);
+    await ensureNotificationChannels().catch(() => {});
+
+    let scheduled = 0;
+    for (let i = 0; i < count; i++) {
+      const occurrence = computeRepeatOccurrence(firstOccurrenceMs, repeatPeriod, i);
+      if (occurrence <= now) continue;
+      await Notifications.scheduleNotificationAsync({
+        identifier: getReminderNotificationId(taskId, occurrence),
+        content: {
+          title: t.reminderNotifTitle || '⏰ Reminder',
+          body: (t.reminderNotifBody || 'Time for: ') + `"${title}"`,
+          sound: iosSound(file),
+          priority: Notifications.AndroidNotificationPriority?.MAX,
+          vibrate: [0, 500, 200, 500, 200, 500],
+        } as any,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(occurrence),
+          channelId: CHANNEL_IDS.reminders,
+        } as any,
+      });
+      scheduled++;
+    }
+    return scheduled;
+  } catch (error) {
+    console.warn('Error scheduling repeating reminder:', error);
+    return 0;
+  }
+}
+
+/**
+ * Cancel every scheduled occurrence of a reminder series.
+ * Prefix-based: sweeps ALL scheduled notifications whose identifier starts
+ * with `reminder_<taskId>_` regardless of which period/date produced them, so
+ * a period switch, a count shrink, turning repeat off, or a temp→real id
+ * remap can never leave an orphaned future notification behind. Also clears
+ * the legacy `reminder_<id>` id from earlier builds.
+ */
+export async function cancelReminderSeries(taskId: string): Promise<void> {
+  if (!Notifications || !taskId) return;
+  try {
+    const prefix = `reminder_${taskId}_`;
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const item of scheduled) {
+      const identifier = item?.identifier;
+      if (typeof identifier !== 'string') continue;
+      if (identifier.startsWith(prefix) || identifier === `reminder_${taskId}`) {
+        await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+      }
+    }
+  } catch (error) {
+    console.warn('Error cancelling reminder series:', error);
+  }
+}
 
 export interface TimerNotificationData {
   taskId: string;
@@ -24,19 +162,32 @@ export const TIMER_ACTIONS = {
   RESET: 'reset_timer',
 } as const;
 
-/** One Android channel per notification kind — each with its own sound. */
+/** One Android channel per notification kind — each with its own sound.
+ *  v2: channel IDs were versioned because Android caches a channel's sound
+ *  permanently; bumping the id is the only way an installed app actually
+ *  picks up a changed/absent sound (delete+recreate of the same id can be
+ *  ignored by some OEM ROMs). */
 export const CHANNEL_IDS = {
-  tasks: 'tasks',
-  subtasks: 'subtasks',
-  reminders: 'reminders',
-  completion: 'completion',
-  morning: 'daily_morning',
-  evening: 'daily_evening',
-  overdue: 'overdue',
+  tasks: 'tasks_v2',
+  subtasks: 'subtasks_v2',
+  reminders: 'reminders_v2',
+  completion: 'completion_v2',
+  morning: 'daily_morning_v2',
+  evening: 'daily_evening_v2',
+  overdue: 'overdue_v2',
 } as const;
 
-/** Legacy single daily channel from before the morning/evening split. */
-const LEGACY_CHANNELS = ['daily'];
+/** Channels from earlier builds — deleted once so the OS forgets them. */
+const LEGACY_CHANNELS = [
+  'daily',
+  'tasks',
+  'subtasks',
+  'reminders',
+  'completion',
+  'daily_morning',
+  'daily_evening',
+  'overdue',
+];
 
 const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
@@ -70,7 +221,7 @@ export async function ensureNotificationChannels(): Promise<void> {
   for (const legacy of LEGACY_CHANNELS) {
     try {
       await Notifications.deleteNotificationChannelAsync(legacy);
-    } catch (_) {}
+    } catch {}
   }
 
   const defs: {
@@ -95,7 +246,7 @@ export async function ensureNotificationChannels(): Promise<void> {
     const file = await resolveKindSound(def.kind).catch(() => TYPE_SOUND[def.kind]);
     try {
       await Notifications.deleteNotificationChannelAsync(def.id);
-    } catch (_) {}
+    } catch {}
     await Notifications.setNotificationChannelAsync(def.id, {
       name: def.name,
       importance: def.importance,
@@ -117,6 +268,29 @@ export async function updateNotificationSoundPreference(_soundFile: any) {
   // Pending timers keep their already-queued channel snapshot and pick the
   // new sound up on their next schedule cycle.
   await ensureNotificationChannels();
+}
+
+/**
+ * One-time migration after a channel-ID version bump: drop every scheduled
+ * notification that targets a legacy channel, so stale entries can't fire
+ * with the old (wrong/missing) sound after the update. The hooks reschedule
+ * everything on the next pass.
+ */
+export async function cleanupLegacyScheduledNotifications(): Promise<void> {
+  if (!Notifications) return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const item of scheduled) {
+      const channelId = (item?.trigger as any)?.channelId;
+      if (channelId && LEGACY_CHANNELS.includes(channelId)) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(item.identifier);
+        } catch {}
+      }
+    }
+  } catch (e) {
+    console.warn('Legacy scheduled-notification cleanup failed:', e);
+  }
 }
 
 if (Notifications) {
@@ -164,8 +338,6 @@ export async function requestPermissionsAsync() {
     return false;
   }
 }
-
-import { translations } from './i18n';
 
 export async function scheduleTimerCompletion(
   taskId: string,
@@ -249,11 +421,15 @@ export async function cancelTaskNotification(taskId: string) {
 
 /**
  * Schedule a notification for a specific reminder at its due date/time.
+ * `taskId` is optional but recommended: it keys the identifier by task+date
+ * so re-saving the same reminder replaces the previous entry instead of
+ * stacking duplicates (and so the series-cancel sweep can find it).
  */
 export async function scheduleReminderNotification(
   title: string,
   dueDateMs: number,
-  language: string = 'en'
+  language: string = 'en',
+  taskId?: string
 ): Promise<string> {
   if (!Notifications) return '';
 
@@ -268,6 +444,7 @@ export async function scheduleReminderNotification(
     await ensureNotificationChannels().catch(() => {});
 
     const id = await Notifications.scheduleNotificationAsync({
+      ...(taskId ? { identifier: getReminderNotificationId(taskId, dueDateMs) } : {}),
       content: {
         title: t.reminderNotifTitle || '⏰ Reminder',
         body: (t.reminderNotifBody || 'Time for: ') + `"${title}"`,
@@ -307,9 +484,9 @@ export async function showTaskCompletedNotification(title: string, language: str
         sound: iosSound(file),
         priority: Notifications.AndroidNotificationPriority?.HIGH,
       } as any,
+      // null = deliver immediately. Keep channelId: Android plays the
+      // notification's channel sound, so dropping it would lose the sound.
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 1,
         channelId: CHANNEL_IDS.completion,
       } as any,
     });
@@ -371,7 +548,7 @@ export async function cancelDeadlineReminder(taskId: string) {
 }
 
 /** Immediate nudge when a deadline has just passed. */
-export async function showOverdueNudge(title: string, language: string = 'en') {
+export async function showOverdueNudge(title: string, language: string = 'en', taskId?: string) {
   if (!Notifications) return;
 
   const t: any = translations[language as keyof typeof translations] || translations.en;
@@ -379,6 +556,9 @@ export async function showOverdueNudge(title: string, language: string = 'en') {
   try {
     const file = await resolveKindSound('overdue').catch(() => TYPE_SOUND.overdue);
     await Notifications.scheduleNotificationAsync({
+      // Stable per-task identifier: a repeat for the same task REPLACES the
+      // previous entry instead of stacking a new one (was the spam cause).
+      identifier: taskId ? `overdue_${taskId}` : undefined,
       content: {
         title: t.overdueNotifTitle || '⚠️ Overdue',
         body: (t.overdueNotifBody || 'You missed the deadline for: ') + `"${title}"`,
@@ -386,9 +566,9 @@ export async function showOverdueNudge(title: string, language: string = 'en') {
         priority: Notifications.AndroidNotificationPriority?.MAX,
         vibrate: [0, 500, 200, 500, 200, 500],
       } as any,
+      // Immediate delivery. Keep channelId so the overdue channel's sound
+      // and importance still apply (Android reads them from the channel).
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 1,
         channelId: CHANNEL_IDS.overdue,
       } as any,
     });

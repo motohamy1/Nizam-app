@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -106,6 +106,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   const [isRefining, setIsRefining] = useState(false);
   const [refinementInput, setRefinementInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const savingGoalsRef = useRef(false);
 
   // Sub-goals specific AI conversation state
   const [showSubGoalCreator, setShowSubGoalCreator] = useState(false);
@@ -579,6 +580,18 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
 
   // Save all goals directly to Convex DB
   const handleSaveAllToGoals = async () => {
+    // Synchronous guard: this fans out into a batch of creates; without a
+    // ref, two rapid taps both pass the isSaving check (stale same-tick).
+    if (savingGoalsRef.current) return;
+    savingGoalsRef.current = true;
+    try {
+      await runSaveAllToGoals();
+    } finally {
+      savingGoalsRef.current = false;
+    }
+  };
+
+  const runSaveAllToGoals = async () => {
     const goalsToSave: StagedGoal[] = [...stagedGoals];
 
     if (currentDraft && currentDraft.goalTitle.trim()) {

@@ -5,6 +5,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
+import { useGuardedSubmit } from '@/hooks/useSubmitGuard';
 import useTheme from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
@@ -47,7 +48,7 @@ export const GoalLinkedTasks: React.FC<GoalLinkedTasksProps> = ({
     updateStatus({ id: task._id, status: nextStatus });
   };
 
-  const handleCreateTask = async () => {
+  const handleCreateTask = useGuardedSubmit(async () => {
     const trimmed = newTaskText.trim();
     if (!trimmed || !userId) return;
 
@@ -64,7 +65,7 @@ export const GoalLinkedTasks: React.FC<GoalLinkedTasksProps> = ({
     } catch (e) {
       console.warn('Failed to add linked task to goal', e);
     }
-  };
+  });
 
   return (
     <View style={[styles.container, { borderTopColor: isDarkMode ? '#2D2D3E' : '#E5E7EB' }]}>

@@ -1,18 +1,41 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { scheduleTimerCompletion, cancelTaskNotification } from '../utils/notifications';
+import { scheduleTimerCompletion, cancelTaskNotification, showTaskCompletedNotification } from '../utils/notifications';
 import { isDayPastCutoff, startOfDay } from '../utils/taskDateUtils';
 import { getServerNow, patchTempTodo } from '../utils/offlineStorage';
 
 const isTempId = (id: any) => typeof id === 'string' && id.startsWith('temp_');
 
-export function useTaskTimers(todos: any[] | undefined, updateStatus: any) {
+// A parent countdown that hits zero while timed subtasks are still running
+// must NOT auto-complete — extend it to cover the latest subtask end first.
+// Returns ms to add, or 0 when nothing needs extending.
+const computeSubtaskExtension = (todo: any, subs: any[] | undefined, serverTime: number): number => {
+  if (!todo?.timerDuration || !Array.isArray(subs) || subs.length === 0) return 0;
+  let latestEnd = 0;
+  subs.forEach((sub) => {
+    if (!sub || sub.parentId !== todo._id) return;
+    if (sub.status !== 'in_progress') return; // only currently-running subtasks
+    if (!sub.timerDuration || sub.timerDirection === 'up' || !sub.timerStartTime) return;
+    latestEnd = Math.max(latestEnd, sub.timerStartTime + sub.timerDuration);
+  });
+  if (latestEnd <= 0) return 0;
+  const parentEnd = todo.timerStartTime + todo.timerDuration;
+  return Math.max(0, latestEnd - parentEnd);
+};
+
+export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subtasks?: any[], setTimer?: any, language: string = 'en') {
   const appState = useRef(AppState.currentState);
   const todosRef = useRef(todos);
+  const subtasksRef = useRef(subtasks);
+  const setTimerRef = useRef(setTimer);
+  const languageRef = useRef(language);
   const scheduledNotifications = useRef(new Map<string, string>());
 
   useEffect(() => {
     todosRef.current = todos;
+    subtasksRef.current = subtasks;
+    setTimerRef.current = setTimer;
+    languageRef.current = language;
     
     if (!todos || !Array.isArray(todos)) return;
 
@@ -86,11 +109,31 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any) {
               const remaining = Math.max(0, todo.timerDuration - elapsed);
 
               if (remaining === 0) {
+                // Parent ran out while a timed subtask is still running →
+                // extend the parent to cover it instead of completing early.
+                const extension = computeSubtaskExtension(todo, subtasksRef.current, serverTime);
+                if (extension > 0) {
+                  const newDuration = (todo.timerDuration || 0) + extension;
+                  if (isTempId(todo._id)) {
+                    patchTempTodo(todo._id, { timerDuration: newDuration });
+                  } else if (setTimerRef.current) {
+                    // setTimer adjusts elapsed internally and keeps the
+                    // running clock consistent; updateStatus has no duration arg.
+                    Promise.resolve(
+                      setTimerRef.current({ id: todo._id, duration: newDuration })
+                    ).catch(() => {});
+                  }
+                  return;
+                }
                 if (isTempId(todo._id)) {
                   patchTempTodo(todo._id, { status: 'done', completedAt: now, timerStartTime: undefined });
                 } else {
                   dispatchAutoStatus(todo._id, 'done');
                 }
+                // The countdown finishing IS the task completing — announce it.
+                // Previously only manual completion paths fired this, so a
+                // timer-ended task silently flipped to done.
+                showTaskCompletedNotification(todo.text, languageRef.current);
                 return;
               }
             }
@@ -100,7 +143,12 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any) {
           // Honors the 7:00 AM extended-day cutoff: a task from "today" stays
           // alive until 7 AM of the next day, so a timer that crosses midnight
           // is never force-reset to not_done.
+          // Reminders / meetings / appointments are exempt: their status must
+          // only ever change on explicit user action (complete or restore).
+          const isReminderCard =
+            todo.type === 'reminder' || todo.type === 'meeting' || todo.type === 'appointment';
           if (
+            !isReminderCard &&
             (todo.status === 'not_started' || todo.status === 'in_progress' || todo.status === 'paused') &&
             todo.dueDate
           ) {

@@ -26,6 +26,7 @@ import { useTranslation } from '@/utils/i18n';
 import { createProjectsStyles } from '@/assets/styles/projects.styles';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
+import { useGuardedSubmit } from '@/hooks/useSubmitGuard';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import TodoCard from '@/components/TodoCard';
@@ -708,6 +709,22 @@ const CategoryDetailView = ({
   const [showAddCategoryTask, setShowAddCategoryTask] = useState(false);
   const [newCategoryTaskText, setNewCategoryTaskText] = useState('');
 
+  // One guarded handler for both entry points (keyboard submit + button):
+  // they used to duplicate the same create, so pressing Enter and tapping
+  // "Add" in quick succession queued two identical tasks.
+  const handleAddCategoryTask = useGuardedSubmit(async () => {
+    if (!newCategoryTaskText.trim() || !userId) return;
+    await addTodoMutation({
+      userId,
+      text: newCategoryTaskText.trim(),
+      date: Date.now(),
+      status: 'not_started',
+      categoryId,
+    });
+    setNewCategoryTaskText('');
+    setShowAddCategoryTask(false);
+  });
+
   // Description / Workspace Overview state
   const [editingDesc, setEditingDesc] = useState(false);
   const [descText, setDescText] = useState('');
@@ -736,7 +753,7 @@ const CategoryDetailView = ({
     }));
   };
 
-  const handleAddToggleItem = async () => {
+  const handleAddToggleItem = useGuardedSubmit(async () => {
     if (!newToggleTitle.trim() || !userId) return;
     await addCategoryItemMutation({
       userId,
@@ -748,13 +765,13 @@ const CategoryDetailView = ({
     setNewToggleTitle('');
     setNewToggleContent('');
     setShowAddToggle(false);
-  };
+  });
 
   // Space Checklist state
   const [showAddCheck, setShowAddCheck] = useState(false);
   const [newCheckText, setNewCheckText] = useState('');
 
-  const handleAddChecklist = async () => {
+  const handleAddChecklist = useGuardedSubmit(async () => {
     if (!newCheckText.trim() || !userId) return;
     await addCategoryItemMutation({
       userId,
@@ -764,7 +781,7 @@ const CategoryDetailView = ({
     });
     setNewCheckText('');
     setShowAddCheck(false);
-  };
+  });
 
   if (!directProjects) {
     return (
@@ -1245,32 +1262,10 @@ const CategoryDetailView = ({
               value={newCategoryTaskText}
               onChangeText={setNewCategoryTaskText}
               autoFocus
-              onSubmitEditing={async () => {
-                if (!newCategoryTaskText.trim() || !userId) return;
-                await addTodoMutation({
-                  userId,
-                  text: newCategoryTaskText.trim(),
-                  date: Date.now(),
-                  status: 'not_started',
-                  categoryId,
-                });
-                setNewCategoryTaskText('');
-                setShowAddCategoryTask(false);
-              }}
+              onSubmitEditing={handleAddCategoryTask}
             />
             <TouchableOpacity
-              onPress={async () => {
-                if (!newCategoryTaskText.trim() || !userId) return;
-                await addTodoMutation({
-                  userId,
-                  text: newCategoryTaskText.trim(),
-                  date: Date.now(),
-                  status: 'not_started',
-                  categoryId,
-                });
-                setNewCategoryTaskText('');
-                setShowAddCategoryTask(false);
-              }}
+              onPress={handleAddCategoryTask}
               style={[styles.inlineAddBtn, { backgroundColor: colors.primary }]}
             >
               <Ionicons name="arrow-up" size={16} color="#000" />

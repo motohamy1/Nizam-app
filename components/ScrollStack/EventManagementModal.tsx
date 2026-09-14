@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -24,6 +24,8 @@ import { useWindowDimensions } from 'react-native';
 
 export type ManagedItemType = 'reminder' | 'meeting' | 'appointment';
 
+export type RepeatPeriodOption = 'none' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+
 export interface EventData {
   _id?: Id<"todos">;
   title: string;
@@ -35,6 +37,8 @@ export interface EventData {
   priority?: string;
   type?: ManagedItemType;
   description?: string;
+  repeatPeriod?: RepeatPeriodOption;
+  repeatCount?: number;
 }
 
 interface EventManagementModalProps {
@@ -71,6 +75,9 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [repeatPeriod, setRepeatPeriod] = useState<RepeatPeriodOption>('none');
+  const [repeatCount, setRepeatCount] = useState(1);
 
   useEffect(() => {
     if (eventToEdit) {
@@ -85,6 +92,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
       setLocation(eventToEdit.location || '');
       setMeetingLink(eventToEdit.meetingLink || '');
       setNotes(eventToEdit.description || '');
+      setRepeatPeriod(eventToEdit.repeatPeriod || 'none');
+      setRepeatCount(eventToEdit.repeatCount || 1);
     } else {
       setTitle('');
       setItemType('reminder');
@@ -94,10 +103,24 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
       setLocation('');
       setMeetingLink('');
       setNotes('');
+      setRepeatPeriod('none');
+      setRepeatCount(1);
     }
   }, [eventToEdit, initialDate, visible]);
 
   const handleSave = async () => {
+    // Synchronous guard: a state flag alone is stale within the same tick, so
+    // two rapid taps could both run this handler (duplicate creates).
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await runSave();
+    } finally {
+      savingRef.current = false;
+    }
+  };
+
+  const runSave = async () => {
     if (isSaving) return;
     if (!title.trim()) {
       Alert.alert(t.missingFields, t.fillAll);
@@ -121,6 +144,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
         meetingLink: itemType === 'reminder' ? '' : meetingLink.trim(),
         description: notes.trim(),
         priority: 'High',
+        repeatPeriod: repeatPeriod === 'none' ? 'none' : repeatPeriod,
+        repeatCount: repeatPeriod === 'none' ? 1 : Math.max(1, Math.min(60, repeatCount || 1)),
       };
 
       await onSaveEvent(savedData);
@@ -175,6 +200,25 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
     { id: 'meeting', icon: 'videocam-outline', label: t.typeMeeting },
     { id: 'appointment', icon: 'calendar-outline', label: t.typeAppointment },
   ];
+
+  const repeatOptions: { id: RepeatPeriodOption; label: string }[] = [
+    { id: 'none', label: t.repeatOff },
+    { id: 'hourly', label: t.repeatHourly },
+    { id: 'daily', label: t.repeatDaily },
+    { id: 'weekly', label: t.repeatWeekly },
+    { id: 'monthly', label: t.repeatMonthly },
+    { id: 'yearly', label: t.repeatYearly },
+  ];
+
+  const repeatSummary = (() => {
+    if (repeatPeriod === 'none') return '';
+    const unit =
+      repeatPeriod === 'hourly' ? t.repeatHourly :
+      repeatPeriod === 'daily' ? t.repeatDaily :
+      repeatPeriod === 'weekly' ? t.repeatWeekly :
+      repeatPeriod === 'monthly' ? t.repeatMonthly : t.repeatYearly;
+    return `${t.repeatEvery} ${unit} × ${repeatCount} ${t.repeatTimes}`;
+  })();
 
   return (
     <Modal
@@ -311,6 +355,107 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       }}
                     />
                   )}
+
+                  {/* Repeat */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={styles.modalInputLabel}>{t.repeat}</Text>
+                    <View style={[styles.modalTypeRow, { flexWrap: 'wrap' }]}>
+                      {repeatOptions.map((opt) => {
+                        const active = repeatPeriod === opt.id;
+                        return (
+                          <TouchableOpacity
+                            key={opt.id}
+                            // NOTE: modalTypeChip has flex:1 (sized for the 2-3
+                            // chip type row). With 6 repeat chips that squeezes
+                            // each to 1/6 width and the label bursts out of the
+                            // chip — content-size them so flexWrap can do its job.
+                            style={[styles.modalTypeChip, { flex: 0, paddingHorizontal: 12 }, active && styles.modalTypeChipActive]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setRepeatPeriod(opt.id);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            {opt.id !== 'none' && (
+                              <Ionicons
+                                name="repeat-outline"
+                                size={13}
+                                color={active ? colors.text : colors.textMuted}
+                              />
+                            )}
+                            <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
+                              {opt.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {repeatPeriod !== 'none' && (
+                      <View
+                        style={{
+                          flexDirection: isArabic ? 'row-reverse' : 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginTop: 12,
+                          paddingHorizontal: 14,
+                          paddingVertical: 10,
+                          borderRadius: 14,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          backgroundColor: isDarkMode ? colors.surface : colors.surface,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, flex: 1 }}>
+                          {repeatSummary}
+                        </Text>
+                        <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setRepeatCount((c) => Math.max(1, (c || 1) - 1));
+                            }}
+                            style={{
+                              width: 34, height: 34, borderRadius: 17,
+                              alignItems: 'center', justifyContent: 'center',
+                              backgroundColor: colors.primary + '18',
+                              borderWidth: 1, borderColor: colors.primary + '40',
+                            }}
+                          >
+                            <Ionicons name="remove" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                          <TextInput
+                            style={{
+                              minWidth: 44, textAlign: 'center', fontSize: 16, fontWeight: '800',
+                              color: colors.text, paddingVertical: 2,
+                            }}
+                            value={String(repeatCount)}
+                            onChangeText={(v) => {
+                              const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
+                              setRepeatCount(Number.isFinite(n) ? Math.max(1, Math.min(60, n)) : 1);
+                            }}
+                            keyboardType="number-pad"
+                            maxLength={2}
+                            selectTextOnFocus
+                          />
+                          <TouchableOpacity
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setRepeatCount((c) => Math.min(60, (c || 1) + 1));
+                            }}
+                            style={{
+                              width: 34, height: 34, borderRadius: 17,
+                              alignItems: 'center', justifyContent: 'center',
+                              backgroundColor: colors.primary + '18',
+                              borderWidth: 1, borderColor: colors.primary + '40',
+                            }}
+                          >
+                            <Ionicons name="add" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
 
                   {/* Location & Meeting Link (events only) */}
                   {itemType !== 'reminder' ? (

@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
+import { useGuardedSubmit } from '@/hooks/useSubmitGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
@@ -154,8 +155,9 @@ const ChecklistItemForm: React.FC<{
     return { projectId: undefined, categoryId: undefined, subCategoryId: undefined };
   };
 
-  const handleSave = async () => {
-    if (isSaving) return;
+  // Guarded: a state flag alone is stale within the same tick, and this fans
+  // out into a loop of mutations — a double-tap would replay the whole batch.
+  const handleSave = useGuardedSubmit(async () => {
     if (!title.trim()) {
       Alert.alert(t.missingFields, isArabic ? 'يرجى كتابة عنوان العنصر.' : 'Please enter a title for this checklist item.');
       return;
@@ -210,7 +212,7 @@ const ChecklistItemForm: React.FC<{
     } finally {
       setIsSaving(false);
     }
-  };
+  });
 
   const handleDelete = () => {
     if (!itemId) return;

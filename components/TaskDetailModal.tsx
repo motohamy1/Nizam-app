@@ -601,7 +601,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
         setDueDate(time);
         if (currentTodoId) {
           setTimer({ id: currentTodoId, dueDate: time });
-          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en');
+          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en', String(currentTodoId));
         }
       } else if (datePickerMode === 'time') {
         const baseDate = dueDate ? new Date(dueDate) : new Date();
@@ -610,7 +610,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
         setDueDate(time);
         if (currentTodoId) {
           setTimer({ id: currentTodoId, dueDate: time });
-          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en');
+          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en', String(currentTodoId));
         }
       }
     }

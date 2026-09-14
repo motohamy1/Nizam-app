@@ -28,6 +28,7 @@ import { createAddScreenStyles } from '@/assets/styles/addScreen.styles';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
+import { useGuardedSubmit } from '@/hooks/useSubmitGuard';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
@@ -396,8 +397,9 @@ export default function AddScreen() {
     setAddTagModalVisible(false);
   };
 
-  // Handler for creating a note from typing
-  const handleSaveTypedNote = async () => {
+  // Guarded: typingText is cleared via setState (not synchronously), so two
+  // taps in the same tick both pass the emptiness check and create two notes.
+  const handleSaveTypedNote = useGuardedSubmit(async () => {
     const textToSave = typingText.trim();
     if (!textToSave) return;
     const tagToSave = currentHashtag || '#Notes';
@@ -423,7 +425,7 @@ export default function AddScreen() {
         console.warn('Failed to add note', err);
       }
     }
-  };
+  });
 
   // Applies the picked time to the composer's reminder option (next occurrence)
   const handleApplyReminderTime = () => {

@@ -48,6 +48,10 @@ export default defineSchema({
     date: v.optional(v.number()), 
     parentId: v.optional(v.id("todos")),
     type: v.optional(v.string()), // 'task' | 'note' | 'reminder'
+    // Repeat support for reminders/meetings: period + occurrence count.
+    // Absent = does not repeat. 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+    repeatPeriod: v.optional(v.string()),
+    repeatCount: v.optional(v.number()),
     hashtags: v.optional(v.array(v.string())),
     completedAt: v.optional(v.number()),
     // Voice & Audio fields

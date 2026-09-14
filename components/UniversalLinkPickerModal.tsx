@@ -121,13 +121,25 @@ export const UniversalLinkPickerModal: React.FC<UniversalLinkPickerModalProps> =
   }, [categories, searchQuery]);
 
   const filteredGoals = useMemo(() => {
-    let list = allGoals;
+    // Only current-period goals belong in the linker: linking a task to a
+    // goal from a previous month/year has no value and clutters the picker.
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    let list = allGoals.filter((g: any) => g.year === currentYear);
+
     if (goalFilter === 'yearly') {
       list = list.filter((g: any) => g.month === undefined && g.day === undefined);
     } else if (goalFilter === 'monthly') {
-      list = list.filter((g: any) => g.month !== undefined && g.day === undefined);
+      list = list.filter((g: any) => g.month === currentMonth && g.day === undefined);
     } else if (goalFilter === 'daily') {
-      list = list.filter((g: any) => g.day !== undefined);
+      list = list.filter((g: any) => g.month === currentMonth && g.day === new Date().getDate());
+    } else {
+      // 'all' → everything in the current period (yearly + this month + today)
+      list = list.filter((g: any) => {
+        if (g.day !== undefined) return g.month === currentMonth && g.day === new Date().getDate();
+        if (g.month !== undefined) return g.month === currentMonth;
+        return true;
+      });
     }
 
     if (searchQuery.trim()) {

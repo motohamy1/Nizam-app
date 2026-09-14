@@ -31,6 +31,8 @@ export const getSubtasks = query({
 
 // All subtask references for a user (bounded), used to show linked-child
 // counts on the home checklist without reading full documents per parent.
+// Includes timer fields so the home sweeper can extend a parent whose
+// countdown ends while a timed subtask is still running.
 export const getLinkedChildren = query({
   args: { userId: v.union(v.id("users"), v.string()) },
   handler: async (ctx, args) => {
@@ -44,6 +46,9 @@ export const getLinkedChildren = query({
       parentId: t.parentId!,
       text: t.text,
       status: t.status,
+      timerDuration: t.timerDuration,
+      timerStartTime: t.timerStartTime,
+      timerDirection: t.timerDirection,
     }));
   },
 });
@@ -100,6 +105,8 @@ export const addTodo = mutation({
     type: v.optional(v.string()),
     hashtags: v.optional(v.array(v.string())),
     localId: v.optional(v.string()),
+    repeatPeriod: v.optional(v.string()),
+    repeatCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Idempotent replay guard: if the same client-generated localId already
@@ -137,6 +144,13 @@ export const addTodo = mutation({
       ...(args.goalId !== undefined && { goalId: args.goalId }),
       ...(args.type !== undefined && { type: args.type }),
       ...(args.hashtags !== undefined && { hashtags: args.hashtags }),
+      // Normalize: '' is the UI's "no repeat" value — never store it, so a
+      // doc without repeat has no repeat keys at all ('' !== 'none' checks
+      // elsewhere would otherwise misread it).
+      ...(args.repeatPeriod ? { repeatPeriod: args.repeatPeriod } : {}),
+      ...(args.repeatCount !== undefined && args.repeatPeriod
+        ? { repeatCount: args.repeatCount }
+        : {}),
       ...(args.localId && { localId: args.localId }),
       ...(args.status === 'done' && { completedAt: Date.now() }),
     });
@@ -661,10 +675,18 @@ export const updateTodo = mutation({
     parentId: v.optional(v.id("todos")),
     completedAt: v.optional(v.number()),
     hashtags: v.optional(v.array(v.string())),
+    repeatPeriod: v.optional(v.string()),
+    repeatCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    const finalUpdates = { ...updates };
+    const finalUpdates: Record<string, any> = { ...updates };
+    // Empty-string repeatPeriod is the explicit "clear repeat" signal from
+    // the UI — null it out so the doc really stops repeating.
+    if (updates.repeatPeriod === '') {
+      finalUpdates.repeatPeriod = undefined;
+      finalUpdates.repeatCount = undefined;
+    }
     const wasCompleted = updates.status === 'done' || updates.isCompleted === true;
     const wasUncompleted = updates.status && updates.status !== 'done' && updates.isCompleted !== true;
     

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,7 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
   // Selected tasks map for checklist extraction
   const [selectedTaskIndices, setSelectedTaskIndices] = useState<Set<number>>(new Set());
   const [isAddingTasks, setIsAddingTasks] = useState(false);
+  const addingTasksRef = useRef(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -142,6 +143,19 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
   };
 
   const handleAddTasksConfirm = async () => {
+    // Synchronous guard: this fans out into a batch of creates, and the
+    // disabled button only reflects state after a re-render — a double-tap
+    // would run the whole batch twice.
+    if (addingTasksRef.current) return;
+    addingTasksRef.current = true;
+    try {
+      await runAddTasksConfirm();
+    } finally {
+      addingTasksRef.current = false;
+    }
+  };
+
+  const runAddTasksConfirm = async () => {
     if (!resultData?.tasks || !onAddTasksToTodoList) return;
     const tasksToCreate = resultData.tasks
       .filter((_, i) => selectedTaskIndices.has(i))

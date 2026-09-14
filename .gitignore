@@ -65,8 +65,21 @@ specs
 .impeccable
 
 .agent
+.claude
 
 graphify-out
 /graphify-out
 graphify
 /graphify
+
+# goldie (App Store / Play assets)
+goldie/out/
+goldie/build/
+goldie/
+goldie
+
+#.argent
+.argent
+.argent/
+/.argent/
+/.argent
