@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, FlatList, ActivityIndicator, SectionList } from 'react-native';
 import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import { api } from '@/convex/_generated/api';
@@ -22,7 +23,7 @@ interface ProjectPickerModalProps {
 }
 
 const ProjectPickerModal: React.FC<ProjectPickerModalProps> = ({ visible, onClose, onSelect }) => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { userId } = useAuth();
   
   const [currentLevel, setCurrentLevel] = useState<'categories' | 'categoryDetail' | 'subCategoryProjects'>('categories');
@@ -70,7 +71,7 @@ const ProjectPickerModal: React.FC<ProjectPickerModalProps> = ({ visible, onClos
         }}
       >
         <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-          <Ionicons name={item.icon as any || 'folder-outline'} size={20} color={item.color} />
+          <Ionicons name={item.icon as any || 'folder-outline'} size={20} color={modeColor(item.color, isDarkMode)} />
         </View>
         <Text style={[styles.label, { color: colors.text }]}>{item.name}</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.border} />
@@ -143,7 +144,7 @@ const ProjectPickerModal: React.FC<ProjectPickerModalProps> = ({ visible, onClos
         }}
       >
         <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-          <Ionicons name={item.icon as any || 'rocket-outline'} size={20} color={item.color} />
+          <Ionicons name={item.icon as any || 'rocket-outline'} size={20} color={modeColor(item.color, isDarkMode)} />
         </View>
         <Text style={[styles.label, { color: colors.text }]}>{item.name}</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.border} />

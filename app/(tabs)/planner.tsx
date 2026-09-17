@@ -734,7 +734,7 @@ const Planner = () => {
                       {cell.tasks.length > 0 ? (
                         <View style={[
                           styles.dayTaskBadge, 
-                          cell.isToday && { backgroundColor: 'rgba(255, 255, 255, 0.28)' }
+                          cell.isToday && { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.28)' : colors.primary }
                         ]}>
                           <Text style={[
                             styles.dayTaskBadgeText, 

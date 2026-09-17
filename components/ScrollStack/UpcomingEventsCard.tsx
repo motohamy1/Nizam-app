@@ -7,6 +7,7 @@ import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { createScrollStackStyles, CARD_ACCENTS, createCardFrame, CardAccent } from '@/assets/styles/scrollStack.styles';
 import { Id } from '@/convex/_generated/dataModel';
+import { fillColor } from '@/utils/colorUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -54,7 +55,7 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
   const typeAccent = (kind: 'meeting' | 'appointment' | 'reminder' | 'event'): CardAccent => {
     if (kind === 'meeting') return CARD_ACCENTS.sky;
     if (kind === 'appointment') return CARD_ACCENTS.amber;
-    if (kind === 'reminder') return { pastel: colors.secondary, ink: CARD_ACCENTS.lime.ink };
+    if (kind === 'reminder') return { pastel: fillColor('#e5f19d', isDarkMode), ink: CARD_ACCENTS.lime.ink };
     return CARD_ACCENTS.mint;
   };
 

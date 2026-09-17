@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme from '@/hooks/useTheme';
+import { isLightColor, modeColor } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import { getServerNow } from '@/utils/offlineStorage';
 import { buildParentStartUpdates, buildPauseUpdates, buildSubtaskPauseUpdates, buildSubtaskStartUpdates, rollupSubTimers } from '@/utils/timerActions';
@@ -619,9 +620,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
   const hasDeadlineTime = dueDate ? new Date(dueDate).getSeconds() !== 59 : false;
 
   const linkedItem = project || linkedSubCategory || linkedCategory;
-  const projectColor = linkedItem?.color || '#e5f19d';
-  const isLightAccent = projectColor === '#e5f19d' || projectColor === '#F9A8D4';
-  const projectTextColor = isLightAccent ? '#101116' : colors.primaryText;
+  // Persisted project colors are brand pastels; map to light-mode inks so the
+  // accent chip, timer and links stay visible on the light sheet.
+  const projectColor = modeColor(linkedItem?.color || '#e5f19d', isDarkMode);
+  const projectTextColor = isLightColor(projectColor) ? '#101116' : '#FFFFFF';
   const linkedItemName = project?.name || linkedSubCategory?.name || linkedCategory?.name;
 
   if (!visible) return null;

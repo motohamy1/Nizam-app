@@ -8,6 +8,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme from '@/hooks/useTheme';
+import { modeColor, textOn } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import { getServerNow } from '@/utils/offlineStorage';
 import { pauseUpdate, startUpdate } from '@/utils/timerActions';
@@ -130,9 +131,9 @@ const KanbanCard: React.FC<{
 
   const circularProgressColor = task.status === 'done' ? colors.success
     : (task.status === 'not_done' || isPastDue) ? colors.danger
-    : task.status === 'in_progress' ? '#e5f19d'
+    : task.status === 'in_progress' ? modeColor('#e5f19d', isDarkMode)
     : task.status === 'paused' ? colors.textMuted
-    : '#F9A8D4';
+    : modeColor('#F9A8D4', isDarkMode);
 
   const timerDisplayLabel = useMemo(() => {
     if (task.status === 'done') return '✓';
@@ -269,7 +270,7 @@ const KanbanCard: React.FC<{
                   borderRadius: 8 
                 }}
               >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: project.color || colors.primary }} />
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: modeColor(project.color, isDarkMode) || colors.primary }} />
                 <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: '700', color: colors.text }}>
                   {project.name}
                 </Text>
@@ -508,14 +509,14 @@ const KanbanCard: React.FC<{
                     flexDirection: isArabic ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     gap: 4,
-                    backgroundColor: task.status === 'not_started' ? '#F9A8D4' : colors.primary,
+                    backgroundColor: task.status === 'not_started' ? modeColor('#F9A8D4', isDarkMode) : colors.primary,
                     paddingHorizontal: 10,
                     paddingVertical: 4.5,
                     borderRadius: 10,
                   }}
                 >
-                  <Ionicons name="play" size={11} color={task.status === 'not_started' ? '#0E0F14' : (isDarkMode ? '#0E0F14' : '#FFFFFF')} />
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: task.status === 'not_started' ? '#0E0F14' : (isDarkMode ? '#0E0F14' : '#FFFFFF') }}>
+                  <Ionicons name="play" size={11} color={textOn(task.status === 'not_started' ? modeColor('#F9A8D4', isDarkMode) : colors.primary, '#0E0F14')} />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: textOn(task.status === 'not_started' ? modeColor('#F9A8D4', isDarkMode) : colors.primary, '#0E0F14') }}>
                     {isArabic ? 'بدء' : 'Start'}
                   </Text>
                 </TouchableOpacity>
@@ -529,7 +530,7 @@ const KanbanCard: React.FC<{
                     gap: 4,
                     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                     borderWidth: 1,
-                    borderColor: isDarkMode ? '#2F3244' : '#E2E8F0',
+                    borderColor: isDarkMode ? '#2F3244' : colors.border,
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 10,
@@ -554,7 +555,7 @@ const KanbanCard: React.FC<{
                   gap: 4,
                   backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                   borderWidth: 1,
-                  borderColor: isDarkMode ? '#2F3244' : '#E2E8F0',
+                  borderColor: isDarkMode ? '#2F3244' : colors.border,
                   paddingHorizontal: 9,
                   paddingVertical: 4.5,
                   borderRadius: 10,
@@ -577,7 +578,7 @@ const KanbanCard: React.FC<{
                 paddingVertical: 3, 
                 borderRadius: 8,
                 borderWidth: 1,
-                borderColor: isDarkMode ? '#2F3244' : '#E2E8F0',
+                borderColor: isDarkMode ? '#2F3244' : colors.border,
               }}
             >
               <Text style={{ fontSize: 10, fontWeight: '700', color: priorityColor }}>

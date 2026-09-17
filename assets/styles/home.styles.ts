@@ -2,6 +2,11 @@ import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet } from "react-native";
 
 export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false) => {
+  // Light register: pastel lime controls read as washed-out on white,
+  // so they flip to the lime ink with white content marks.
+  const isDark = colors.statusBarStyle === 'light-content';
+  const limeFill = isDark ? '#e5f19d' : '#A4E200';
+  const limeMark = '#16270E';
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -131,7 +136,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
     dateBarResetText: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.statusBarStyle === 'light-content' ? '#e5f19d' : '#5E6D0F',
+      color: limeFill,
     },
     dateBarStrip: {
       paddingHorizontal: 16,
@@ -149,9 +154,9 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       gap: 4,
     },
     dateBarDayActive: {
-      backgroundColor: '#e5f19d',
-      borderColor: '#e5f19d',
-      shadowColor: '#e5f19d',
+      backgroundColor: limeFill,
+      borderColor: limeFill,
+      shadowColor: limeFill,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 10,
@@ -163,7 +168,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       color: colors.textMuted,
     },
     dateBarWeekdayActive: {
-      color: '#16270E',
+      color: limeMark,
       fontWeight: '800',
     },
     dateBarDayNum: {
@@ -172,7 +177,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       color: colors.text,
     },
     dateBarDayNumActive: {
-      color: '#16270E',
+      color: limeMark,
       fontWeight: '900',
     },
     dateBarDot: {
@@ -181,7 +186,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       width: 4,
       height: 4,
       borderRadius: 2,
-      backgroundColor: '#e5f19d',
+      backgroundColor: limeFill,
     },
 
     // Kanban Board
@@ -456,18 +461,18 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
     },
     emptyAction: {
       marginTop: 16,
-      backgroundColor: '#e5f19d',
+      backgroundColor: limeFill,
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: colors.radii.md,
-      shadowColor: '#e5f19d',
+      shadowColor: limeFill,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.35,
       shadowRadius: 8,
       elevation: 4,
     },
     emptyActionText: {
-      color: '#16270E',
+      color: limeMark,
       fontSize: 14,
       fontWeight: "800",
     },
@@ -509,10 +514,10 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       height: 44,
       paddingHorizontal: 10,
       borderRadius: colors.radii.lg,
-      backgroundColor: '#e5f19d',
+      backgroundColor: limeFill,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#e5f19d',
+      shadowColor: limeFill,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 10,

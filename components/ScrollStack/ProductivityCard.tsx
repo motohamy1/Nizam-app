@@ -59,17 +59,17 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
           </View>
         </View>
 
-        {/* Start Focus Button */}
+        {/* Start Focus Button — pastel gem chip in dark, a committed deep CTA in light */}
         <TouchableOpacity
-          style={[styles.focusActionBtn, { backgroundColor: CARD_ACCENTS.mint.pastel }]}
+          style={[styles.focusActionBtn, { backgroundColor: isDarkMode ? CARD_ACCENTS.mint.pastel : '#C7C2FF' }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             onStartFocus();
           }}
           activeOpacity={0.8}
         >
-          <Ionicons name="timer-outline" size={18} color={colors.secondaryText} />
-          <Text style={[styles.focusActionBtnText, { color: colors.secondaryText }]}>{t.startFocus}</Text>
+          <Ionicons name="timer-outline" size={18} color={isDarkMode ? colors.secondaryText : '#23173D'} />
+          <Text style={[styles.focusActionBtnText, { color: isDarkMode ? colors.secondaryText : colors.primaryText }]}>{t.startFocus}</Text>
         </TouchableOpacity>
       </View>
 

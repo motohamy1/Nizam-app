@@ -38,7 +38,8 @@ import { createHomeStyles } from '@/assets/styles/home.styles';
 import { useScreenGuide } from '@/hooks/useScreenGuide';
 import ScreenGuide from '@/components/ScreenGuide';
 import type { GuideTip } from '@/components/ScreenGuide';
-import { LIST_TYPE_COLORS, PROJECT_COLORS } from '@/utils/magicColors';
+import { LIST_TYPE_COLORS, projectColorsFor } from '@/utils/magicColors';
+import { isDarkScheme, modeColor, textOn } from '@/utils/colorUtils';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import CategoryCard from '@/components/CategoryCard';
 import ProjectFolderCard, { AddProjectFolderCard } from '@/components/ProjectFolderCard';
@@ -66,7 +67,6 @@ const PROJECT_ICONS = [
   'compass-outline', 'infinite-outline', 'flash-outline', 'shield-outline',
 ];
 
-const ACCENT_COLORS = PROJECT_COLORS;
 
 const RESOURCE_TYPES: { key: string; label: string; icon: string; color: string }[] = [
   { key: 'file',  label: 'File / Doc',  icon: 'document-text-outline', color: '#3B82F6' },
@@ -113,7 +113,7 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
 }) => {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(SUB_CATEGORY_ICONS[0]);
-  const [color, setColor] = useState(ACCENT_COLORS[2]);
+  const [color, setColor] = useState(() => projectColorsFor(isDarkScheme(colors))[2]);
 
   useEffect(() => {
     if (initialData) {
@@ -123,7 +123,7 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
     } else {
       setName('');
       setIcon(SUB_CATEGORY_ICONS[0]);
-      setColor(ACCENT_COLORS[2]);
+      setColor(projectColorsFor(isDarkScheme(colors))[2]);
     }
   }, [initialData, visible]);
 
@@ -152,8 +152,8 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
             </View>
             <Text style={styles.modalLabel}>Color</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorPicker}>
-              {ACCENT_COLORS.map(c => (
-                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, color === c && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
+              {projectColorsFor(isDarkScheme(colors)).map(c => (
+                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, (color === c || modeColor(color, false) === c) && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleAdd}><Text style={styles.modalPrimaryBtnText}>{initialData ? 'Save Changes' : 'Create Sub-Category'}</Text></TouchableOpacity>
@@ -174,7 +174,7 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
 }) => {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(CATEGORY_ICONS[0]);
-  const [color, setColor] = useState(ACCENT_COLORS[0]);
+  const [color, setColor] = useState(() => projectColorsFor(isDarkScheme(colors))[0]);
   const [tag, setTag] = useState('');
 
   useEffect(() => {
@@ -186,7 +186,7 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
     } else {
       setName('');
       setIcon(CATEGORY_ICONS[0]);
-      setColor(ACCENT_COLORS[0]);
+      setColor(projectColorsFor(isDarkScheme(colors))[0]);
       setTag('');
     }
   }, [initialData, visible]);
@@ -218,8 +218,8 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
             </View>
             <Text style={styles.modalLabel}>Color</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorPicker}>
-              {ACCENT_COLORS.map(c => (
-                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, color === c && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
+              {projectColorsFor(isDarkScheme(colors)).map(c => (
+                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, (color === c || modeColor(color, false) === c) && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleAdd}><Text style={styles.modalPrimaryBtnText}>{initialData ? 'Save Changes' : 'Create Category'}</Text></TouchableOpacity>
@@ -241,7 +241,7 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [icon, setIcon] = useState(PROJECT_ICONS[0]);
-  const [color, setColor] = useState(ACCENT_COLORS[1]);
+  const [color, setColor] = useState(() => projectColorsFor(isDarkScheme(colors))[1]);
 
   useEffect(() => {
     if (initialData) {
@@ -253,7 +253,7 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
       setName('');
       setDesc('');
       setIcon(PROJECT_ICONS[0]);
-      setColor(ACCENT_COLORS[1]);
+      setColor(projectColorsFor(isDarkScheme(colors))[1]);
     }
   }, [initialData, visible]);
 
@@ -276,8 +276,8 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
             <TextInput style={[styles.modalInput, { minHeight: 60, textAlignVertical: 'top' }]} placeholder="What is this project about?" placeholderTextColor={colors.textMuted} value={desc} onChangeText={setDesc} multiline />
             <Text style={styles.modalLabel}>Color</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorPicker}>
-              {ACCENT_COLORS.map(c => (
-                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, color === c && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
+              {projectColorsFor(isDarkScheme(colors)).map(c => (
+                <TouchableOpacity key={c} style={[styles.colorSwatch, { backgroundColor: c }, (color === c || modeColor(color, false) === c) && styles.colorSwatchSelected]} onPress={() => setColor(c)} />
               ))}
             </ScrollView>
             <TouchableOpacity style={[styles.modalPrimaryBtn, { backgroundColor: color }]} onPress={handleAdd}><Text style={styles.modalPrimaryBtnText}>{initialData ? 'Save Changes' : 'Create Project'}</Text></TouchableOpacity>
@@ -397,7 +397,7 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
                         key={rt.key}
                         style={[
                           styles.resourceTypeBtn,
-                          isSelected && [styles.resourceTypeBtnSelected, { borderColor: rt.color, backgroundColor: rt.color + '18' }]
+                          isSelected && [styles.resourceTypeBtnSelected, { borderColor: modeColor(rt.color, isDarkScheme(colors)), backgroundColor: modeColor(rt.color, isDarkScheme(colors)) + '18' }]
                         ]}
                         onPress={() => {
                           setResType(rt.key);
@@ -516,11 +516,11 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
                 <TouchableOpacity
                   style={[
                     styles.modalPrimaryBtn,
-                    { backgroundColor: RESOURCE_TYPES.find(r => r.key === resType)?.color || colors.primary }
+                    { backgroundColor: modeColor(RESOURCE_TYPES.find(r => r.key === resType)?.color || colors.primary, isDarkScheme(colors)) }
                   ]}
                   onPress={handleAdd}
                 >
-                  <Text style={[styles.modalPrimaryBtnText, { color: '#16270E', fontWeight: '800' }]}>Add Resource</Text>
+                  <Text style={[styles.modalPrimaryBtnText, { color: textOn(modeColor(RESOURCE_TYPES.find(r => r.key === resType)?.color || colors.primary, isDarkScheme(colors))), fontWeight: '800' }]}>Add Resource</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onClose}>
@@ -569,7 +569,7 @@ const CategoriesView = ({ styles, colors, onSelectCategory, onAddCategory, onEdi
     <ScrollView contentContainerStyle={styles.categoriesGrid} showsVerticalScrollIndicator={false}>
       {categories.length === 0 && (
         <View style={styles.emptyContainer}>
-          <Ionicons name="folder-open-outline" size={48} color="#dbd4fd" />
+          <Ionicons name="folder-open-outline" size={48} color={colors.primary} />
           <Text style={styles.emptyText}>{isArabic ? 'لا توجد فئات مشاريع بعد' : 'No project categories yet'}</Text>
           <Text style={styles.emptySubText}>
             {isArabic ? 'اضغط أدناه لإنشاء أول مساحة عمل وتنظيم مشاريعك.' : 'Create your first category workspace to organize projects and tasks.'}

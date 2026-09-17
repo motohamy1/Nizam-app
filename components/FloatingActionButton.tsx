@@ -1,5 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import useTheme from '@/hooks/useTheme';
+import { fillColor, textOn } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
@@ -25,7 +26,7 @@ interface FloatingActionButtonProps {
 const FAB_RADIUS = 22;
 
 export default function FloatingActionButton({ onPress, style, label }: FloatingActionButtonProps) {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { isArabic } = useTranslation(language);
 
@@ -46,19 +47,22 @@ export default function FloatingActionButton({ onPress, style, label }: Floating
     };
   }, [breath]);
 
+  // Lime FAB in both registers: quiet pastel on obsidian, electric gem on white.
+  const fabBg = fillColor('#e5f19d', isDarkMode);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breath.value * press.value }],
   }));
 
   return (
-    <Animated.View style={[styles.wrapper, { ...colors.shadows.glow, shadowColor: '#e5f19d' }, animatedStyle, style]}>
+    <Animated.View style={[styles.wrapper, { ...colors.shadows.glow, shadowColor: fabBg }, animatedStyle, style]}>
       <TouchableWithoutFeedback
         onPress={onPress}
         onPressIn={() => { press.value = withSpring(0.96, PRESS_SPRING); }}
         onPressOut={() => { press.value = withSpring(1, PRESS_SPRING); }}
       >
-        <View style={[styles.fab, { backgroundColor: '#e5f19d' }]}>
-          <Text style={[styles.text, { color: '#16270E', fontWeight: '800' }]}>
+        <View style={[styles.fab, { backgroundColor: fabBg }]}>
+          <Text style={[styles.text, { color: textOn(fabBg, '#16270E'), fontWeight: '800' }]}>
             {label || (isArabic ? 'إضافة مهمة' : 'Add Task')}
           </Text>
         </View>
