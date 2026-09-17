@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -70,7 +71,7 @@ interface Props {
 
 export default function WelcomeOnboarding({ onComplete }: Props) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const [step, setStep] = useState<'language' | 'slides'>('language');
   const [selectedLang, setSelectedLang] = useState<'en' | 'ar'>('en');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -137,8 +138,8 @@ export default function WelcomeOnboarding({ onComplete }: Props) {
 
       {/* Slide */}
       <View style={styles.slideArea}>
-        <View style={[styles.iconCircle, { backgroundColor: slide.accentColor + '18' }]}>
-          <Ionicons name={slide.icon} size={56} color={slide.accentColor} />
+        <View style={[styles.iconCircle, { backgroundColor: modeColor(slide.accentColor, isDarkMode) + '18' }]}>
+          <Ionicons name={slide.icon} size={56} color={modeColor(slide.accentColor, isDarkMode)} />
         </View>
         <Text style={[styles.slideTitle, { color: colors.surfaceText }, isArabic && { textAlign: 'right' }]}>
           {isArabic ? slide.titleAr : slide.titleEn}

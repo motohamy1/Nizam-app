@@ -20,6 +20,7 @@ import { useOfflineMutation } from "@/hooks/useOfflineMutation";
 import { useGuardedSubmit } from "@/hooks/useSubmitGuard";
 import { useOfflineQuery } from "@/hooks/useOfflineQuery";
 import useTheme from "@/hooks/useTheme";
+import { modeColor } from "@/utils/colorUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/utils/i18n";
 import { getServerNow } from "@/utils/offlineStorage";
@@ -305,9 +306,9 @@ const Index = () => {
         ].sort(byPriority);
 
     const columns: KanbanColumn[] = [
-      { key: 'todo', title: t.toDoColumn, color: '#F9A8D4', tasks: todoCol },
-      { key: 'in_progress', title: t.inProgressColumn, color: '#e5f19d', tasks: inProgressCol },
-      { key: 'done', title: t.doneColumn, color: '#10B981', tasks: doneCol },
+      { key: 'todo', title: t.toDoColumn, color: modeColor('#F9A8D4', isDarkMode), tasks: todoCol },
+      { key: 'in_progress', title: t.inProgressColumn, color: modeColor('#e5f19d', isDarkMode), tasks: inProgressCol },
+      { key: 'done', title: t.doneColumn, color: modeColor('#10B981', isDarkMode), tasks: doneCol },
       { key: 'not_done', title: t.notDoneColumn, color: colors.danger, tasks: notDoneCol },
     ];
 

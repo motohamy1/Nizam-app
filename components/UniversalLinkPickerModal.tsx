@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import { api } from '@/convex/_generated/api';
@@ -360,8 +361,8 @@ export const UniversalLinkPickerModal: React.FC<UniversalLinkPickerModalProps> =
                             setCurrentLevel('categoryDetail');
                           }}
                         >
-                          <View style={[styles.itemIcon, { backgroundColor: item.color + '20' }]}>
-                            <Ionicons name={(item.icon || 'folder-outline') as any} size={20} color={item.color} />
+                          <View style={[styles.itemIcon, { backgroundColor: modeColor(item.color, isDarkMode) + '20' }]}>
+                            <Ionicons name={(item.icon || 'folder-outline') as any} size={20} color={modeColor(item.color, isDarkMode)} />
                           </View>
                           <View style={{ flex: 1, marginHorizontal: 12 }}>
                             <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
@@ -374,7 +375,7 @@ export const UniversalLinkPickerModal: React.FC<UniversalLinkPickerModalProps> =
 
                         {/* Quick Link Button to link directly to this space */}
                         <TouchableOpacity
-                          style={[styles.quickLinkBtn, { backgroundColor: item.color + '20' }]}
+                          style={[styles.quickLinkBtn, { backgroundColor: modeColor(item.color, isDarkMode) + '20' }]}
                           onPress={() => {
                             onSelect({
                               type: 'category',
@@ -385,8 +386,8 @@ export const UniversalLinkPickerModal: React.FC<UniversalLinkPickerModalProps> =
                             handleClose();
                           }}
                         >
-                          <Ionicons name="link" size={16} color={item.color} />
-                          <Text style={[styles.quickLinkText, { color: item.color }]}>
+                          <Ionicons name="link" size={16} color={modeColor(item.color, isDarkMode)} />
+                          <Text style={[styles.quickLinkText, { color: modeColor(item.color, isDarkMode) }]}>
                             {isArabic ? 'ربط' : 'Link'}
                           </Text>
                         </TouchableOpacity>

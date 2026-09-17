@@ -16,6 +16,7 @@ import Animated, {
 import useTheme from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
+import { fillColor, textOn } from '@/utils/colorUtils';
 import ScreenBackground from '@/components/ScreenBackground';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -335,6 +336,7 @@ interface DockTabButtonProps {
   isActive: boolean;
   onPress: (e: any) => void;
   accessibilityLabel?: string;
+  bubbleColor?: string;
   children: (isElevated: boolean) => React.ReactNode;
 }
 
@@ -342,6 +344,7 @@ const DockTabButton = ({
   isActive,
   onPress,
   accessibilityLabel,
+  bubbleColor,
   children,
 }: DockTabButtonProps) => {
   const progress = useSharedValue(isActive ? 1 : 0);
@@ -385,7 +388,7 @@ const DockTabButton = ({
     >
       {/* Active Elevated State (Floating cream bubble nestled in the scoop) */}
       <Animated.View
-        style={[styles.activeBubble, activeAnimatedStyle]}
+        style={[styles.activeBubble, bubbleColor ? { backgroundColor: bubbleColor } : null, activeAnimatedStyle]}
         pointerEvents={isActive ? 'auto' : 'none'}
       >
         {children(true)}
@@ -403,7 +406,7 @@ const DockTabButton = ({
 };
 
 const TabLayout = () => {
-  const { isDarkMode } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { language } = useAuth();
   const { t } = useTranslation(language);
@@ -449,7 +452,11 @@ const TabLayout = () => {
   const dockHeight = DOCK_HEIGHT + paddingBottom;
   const dockFill = isDarkMode ? '#16171B' : '#FFFFFF';
   const dockStroke = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
-  const inactiveColor = isDarkMode ? '#8E92A0' : '#64748B';
+  // The floating dock bubble + punched icon knockout must share one color;
+  // pastel lime on the white dock reads as 'off', so light uses the lime ink.
+  const activeAccent = fillColor(ACTIVE_ACCENT, isDarkMode);
+  const activeInk = textOn(activeAccent, ACTIVE_INK);
+  const inactiveColor = colors.textMuted;
 
   return (
     <ScreenBackground style={StyleSheet.absoluteFill}>
@@ -490,11 +497,12 @@ const TabLayout = () => {
                 isActive={activeIndex === 0}
                 onPress={() => router.replace('/(tabs)')}
                 accessibilityLabel={t.tabTodo}
+  bubbleColor={activeAccent}
               >
                 {(isElevated) => (
                   <HomeIcon
-                    color={isElevated ? ACTIVE_INK : inactiveColor}
-                    knockout={ACTIVE_ACCENT}
+                    color={isElevated ? activeInk : inactiveColor}
+                    knockout={activeAccent}
                     filled={isElevated}
                   />
                 )}
@@ -511,11 +519,12 @@ const TabLayout = () => {
                 isActive={activeIndex === 1}
                 onPress={() => router.replace('/(tabs)/planner')}
                 accessibilityLabel={t.tabPlanner}
+  bubbleColor={activeAccent}
               >
                 {(isElevated) => (
                   <PlannerIcon
-                    color={isElevated ? ACTIVE_INK : inactiveColor}
-                    knockout={ACTIVE_ACCENT}
+                    color={isElevated ? activeInk : inactiveColor}
+                    knockout={activeAccent}
                     filled={isElevated}
                   />
                 )}
@@ -532,11 +541,12 @@ const TabLayout = () => {
                 isActive={activeIndex === 2}
                 onPress={() => router.replace('/(tabs)/notes')}
                 accessibilityLabel={t.tabAdd}
+  bubbleColor={activeAccent}
               >
                 {(isElevated) => (
                   <AddIcon
-                    color={isElevated ? ACTIVE_INK : inactiveColor}
-                    knockout={ACTIVE_ACCENT}
+                    color={isElevated ? activeInk : inactiveColor}
+                    knockout={activeAccent}
                     filled={isElevated}
                   />
                 )}
@@ -553,11 +563,12 @@ const TabLayout = () => {
                 isActive={activeIndex === 3}
                 onPress={() => router.replace('/(tabs)/spaces')}
                 accessibilityLabel={t.tabProjects}
+  bubbleColor={activeAccent}
               >
                 {(isElevated) => (
                   <ProjectsIcon
-                    color={isElevated ? ACTIVE_INK : inactiveColor}
-                    knockout={ACTIVE_ACCENT}
+                    color={isElevated ? activeInk : inactiveColor}
+                    knockout={activeAccent}
                     filled={isElevated}
                   />
                 )}
@@ -574,11 +585,12 @@ const TabLayout = () => {
                 isActive={activeIndex === 4}
                 onPress={() => router.replace('/(tabs)/settings')}
                 accessibilityLabel={t.tabSettings}
+  bubbleColor={activeAccent}
               >
                 {(isElevated) => (
                   <ProfileIcon
-                    color={isElevated ? ACTIVE_INK : inactiveColor}
-                    knockout={ACTIVE_ACCENT}
+                    color={isElevated ? activeInk : inactiveColor}
+                    knockout={activeAccent}
                     filled={isElevated}
                   />
                 )}

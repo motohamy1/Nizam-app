@@ -366,17 +366,17 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
-      backgroundColor: isDarkMode ? 'rgba(229, 241, 157, 0.10)' : 'rgba(229, 241, 157, 0.25)',
+      backgroundColor: isDarkMode ? 'rgba(229, 241, 157, 0.10)' : 'rgba(84, 118, 0, 0.08)',
       padding: 14,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: 'rgba(229, 241, 157, 0.30)',
+      borderColor: isDarkMode ? 'rgba(229, 241, 157, 0.30)' : 'rgba(84, 118, 0, 0.28)',
     },
     streakIconCircle: {
       width: 42,
       height: 42,
       borderRadius: 21,
-      backgroundColor: '#e5f19d',
+      backgroundColor: isDarkMode ? '#e5f19d' : colors.secondary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -396,7 +396,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      backgroundColor: '#dbd4fd',
+      backgroundColor: isDarkMode ? '#dbd4fd' : '#C7C2FF',
       paddingHorizontal: 16,
       paddingVertical: 14,
       borderRadius: 18,
@@ -539,7 +539,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     },
     modalTypeChipActive: {
       borderColor: colors.secondary,
-      backgroundColor: isDarkMode ? `${colors.secondary}1F` : `${colors.secondary}8C`,
+      backgroundColor: `${colors.secondary}1F`,
     },
     modalTypeChipText: {
       fontSize: 12,
@@ -602,16 +602,16 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalSaveBtnText: {
       fontSize: 16,
       fontWeight: '800',
-      color: '#16270E',
+      color: colors.primaryText,
     },
     modalDeleteBtn: {
-      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(194, 43, 60, 0.08)',
       borderRadius: 16,
       paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(239, 68, 68, 0.3)',
+      borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(194, 43, 60, 0.30)',
     },
 
     // Checklist Item Modal

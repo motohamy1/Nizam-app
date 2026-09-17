@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme, { ShadowPreset } from '@/hooks/useTheme';
+import { fillColor } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import { getServerNow } from '@/utils/offlineStorage';
 import { showTaskCompletedNotification } from '@/utils/notifications';
@@ -418,22 +419,25 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
     || linkedGoal?.title
     || (todo.dueDate ? `${isArabic ? 'الموعد: ' : 'Due: '}${new Date(todo.dueDate).toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}` : '');
 
-  // Status configuration matching the 4-color palette
-  let statusPillBg = colors.primary; // #dbd4fd
-  let statusPillText = '#23173D';
+  // Status configuration matching the 4-color palette: pastel gem chips in
+  // dark, their electric-chroma twins in light — always with the brand's dark
+  // ink text (the same grammar in both registers).
+  const pill = (darkBg: string, pastelKey: string, lightInk: string, darkText: string) => ({
+    bg: isDarkMode ? darkBg : fillColor(pastelKey, false),
+    text: isDarkMode ? darkText : lightInk,
+  });
+  let { bg: statusPillBg, text: statusPillText } = pill(colors.primary, '#dbd4fd', '#23173D', '#23173D');
   let statusPillLabel = isArabic ? 'للقيام بها' : 'To Do';
 
   if (optimisticStatus === 'done') {
-    statusPillBg = colors.success; // #e5f19d
-    statusPillText = '#16270E';
+    ({ bg: statusPillBg, text: statusPillText } = pill(colors.success, '#e5f19d', '#16270E', colors.secondaryText));
     statusPillLabel = isArabic ? 'مكتمل' : 'Complete';
   } else if (optimisticStatus === 'in_progress') {
-    statusPillBg = colors.warning; // #f6e5c9
-    statusPillText = '#2D1E0C';
+    ({ bg: statusPillBg, text: statusPillText } = pill(colors.warning, '#f6e5c9', '#2D1E0C', colors.secondaryText));
     statusPillLabel = isArabic ? 'قيد التنفيذ' : 'In Progress';
   } else if (optimisticStatus === 'paused') {
-    statusPillBg = isDarkMode ? '#252636' : '#E2E8F0';
-    statusPillText = isDarkMode ? '#dbd4fd' : '#0F172A';
+    statusPillBg = isDarkMode ? '#252636' : '#EBEAFF';
+    statusPillText = isDarkMode ? '#dbd4fd' : colors.text;
     statusPillLabel = isArabic ? 'مؤقت' : 'Paused';
   } else if (optimisticStatus === 'not_done' || isPastDue) {
     statusPillBg = colors.danger;
