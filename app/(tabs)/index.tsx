@@ -560,6 +560,13 @@ const Index = () => {
             {/* 2. Hero Section: Scroll Stack Component */}
             <ScrollStack
               isArabic={isArabic}
+              labels={[
+                t.todaysChecklist,
+                t.remindersAndEvents,
+                t.monthlyOverview,
+                t.productivityFocus,
+                t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'),
+              ]}
             >
               {/* Card 1: Today's Checklist (tasks + checklist items) */}
               <ChecklistCard

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
+import { isLightColor, modeColor, textOn } from '@/utils/colorUtils';
 
 export const InlineTimerPicker = ({
   initialMs,
@@ -25,8 +26,10 @@ export const InlineTimerPicker = ({
   accentColor?: string;
 }) => {
   const { isDarkMode } = useTheme();
-  const isLightAccent = accentColor === '#e5f19d' || accentColor === '#F9A8D4';
-  const accentTextColor = isLightAccent ? '#101116' : colors.primaryText;
+  // Persisted/category colors are brand pastels; light mode renders them as
+  // their saturated ink twins so chips and buttons never wash out on white.
+  const accent = modeColor(accentColor, isDarkMode);
+  const accentTextColor = textOn(accent, '#101116');
   const init = initialMs || 0;
   const [direction, setDirection] = useState(initialDirection || 'down');
   const [hours, setHours] = useState(Math.floor(init / 3600000));
@@ -57,7 +60,7 @@ export const InlineTimerPicker = ({
   const decrementMin = () => setMinutes(m => m === 0 ? 59 : m - 1);
 
   return (
-    <View style={[{ marginTop: 4, padding: 16, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: accentColor + '40', gap: 16, shadowColor: accentColor, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 }, isArabic && { direction: 'rtl' }]}>
+    <View style={[{ marginTop: 4, padding: 16, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: accent + '40', gap: 16, shadowColor: accent, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 }, isArabic && { direction: 'rtl' }]}>
       {/* Direction Toggle */}
       <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', backgroundColor: colors.bg, borderRadius: 12, padding: 4, elevation: 1 }}>
         <TouchableOpacity 
@@ -70,7 +73,7 @@ export const InlineTimerPicker = ({
           onPress={() => setDirection('up')}
           style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: direction === 'up' ? colors.surface : 'transparent', borderRadius: 8, shadowColor: colors.text, shadowOpacity: direction === 'up' ? 0.1 : 0, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}
         >
-          <Text style={{ fontSize: 13, fontWeight: direction === 'up' ? '800' : '600', color: direction === 'up' ? accentColor : colors.textMuted }}>{t.countUp || "Count Up"}</Text>
+          <Text style={{ fontSize: 13, fontWeight: direction === 'up' ? '800' : '600', color: direction === 'up' ? accent : colors.textMuted }}>{t.countUp || "Count Up"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -118,7 +121,7 @@ export const InlineTimerPicker = ({
         </View>
       ) : (
         <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <Ionicons name="timer-outline" size={48} color={accentColor} style={{ marginBottom: 12, opacity: 0.8 }} />
+          <Ionicons name="timer-outline" size={48} color={accent} style={{ marginBottom: 12, opacity: 0.8 }} />
           <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
             {isArabic ? "سيعمل المؤقت كـ ساعة إيقاف وتصاعدي" : "Timer will act as a stopwatch (Count Up)."}
           </Text>
@@ -129,7 +132,7 @@ export const InlineTimerPicker = ({
       <View style={[{ flexDirection: 'row', gap: 12 }, isArabic && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity
           onPress={handleSave}
-          style={[{ flex: 1, backgroundColor: accentColor, paddingVertical: 14, borderRadius: 14, alignItems: 'center', shadowColor: accentColor, shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }, isArabic && { flexDirection: 'row-reverse' }]}
+          style={[{ flex: 1, backgroundColor: accent, paddingVertical: 14, borderRadius: 14, alignItems: 'center', shadowColor: accent, shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }, isArabic && { flexDirection: 'row-reverse' }]}
         >
           <Text style={{ color: accentTextColor, fontWeight: '800', fontSize: 15 }}>✓ {t.setTimer}</Text>
         </TouchableOpacity>

@@ -2,6 +2,46 @@ import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet } from "react-native";
 
 export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = false) => {
+  // Register-branched surface vocabulary: dark mode keeps the original obsidian
+  // literals untouched; light mode swaps to the lavender-tinted neutral ramp
+  // and saturated brand inks so nothing renders as pale-on-pale.
+  const isDark = colors.statusBarStyle === 'light-content';
+  const wash04 = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(29, 27, 46, 0.04)';
+  const wash05 = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(29, 27, 46, 0.05)';
+  const wash06 = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(29, 27, 46, 0.05)';
+  const pillActive = isDark ? 'rgba(255, 255, 255, 0.15)' : colors.surface;
+  const hair = isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border;
+  const grip = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(29, 27, 46, 0.22)';
+  const textHi = isDark ? '#FFFFFF' : colors.text;
+  const textMid = isDark ? '#9CA3AF' : colors.textMuted;
+  const textDim = isDark ? '#8E92A0' : colors.textMuted;
+  const textSoft = isDark ? '#6B7280' : colors.textMuted;
+  const textRow = isDark ? '#E5E7EB' : colors.text;
+  const lavWash = isDark ? 'rgba(219, 212, 253, 0.18)' : '#EBEAFF';
+  const lavTint = isDark ? 'rgba(219, 212, 253, 0.16)' : '#EBEAFF';
+  const lavBorder = isDark ? 'rgba(219, 212, 253, 0.4)' : 'rgba(108, 56, 233, 0.45)';
+  const lavSolid = isDark ? 'rgba(219, 212, 253, 0.35)' : 'rgba(108, 56, 233, 0.45)';
+  const lavEdge = isDark ? '#dbd4fd' : colors.primary;
+  const lavText = isDark ? '#dbd4fd' : colors.primary;
+  const lavFill = isDark ? '#dbd4fd' : colors.primary;
+  const lavFillText = isDark ? '#23173D' : colors.primaryText;
+  const lavGlow = isDark ? 'rgba(219, 212, 253, 0.22)' : 'rgba(108, 56, 233, 0.10)';
+  const limeWash = isDark ? 'rgba(229, 241, 157, 0.15)' : 'rgba(84, 118, 0, 0.09)';
+  const limeBorder = isDark ? 'rgba(229, 241, 157, 0.35)' : 'rgba(84, 118, 0, 0.35)';
+  const limeText = isDark ? '#e5f19d' : colors.secondary;
+  const creamWash = isDark ? 'rgba(246, 229, 201, 0.15)' : 'rgba(145, 97, 0, 0.10)';
+  const creamBorder = isDark ? 'rgba(246, 229, 201, 0.35)' : 'rgba(145, 97, 0, 0.30)';
+  const creamText = isDark ? '#f6e5c9' : colors.warning;
+  const redWash = isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(194, 43, 60, 0.08)';
+  const redWashB = isDark ? 'rgba(239, 68, 68, 0.16)' : 'rgba(194, 43, 60, 0.10)';
+  const redBorder = isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(194, 43, 60, 0.30)';
+  const redBorderB = isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(194, 43, 60, 0.45)';
+  const redText = isDark ? '#F87171' : colors.danger;
+  const redDot = isDark ? '#EF4444' : colors.danger;
+  const transcriptPrev = isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textMuted;
+  const transcriptNext = isDark ? 'rgba(255, 255, 255, 0.22)' : '#6B6F88';
+  const focusGlow = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(108, 56, 233, 0.25)';
+  const whiteCardEdge = isDark ? 'transparent' : colors.border;
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -28,12 +68,12 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 7,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: wash05,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     statusDot: {
       width: 7,
@@ -44,18 +84,18 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     statusText: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: textHi,
       letterSpacing: -0.2,
     },
     topMenuBtn: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      backgroundColor: wash06,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
 
     // ─── Centered Category Switcher ──────────────────────────────
@@ -67,12 +107,12 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     },
     categoryTabsSegmented: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      backgroundColor: wash06,
       borderRadius: 22,
       padding: 4,
       gap: 4,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     categoryTabPill: {
       paddingHorizontal: 16,
@@ -80,15 +120,15 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       borderRadius: 18,
     },
     categoryTabPillActive: {
-      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+      backgroundColor: pillActive,
     },
     categoryTabText: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#9CA3AF',
+      color: textMid,
     },
     categoryTabTextActive: {
-      color: '#FFFFFF',
+      color: textHi,
       fontWeight: '700',
     },
 
@@ -108,21 +148,21 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingHorizontal: 16,
       paddingVertical: 7,
       borderRadius: 20,
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      backgroundColor: wash04,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.06)',
+      borderColor: wash06,
     },
     modePillActive: {
-      backgroundColor: 'rgba(219, 212, 253, 0.18)',
-      borderColor: 'rgba(219, 212, 253, 0.45)',
+      backgroundColor: lavWash,
+      borderColor: lavBorder,
     },
     modePillText: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#9CA3AF',
+      color: textMid,
     },
     modePillTextActive: {
-      color: '#FFFFFF',
+      color: textHi,
       fontWeight: '700',
     },
 
@@ -154,62 +194,62 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: 'rgba(229, 241, 157, 0.15)',
+      backgroundColor: limeWash,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: 'rgba(229, 241, 157, 0.35)',
+      borderColor: limeBorder,
     },
     heroTagChipText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#e5f19d',
+      color: limeText,
     },
     waveformIconBtn: {
       padding: 8,
       borderRadius: 12,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: wash05,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     listeningPill: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 7,
-      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+      backgroundColor: redWash,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: 'rgba(239, 68, 68, 0.25)',
+      borderColor: redBorder,
     },
     idlePill: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 7,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: wash05,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     listeningText: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#F87171',
+      color: redText,
     },
     idleText: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#9CA3AF',
+      color: textMid,
     },
     recordingDot: {
       width: 7,
       height: 7,
       borderRadius: 4,
-      backgroundColor: '#EF4444',
+      backgroundColor: redDot,
     },
     idleDot: {
       width: 7,
@@ -232,7 +272,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       width: 260,
       height: 60,
       borderRadius: 30,
-      backgroundColor: 'rgba(219, 212, 253, 0.22)',
+      backgroundColor: lavGlow,
       filter: 'blur(30px)',
     },
 
@@ -246,7 +286,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     transcriptPreviousText: {
       fontSize: 16,
       fontWeight: '500',
-      color: 'rgba(255, 255, 255, 0.4)',
+      color: transcriptPrev,
       textAlign: 'center',
       marginBottom: 3,
       letterSpacing: -0.2,
@@ -254,18 +294,18 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     transcriptFocusText: {
       fontSize: 20,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: textHi,
       textAlign: 'center',
       letterSpacing: -0.3,
       marginBottom: 3,
-      textShadowColor: 'rgba(255, 255, 255, 0.2)',
+      textShadowColor: focusGlow,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 6,
     },
     transcriptNextText: {
       fontSize: 14,
       fontWeight: '400',
-      color: 'rgba(255, 255, 255, 0.22)',
+      color: transcriptNext,
       textAlign: 'center',
       letterSpacing: -0.2,
     },
@@ -275,25 +315,25 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
-      backgroundColor: 'rgba(219, 212, 253, 0.16)',
+      backgroundColor: lavTint,
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: 'rgba(219, 212, 253, 0.35)',
+      borderColor: lavSolid,
       marginTop: 14,
     },
     tapToSpeakBtnActive: {
-      backgroundColor: 'rgba(239, 68, 68, 0.16)',
-      borderColor: 'rgba(239, 68, 68, 0.4)',
+      backgroundColor: redWashB,
+      borderColor: redBorderB,
     },
     tapToSpeakText: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#dbd4fd',
+      color: lavText,
     },
     tapToSpeakTextActive: {
-      color: '#F87171',
+      color: redText,
     },
 
     // ─── Direct Type Input Box ────────────────────────────────────
@@ -302,7 +342,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       backgroundColor: colors.surface,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
       padding: 16,
       marginTop: 4,
     },
@@ -321,18 +361,18 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      backgroundColor: wash04,
       borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 6,
       marginBottom: 10,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.06)',
+      borderColor: wash06,
     },
     typingTagInput: {
       flex: 1,
       fontSize: 13,
-      color: '#FFFFFF',
+      color: textHi,
       fontWeight: '600',
       paddingVertical: 2,
     },
@@ -340,26 +380,26 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 12,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: wash05,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.06)',
+      borderColor: wash06,
     },
     typeToggleBtnActive: {
-      backgroundColor: 'rgba(219, 212, 253, 0.2)',
-      borderColor: '#dbd4fd',
+      backgroundColor: lavWash,
+      borderColor: lavEdge,
     },
     typeToggleText: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#8E92A0',
+      color: textDim,
     },
     typeToggleTextActive: {
-      color: '#FFFFFF',
+      color: textHi,
       fontWeight: '700',
     },
     typingInput: {
       fontSize: 16,
-      color: '#FFFFFF',
+      color: textHi,
       lineHeight: 22,
       minHeight: 60,
       textAlignVertical: 'top',
@@ -372,7 +412,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       marginTop: 12,
       paddingTop: 12,
       borderTopWidth: 1,
-      borderTopColor: 'rgba(255, 255, 255, 0.05)',
+      borderTopColor: hair,
     },
     typingReminderBtn: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -381,28 +421,28 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 10,
-      backgroundColor: 'rgba(246, 229, 201, 0.15)',
+      backgroundColor: creamWash,
       borderWidth: 1,
-      borderColor: 'rgba(246, 229, 201, 0.35)',
+      borderColor: creamBorder,
     },
     typingReminderText: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#f6e5c9',
+      color: creamText,
     },
     typingSaveBtn: {
-      backgroundColor: '#dbd4fd',
+      backgroundColor: lavFill,
       paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 12,
     },
     typingSaveBtnDisabled: {
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: wash06,
     },
     typingSaveText: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#23173D',
+      color: lavFillText,
     },
 
     // ─── Grouped Dynamic Hashtags Deck ──────────────────────────
@@ -419,13 +459,13 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     hashtagSectionTitle: {
       fontSize: 16,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: textHi,
       letterSpacing: -0.3,
     },
     hashtagSectionLine: {
       flex: 1,
       height: 1,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: hair,
     },
     cardsCarouselContent: {
       paddingHorizontal: 16,
@@ -435,7 +475,9 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     whiteCardOuter: {
       width: 150,
       minHeight: 180,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: isDark ? '#FFFFFF' : colors.surface,
+      borderWidth: 1,
+      borderColor: whiteCardEdge,
       borderRadius: 18,
       padding: 14,
       justifyContent: 'space-between',
@@ -465,7 +507,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     cardDateText: {
       fontSize: 11,
       fontWeight: '600',
-      color: '#94A3B8',
+      color: '#64748B',
       marginBottom: 8,
     },
     cardSnippetText: {
@@ -520,13 +562,13 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       alignItems: 'center',
       paddingHorizontal: 14,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
       gap: 10,
     },
     searchInput: {
       flex: 1,
       fontSize: 15,
-      color: '#FFFFFF',
+      color: textHi,
       fontWeight: '500',
       paddingVertical: 0,
     },
@@ -538,11 +580,11 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     controlIconButtonActive: {
-      backgroundColor: 'rgba(219, 212, 253, 0.18)',
-      borderColor: 'rgba(219, 212, 253, 0.4)',
+      backgroundColor: lavWash,
+      borderColor: lavBorder,
     },
 
     // ─── Recent Section ──────────────────────────────────────────
@@ -556,7 +598,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     sectionTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: textHi,
       letterSpacing: -0.4,
     },
     sectionBadge: {
@@ -565,12 +607,12 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingVertical: 3,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     sectionBadgeText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#dbd4fd',
+      color: lavText,
     },
 
     // ─── Recent Cards ────────────────────────────────────────────
@@ -582,7 +624,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       borderRadius: 20,
       backgroundColor: colors.surface,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.07)',
+      borderColor: wash06,
       padding: 18,
       overflow: 'hidden',
     },
@@ -593,27 +635,27 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       marginBottom: 10,
     },
     categoryPill: {
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      backgroundColor: wash06,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.06)',
+      borderColor: wash06,
     },
     categoryPillText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#9CA3AF',
+      color: textMid,
     },
     cardTimestamp: {
       fontSize: 12,
       fontWeight: '500',
-      color: '#6B7280',
+      color: textSoft,
     },
     cardTitle: {
       fontSize: 16,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: textHi,
       letterSpacing: -0.2,
       marginBottom: 6,
       lineHeight: 22,
@@ -621,7 +663,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     cardSnippet: {
       fontSize: 14,
       fontWeight: '400',
-      color: '#8E92A0',
+      color: textDim,
       lineHeight: 20,
     },
 
@@ -630,19 +672,19 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: 'rgba(246, 229, 201, 0.15)',
+      backgroundColor: creamWash,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: 'rgba(246, 229, 201, 0.35)',
+      borderColor: creamBorder,
       marginTop: 10,
       alignSelf: 'flex-start',
     },
     reminderBadgeText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#f6e5c9',
+      color: creamText,
     },
 
     // ─── Modals & Bottom Sheets ──────────────────────────────────
@@ -659,13 +701,13 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingTop: 16,
       paddingBottom: Platform.OS === 'ios' ? 40 : 24,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: hair,
     },
     modalHandle: {
       width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      backgroundColor: grip,
       alignSelf: 'center',
       marginBottom: 18,
     },
@@ -678,7 +720,7 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
     modalTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: textHi,
       letterSpacing: -0.3,
     },
     modalCloseBtn: {
@@ -689,9 +731,9 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       borderRadius: 14,
       padding: 14,
       fontSize: 15,
-      color: '#FFFFFF',
+      color: textHi,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: hair,
       marginVertical: 10,
     },
     suggestedTagsRow: {
@@ -704,14 +746,14 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 12,
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      backgroundColor: wash06,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: hair,
     },
     suggestedTagText: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#9CA3AF',
+      color: textMid,
     },
     filterOption: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -719,25 +761,25 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       alignItems: 'center',
       paddingVertical: 14,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+      borderBottomColor: hair,
     },
     filterOptionText: {
       fontSize: 15,
       fontWeight: '600',
-      color: '#E5E7EB',
+      color: textRow,
     },
     modalActionBtn: {
       marginTop: 20,
       height: 50,
       borderRadius: 16,
-      backgroundColor: '#dbd4fd',
+      backgroundColor: lavFill,
       justifyContent: 'center',
       alignItems: 'center',
     },
     modalActionBtnText: {
       fontSize: 16,
       fontWeight: '700',
-      color: '#23173D',
+      color: lavFillText,
     },
   });
 };

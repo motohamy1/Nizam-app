@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -29,7 +30,7 @@ interface ScreenGuideProps {
 
 export default function ScreenGuide({ visible, tips, onDismiss, isArabic = false }: ScreenGuideProps) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(80)).current;
 
@@ -126,8 +127,8 @@ export default function ScreenGuide({ visible, tips, onDismiss, isArabic = false
                 index < tips.length - 1 && styles.tipBorder,
               ]}
             >
-              <View style={[styles.tipIcon, { backgroundColor: (tip.accentColor || colors.primary) + '18' }]}> 
-                <Ionicons name={tip.icon} size={20} color={tip.accentColor || colors.primary} />
+              <View style={[styles.tipIcon, { backgroundColor: modeColor(tip.accentColor || colors.primary, isDarkMode) + '18' }]}> 
+                <Ionicons name={tip.icon} size={20} color={modeColor(tip.accentColor || colors.primary, isDarkMode)} />
               </View>
               <View style={[styles.tipText, isArabic && { alignItems: 'flex-end' }]}>
                 <Text style={[styles.tipTitle, { color: colors.surfaceText }, isArabic && { textAlign: 'right' }]}>
