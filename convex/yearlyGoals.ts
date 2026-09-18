@@ -8,6 +8,7 @@ const goalMeta = v.object({
   color: v.optional(v.string()),
   icon: v.optional(v.string()),
   templateId: v.optional(v.string()),
+  visualStyleId: v.optional(v.string()),
   categoryId: v.optional(v.id("projectCategories")),
   subCategoryId: v.optional(v.id("projectSubCategories")),
   projectId: v.optional(v.string()),
@@ -124,6 +125,7 @@ export const updateGoal = mutation({
     color: v.optional(v.string()),
     icon: v.optional(v.string()),
     templateId: v.optional(v.string()),
+  visualStyleId: v.optional(v.string()),
     categoryId: v.optional(v.id("projectCategories")),
     subCategoryId: v.optional(v.id("projectSubCategories")),
     projectId: v.optional(v.string()),
@@ -214,6 +216,7 @@ export const updateAchievement = mutation({
     color: v.optional(v.string()),
     icon: v.optional(v.string()),
     templateId: v.optional(v.string()),
+  visualStyleId: v.optional(v.string()),
     isCompleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

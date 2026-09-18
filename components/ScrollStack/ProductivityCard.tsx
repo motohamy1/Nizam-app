@@ -5,27 +5,34 @@ import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
-import { createScrollStackStyles, CARD_ACCENTS, createCardFrame } from '@/assets/styles/scrollStack.styles';
+import { 
+  createScrollStackStyles, 
+  STACK_CARD_PALETTES, 
+  createMonthCardFrame, 
+  MonthPalette 
+} from '@/assets/styles/scrollStack.styles';
 
 interface ProductivityCardProps {
   streakDays: number;
   weeklyRate: number; // Percentage 0 - 100
   onStartFocus: () => void;
+  palette?: MonthPalette;
 }
 
 export const ProductivityCard: React.FC<ProductivityCardProps> = ({
   streakDays,
   weeklyRate,
   onStartFocus,
+  palette = STACK_CARD_PALETTES.productivity,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createCardFrame(CARD_ACCENTS.mint, isDarkMode, colors.secondaryText);
+  const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   return (
-    <View style={[styles.card, { borderColor: frame.edge }]}>
+    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
@@ -33,8 +40,8 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
             <Ionicons name="flame" size={20} color={frame.badgeFg} />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={styles.cardTitle}>{t.productivityFocus}</Text>
-            <Text style={styles.cardSubtitle}>
+            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.productivityFocus}</Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
               {weeklyRate}% {t.weeklyRate}
             </Text>
           </View>
@@ -49,38 +56,38 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
       {/* Body: Streak and Focus Launcher */}
       <View style={styles.productivityRow}>
         {/* Streak Counter Box */}
-        <View style={styles.streakCard}>
-          <View style={[styles.streakIconCircle, { backgroundColor: CARD_ACCENTS.mint.pastel }]}>
-            <Ionicons name="flame" size={22} color={colors.secondaryText} />
+        <View style={[styles.streakCard, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}>
+          <View style={[styles.streakIconCircle, { backgroundColor: frame.accent }]}>
+            <Ionicons name="flame" size={22} color="#FFFFFF" />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.streakNumber, { color: frame.fg }]}>{streakDays}</Text>
-            <Text style={styles.streakLabel}>{t.dailyStreak}</Text>
+            <Text style={[styles.streakNumber, { color: frame.text }]}>{streakDays}</Text>
+            <Text style={[styles.streakLabel, { color: frame.textMuted }]}>{t.dailyStreak}</Text>
           </View>
         </View>
 
         {/* Start Focus Button */}
         <TouchableOpacity
-          style={[styles.focusActionBtn, { backgroundColor: CARD_ACCENTS.mint.pastel }]}
+          style={[styles.focusActionBtn, { backgroundColor: frame.ctaBg }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             onStartFocus();
           }}
           activeOpacity={0.8}
         >
-          <Ionicons name="timer-outline" size={18} color={colors.secondaryText} />
-          <Text style={[styles.focusActionBtnText, { color: colors.secondaryText }]}>{t.startFocus}</Text>
+          <Ionicons name="timer-outline" size={18} color={frame.ctaFg} />
+          <Text style={[styles.focusActionBtnText, { color: frame.ctaFg }]}>{t.startFocus}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Footer */}
-      <View style={styles.cardFooter}>
+      <View style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}>
         <View style={styles.footerActionBtn}>
-          <Ionicons name="trophy-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.footerActionText}>{t.statistics}</Text>
+          <Ionicons name="trophy-outline" size={16} color={frame.footerText} />
+          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.statistics}</Text>
         </View>
 
-        <Text style={styles.footerHintText}>Deep Focus Mode</Text>
+        <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>Deep Focus Mode</Text>
       </View>
     </View>
   );

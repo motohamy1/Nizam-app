@@ -637,9 +637,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
             styles.container, 
             { 
               backgroundColor: colors.bg,
-              marginBottom: keyboardHeight,
+              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+              height: isKeyboardVisible 
+                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+                : '92%',
               maxHeight: isKeyboardVisible 
-                ? Math.max(300, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 28)) 
+                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
                 : '92%',
             }
           ]}
@@ -1523,7 +1526,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    height: '92%',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: 'hidden',

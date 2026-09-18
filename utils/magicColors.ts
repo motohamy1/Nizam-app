@@ -26,3 +26,31 @@ export const JEWEL_LIGHT = ['#F5EEDB', '#E8F5A6', '#E4FFFA', '#E2DCFE', '#F3EBFF
 
 export const AURORA_GRADIENT = ['#f6e5c9', '#e5f19d', '#defef9', '#dbd4fd'];
 
+/** Project color swatches per mode: pastels in dark, ink twins in light. */
+export function projectColorsFor(isDark: boolean): string[] {
+  return isDark ? PROJECT_COLORS : PROJECT_COLORS.map(toInk);
+}
+
+const INK_MAP: Record<string, string> = {
+  '#f6e5c9': '#9D5200',
+  '#e5f19d': '#547600',
+  '#defef9': '#007973',
+  '#dbd4fd': '#6C38E9',
+  '#fbe8d5': '#9D5200',
+  '#e9f5a8': '#547600',
+  '#e5fffa': '#007973',
+  '#e4deff': '#6C38E9',
+  '#eeddbf': '#9D5200',
+  '#dbec8c': '#547600',
+  '#d3fcf6': '#007973',
+  '#d2c8fb': '#6C38E9',
+  '#f4dec0': '#9D5200',
+  '#cde37d': '#547600',
+  '#bdfbf1': '#007973',
+  '#c4b6f7': '#6C38E9',
+};
+
+function toInk(color: string): string {
+  return INK_MAP[color.toLowerCase()] ?? color;
+}
+

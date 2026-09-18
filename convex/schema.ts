@@ -179,6 +179,7 @@ export default defineSchema({
     color: v.optional(v.string()),
     icon: v.optional(v.string()),
     templateId: v.optional(v.string()),
+    visualStyleId: v.optional(v.string()),
     milestones: v.optional(
       v.array(
         v.object({
@@ -216,6 +217,7 @@ export default defineSchema({
     color: v.optional(v.string()),
     icon: v.optional(v.string()),
     templateId: v.optional(v.string()),
+    visualStyleId: v.optional(v.string()),
     isCompleted: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
     localId: v.optional(v.string()),
@@ -282,7 +284,7 @@ export default defineSchema({
     .index("by_date_type", ["date", "listType"])
     .index("by_local_id", ["localId"]),
 
-      // ─── Topic Intelligence ─────────────────────────────────────────────────────
+      // ─── Topic Intelligence ──────────────────────────────────────────────────────────
   
       topicNodes: defineTable({
         userId: v.union(v.id("users"), v.string()),

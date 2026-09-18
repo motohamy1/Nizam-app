@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,9 +44,9 @@ export default function InsightsScreen() {
   const isDark = isDarkMode;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? 'transparent' : colors.bg }]} edges={['top']}>
       {/* Header */}
-      <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
+      <AnimatedWavyHeader backgroundColor={isDarkMode ? 'transparent' : colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
         <View style={[styles.header, { paddingVertical: 8 }]}>
           <View style={styles.headerLeft}>
             <Ionicons name="analytics" size={26} color={colors.primary} />

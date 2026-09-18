@@ -245,10 +245,10 @@ const ChecklistItemForm: React.FC<{
       style={[
         styles.modalContent,
         {
-          marginBottom: keyboardHeight,
-          maxHeight: isKeyboardVisible 
-            ? Math.max(300, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 28)) 
-            : '90%',
+          marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+            maxHeight: isKeyboardVisible 
+              ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+              : '90%',
         }
       ]}
     >

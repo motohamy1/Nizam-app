@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
-import { createScrollStackStyles } from '@/assets/styles/scrollStack.styles';
+import { createScrollStackStyles, STACK_CARD_PALETTE_LIST } from '@/assets/styles/scrollStack.styles';
 import ScrollStackItem from './ScrollStackItem';
 
 interface ScrollStackProps {
@@ -49,31 +49,34 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Capture swipe if horizontal movement is dominant
-        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+        // Only trigger horizontal swipe when horizontal movement dominates
+        return (
+          Math.abs(gestureState.dx) > SWIPE_THRESHOLD &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2
+        );
       },
       onPanResponderRelease: (_, gestureState) => {
-        const isSwipeLeft = gestureState.dx < -SWIPE_THRESHOLD;
-        const isSwipeRight = gestureState.dx > SWIPE_THRESHOLD;
-
         const current = activeIndexRef.current;
-
         if (isArabic) {
-          if (isSwipeRight) {
+          // In RTL: swipe right means next, swipe left means previous
+          if (gestureState.dx > SWIPE_THRESHOLD) {
             goToCard(current + 1);
-          } else if (isSwipeLeft) {
+          } else if (gestureState.dx < -SWIPE_THRESHOLD) {
             goToCard(current - 1);
           }
         } else {
-          if (isSwipeLeft) {
+          // In LTR: swipe left means next, swipe right means previous
+          if (gestureState.dx < -SWIPE_THRESHOLD) {
             goToCard(current + 1);
-          } else if (isSwipeRight) {
+          } else if (gestureState.dx > SWIPE_THRESHOLD) {
             goToCard(current - 1);
           }
         }
       },
     })
   ).current;
+
+  if (totalCards === 0) return null;
 
   return (
     <View style={[styles.container, style]}>
@@ -113,6 +116,7 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
           {/* Dots */}
           {cardArray.map((_, dotIdx) => {
             const isActive = dotIdx === activeIndex;
+            const dotPalette = STACK_CARD_PALETTE_LIST[dotIdx % STACK_CARD_PALETTE_LIST.length];
             return (
               <TouchableOpacity
                 key={dotIdx}
@@ -122,6 +126,7 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
                 style={[
                   styles.paginationDot,
                   isActive && styles.paginationDotActive,
+                  isActive && !isDarkMode && { backgroundColor: dotPalette.accent },
                 ]}
               />
             );

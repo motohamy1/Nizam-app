@@ -253,7 +253,7 @@ export default function YearDetailScreen() {
   const router = useRouter();
   const { year } = useLocalSearchParams<{ year: string }>();
   const yearNum = parseInt(year || '2025', 10);
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { userId, language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const insets = useSafeAreaInsets();
@@ -538,7 +538,7 @@ export default function YearDetailScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: isDarkMode ? 'transparent' : colors.bg }} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

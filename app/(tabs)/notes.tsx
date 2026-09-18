@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
@@ -31,6 +32,7 @@ import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useGuardedSubmit } from '@/hooks/useSubmitGuard';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import ActionModal from '@/components/ActionModal';
 import { useScreenGuide } from '@/hooks/useScreenGuide';
@@ -453,7 +455,7 @@ export default function AddScreen() {
             activeOpacity={0.8}
             onPress={() => setMenuVisible(true)}
           >
-            <Ionicons name="ellipsis-vertical" size={18} color="#FFFFFF" />
+            <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
           </TouchableOpacity>
         </View>
       </AnimatedWavyHeader>
@@ -471,7 +473,7 @@ export default function AddScreen() {
           <Ionicons
             name="mic-outline"
             size={16}
-            color={inputMode === 'voice' ? '#FFFFFF' : '#9CA3AF'}
+            color={inputMode === 'voice' ? colors.text : colors.textMuted}
           />
           <Text style={[styles.modePillText, inputMode === 'voice' && styles.modePillTextActive]}>
             {isArabic ? 'إملاء صوتي' : 'Voice Input'}
@@ -497,7 +499,7 @@ export default function AddScreen() {
           <Ionicons
             name="create-outline"
             size={16}
-            color="#9CA3AF"
+            color={colors.textMuted}
           />
           <Text style={styles.modePillText}>
             {isArabic ? 'كتابة' : 'Type'}
@@ -534,7 +536,7 @@ export default function AddScreen() {
                     </>
                   ) : (
                     <>
-                      <Ionicons name="mic-outline" size={13} color="#9CA3AF" />
+                      <Ionicons name="mic-outline" size={13} color={colors.textMuted} />
                       <Text style={styles.idleText}>
                         {isArabic ? 'جاهز للتسجيل' : 'Tap to Speak'}
                       </Text>
@@ -549,9 +551,9 @@ export default function AddScreen() {
                   activeOpacity={0.8}
                   onPress={() => setAddTagModalVisible(true)}
                 >
-                  <Ionicons name="pricetag-outline" size={13} color="#D4FF00" />
+                  <Ionicons name="pricetag-outline" size={13} color={modeColor('#D4FF00', isDarkMode)} />
                   <Text style={styles.heroTagChipText}>{currentHashtag}</Text>
-                  <Ionicons name="chevron-down" size={12} color="#D4FF00" />
+                  <Ionicons name="chevron-down" size={12} color={modeColor('#D4FF00', isDarkMode)} />
                 </TouchableOpacity>
               </View>
 
@@ -623,16 +625,16 @@ export default function AddScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 12,
                       borderRadius: 22,
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : colors.surfaceHigh,
                       borderWidth: 1,
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : colors.border,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                     activeOpacity={0.85}
                     onPress={handleCancelInlineRecording}
                   >
-                    <Ionicons name="close" size={20} color="#9CA3AF" />
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -641,7 +643,7 @@ export default function AddScreen() {
                   activeOpacity={0.85}
                   onPress={handleToggleInlineRecording}
                 >
-                  <Ionicons name="mic" size={18} color="#dbd4fd" />
+                  <Ionicons name="mic" size={18} color={colors.primary} />
                   <Text style={styles.tapToSpeakText}>
                     {isArabic ? 'بدء التسجيل الصوتي' : 'Start Voice Input'}
                   </Text>
@@ -684,15 +686,15 @@ export default function AddScreen() {
                   activeOpacity={0.8}
                   onPress={() => setAddTagModalVisible(true)}
                 >
-                  <Ionicons name="pricetag-outline" size={13} color="#D4FF00" />
+                  <Ionicons name="pricetag-outline" size={13} color={modeColor('#D4FF00', isDarkMode)} />
                   <Text style={styles.heroTagChipText}>{currentHashtag}</Text>
-                  <Ionicons name="chevron-down" size={12} color="#D4FF00" />
+                  <Ionicons name="chevron-down" size={12} color={modeColor('#D4FF00', isDarkMode)} />
                 </TouchableOpacity>
               </View>
 
               {/* Inline Editable Hashtag Input */}
               <View style={styles.typingTagInputContainer}>
-                <Ionicons name="pricetag" size={14} color="#D4FF00" />
+                <Ionicons name="pricetag" size={14} color={modeColor('#D4FF00', isDarkMode)} />
                 <TextInput
                   style={[styles.typingTagInput, isArabic && { textAlign: 'right' }]}
                   placeholder={isArabic ? 'اكتب الوسم مثل: #عمل' : 'Enter hashtag e.g. #work'}
@@ -790,7 +792,7 @@ export default function AddScreen() {
           {Object.keys(groupedByHashtags).length === 0 ? (
             <View style={{ padding: 30, alignItems: 'center' }}>
               <Ionicons name="document-text-outline" size={42} color="#6B7280" />
-              <Text style={{ color: '#9CA3AF', fontSize: 15, fontWeight: '600', marginTop: 10 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 15, fontWeight: '600', marginTop: 10 }}>
                 {isArabic ? 'لا توجد ملاحظات بعد' : 'No notes found'}
               </Text>
             </View>
@@ -923,7 +925,7 @@ export default function AddScreen() {
                 style={styles.modalCloseBtn}
                 onPress={() => setAddTagModalVisible(false)}
               >
-                <Ionicons name="close" size={22} color="#9CA3AF" />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -939,7 +941,7 @@ export default function AddScreen() {
             />
 
             {/* Quick suggested chips */}
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#9CA3AF', marginTop: 14 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: 14 }}>
               {isArabic ? 'الأوسمة الحالية:' : 'Existing Hashtags:'}
             </Text>
             <View style={styles.suggestedTagsRow}>
@@ -948,14 +950,14 @@ export default function AddScreen() {
                   key={tag}
                   style={[
                     styles.suggestedTagChip,
-                    currentHashtag === tag && { borderColor: '#D4FF00', backgroundColor: 'rgba(212, 255, 0, 0.15)' },
+                    currentHashtag === tag && { borderColor: modeColor('#D4FF00', isDarkMode), backgroundColor: isDarkMode ? 'rgba(212, 255, 0, 0.15)' : 'rgba(84, 118, 0, 0.09)' },
                   ]}
                   onPress={() => {
                     setCurrentHashtag(tag);
                     setAddTagModalVisible(false);
                   }}
                 >
-                  <Text style={[styles.suggestedTagText, currentHashtag === tag && { color: '#D4FF00', fontWeight: '800' }]}>
+                  <Text style={[styles.suggestedTagText, currentHashtag === tag && { color: modeColor('#D4FF00', isDarkMode), fontWeight: '800' }]}>
                     {tag}
                   </Text>
                 </TouchableOpacity>
@@ -999,13 +1001,13 @@ export default function AddScreen() {
                 style={styles.modalCloseBtn}
                 onPress={() => setCalendarModalVisible(false)}
               >
-                <Ionicons name="close" size={22} color="#9CA3AF" />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             {/* Time Selector */}
             <View style={{ gap: 14 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#9CA3AF' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textMuted }}>
                 {isArabic ? 'اختر وقت التذكير:' : 'Select Reminder Time:'}
               </Text>
 
@@ -1014,14 +1016,14 @@ export default function AddScreen() {
                   flexDirection: isArabic ? 'row-reverse' : 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  backgroundColor: '#1E2028',
+                  backgroundColor: isDarkMode ? '#1E2028' : colors.surfaceHigh,
                   padding: 14,
                   borderRadius: 16,
                 }}
               >
                 <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
-                  <Ionicons name="time-outline" size={22} color="#D4FF00" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
+                  <Ionicons name="time-outline" size={22} color={modeColor('#D4FF00', isDarkMode)} />
+                  <Text style={{ color: isDarkMode ? '#FFFFFF' : colors.text, fontSize: 16, fontWeight: '700' }}>
                     {reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
@@ -1044,7 +1046,7 @@ export default function AddScreen() {
                       borderRadius: 10,
                     }}
                   >
-                    <Text style={{ color: '#D4FF00', fontWeight: '700' }}>
+                    <Text style={{ color: modeColor('#D4FF00', isDarkMode), fontWeight: '700' }}>
                       {isArabic ? 'تغيير الوقت' : 'Set Time'}
                     </Text>
                   </TouchableOpacity>

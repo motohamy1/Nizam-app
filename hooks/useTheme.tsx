@@ -94,35 +94,35 @@ export interface ColorScheme {
 }
 
 const darkColors: ColorScheme = {
-  bg: "#0E0F14",
-  surface: "#181922",
-  surfaceHigh: "#222432",
-  text: "#FFFFFF",
-  textMuted: "#8E92A0",
-  border: "#282A38",
-  primary: "#dbd4fd",
-  primaryText: "#181326",
-  secondary: "#e5f19d",
-  secondaryText: "#1a1a2e",
+  bg: "#060805",              // Deep dark forest obsidian matching reference base
+  surface: "#111510",         // Dark obsidian card surface with subtle olive undertone
+  surfaceHigh: "#181E15",     // Elevated card / modal surface
+  text: "#FFFFFF",            // Crisp white text
+  textMuted: "#8E9A86",       // Sophisticated muted olive-tinted neutral
+  border: "#1E261A",          // Subtle border matching dark forest tones
+  primary: "#C8F135",         // Neon Chartreuse / Electric Lime from reference!
+  primaryText: "#0D1405",     // Deep forest ink on electric lime (>12:1 contrast)
+  secondary: "#B8F628",       // Saturated Lime accent
+  secondaryText: "#0D1405",   // Deep forest ink
   success: "#10B981",
-  warning: "#f6e5c9",
+  warning: "#FBBF24",
   danger: "#FB7185",
-  info: "#defef9",
+  info: "#38BDF8",
   shadow: "#000000",
-  infoBg: "rgba(222, 254, 249, 0.15)",
+  infoBg: "rgba(56, 189, 248, 0.15)",
   successBg: "rgba(16, 185, 129, 0.15)",
-  warningBg: "rgba(246, 229, 201, 0.15)",
+  warningBg: "rgba(251, 191, 36, 0.15)",
   dangerBg: "rgba(251, 113, 133, 0.15)",
-  taskInProgressBg: "#1C1D2B",
-  taskNotStartedBg: "#181922",
-  taskDoneBg: "#141F1C",
-  taskPausedBg: "#1A1B24",
+  taskInProgressBg: "#172013",
+  taskNotStartedBg: "#121610",
+  taskDoneBg: "#0E170C",
+  taskPausedBg: "#151B12",
   taskNotDoneBg: "#221619",
   surfaceText: "#FFFFFF",
   statusBarStyle: "light-content" as const,
   palette: {
     cream: "#f6e5c9",
-    lime: "#e5f19d",
+    lime: "#C8F135",
     mint: "#defef9",
     lavender: "#dbd4fd",
   },
@@ -157,54 +157,62 @@ const darkColors: ColorScheme = {
       elevation: 10,
     },
     glow: {
-      shadowColor: "#dbd4fd",
+      shadowColor: "#C8F135",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.35,
       shadowRadius: 16,
       elevation: 8,
     },
     auroraGlow: {
-      shadowColor: "#defef9",
+      shadowColor: "#2E4E20",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 14,
-      elevation: 6,
+      shadowOpacity: 0.35,
+      shadowRadius: 16,
+      elevation: 8,
     },
   },
 };
 
+// Light register of the Nizam quartet. Dark mode paints with pastels on
+// obsidian; light mode paints with saturated same-hue INKS on warm-white.
+// The pastel quartet would sit at ~1.1-1.4:1 on white (invisible), so every
+// accent here is an OKLCH-derived ink: same hue as its pastel twin,
+// L 0.50-0.55, near-max chroma. All pass WCAG AA >=4.5:1 on white surfaces and
+// carry white text at >=5:1. Where the brand wants pastel GEM presence (FAB, dock
+// bubble, status pills, date pills) fillColor() supplies vivid light twins. Neutrals carry a
+// whisper of the brand's violet hue (chroma 0.005-0.045, H 285) for cohesion.
 const lightColors: ColorScheme = {
-  bg: "#F8FAFC",
+  bg: "#F3F3FC",
   surface: "#FFFFFF",
-  surfaceHigh: "#F1F5F9",
-  text: "#0F172A",
-  textMuted: "#64748B",
-  border: "#E2E8F0",
-  primary: "#7C6EF0",
+  surfaceHigh: "#ECECF9",
+  text: "#1E1B35",
+  textMuted: "#60627E",
+  border: "#DDDCEF",
+  primary: "#6C38E9",
   primaryText: "#FFFFFF",
-  secondary: "#e5f19d",
-  secondaryText: "#1a1a2e",
-  success: "#10B981",
-  warning: "#F59E0B",
-  danger: "#EF4444",
-  info: "#0284C7",
-  shadow: "#0F172A",
-  infoBg: "#E0F2FE",
-  successBg: "#D1FAE5",
-  warningBg: "#FEF3C7",
-  dangerBg: "#FEE2E2",
-  taskInProgressBg: "#EEF2FF",
+  secondary: "#547600",
+  secondaryText: "#16270E",
+  success: "#007835",
+  warning: "#9D5200",
+  danger: "#BB2441",
+  info: "#007973",
+  shadow: "#1E1B35",
+  infoBg: "#CCF7F3",
+  successBg: "#DFF4E4",
+  warningBg: "#FFE8D8",
+  dangerBg: "#FDE2E8",
+  taskInProgressBg: "#EBEAFF",
   taskNotStartedBg: "#FFFFFF",
-  taskDoneBg: "#ECFDF5",
-  taskPausedBg: "#F8FAFC",
-  taskNotDoneBg: "#FEF2F2",
-  surfaceText: "#0F172A",
+  taskDoneBg: "#E5F3D3",
+  taskPausedBg: "#F1F0F8",
+  taskNotDoneBg: "#FDE2E8",
+  surfaceText: "#1E1B35",
   statusBarStyle: "dark-content" as const,
   palette: {
-    cream: "#f6e5c9",
-    lime: "#e5f19d",
-    mint: "#defef9",
-    lavender: "#dbd4fd",
+    cream: "#9D5200",
+    lime: "#547600",
+    mint: "#007973",
+    lavender: "#6C38E9",
   },
   radii: {
     sm: 6,
@@ -237,14 +245,14 @@ const lightColors: ColorScheme = {
       elevation: 8,
     },
     glow: {
-      shadowColor: "#7C6EF0",
+      shadowColor: "#6C38E9",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.20,
       shadowRadius: 16,
       elevation: 6,
     },
     auroraGlow: {
-      shadowColor: "#10B981",
+      shadowColor: "#007973",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.18,
       shadowRadius: 12,

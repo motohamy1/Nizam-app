@@ -276,9 +276,9 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             styles.modalSheet, 
             { 
               backgroundColor: colors.surface,
-              marginBottom: keyboardHeight,
+              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
               maxHeight: isKeyboardVisible 
-                ? Math.max(300, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 28)) 
+                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
                 : '90%',
             }
           ]}

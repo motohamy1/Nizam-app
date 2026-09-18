@@ -363,11 +363,11 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
             {
               backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-              marginBottom: keyboardHeight,
+              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
               height: isKeyboardVisible 
-                ? Math.max(300, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 24)) 
+                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
                 : '75%',
-              maxHeight: screenHeight - (Platform.OS === 'ios' ? 44 : 24),
+              maxHeight: Platform.OS === 'ios' ? (screenHeight - 44) : '96%',
             },
           ]}
         >

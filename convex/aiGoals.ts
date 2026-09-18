@@ -148,55 +148,55 @@ export const SEED_TEMPLATES = [
       },
       {
         id: "week_3",
-        title: "Week 3: Deep Work & Testing",
-        titleAr: "الأسبوع 3: العمل العميق والمراجعة",
-        icon: "code-working-outline",
+        title: "Week 3: Quality & Polish",
+        titleAr: "الأسبوع 3: الصقل والتجويد",
+        icon: "sparkles-outline",
         color: "#7C3AED",
-        description: "Iterating, refining, validating quality, and fixing bottlenecks.",
-        descriptionAr: "الصقل والتحسين، مراجعة الجودة وتخطي العقبات.",
+        description: "Refining details, testing outputs, and fixing bottlenecks.",
+        descriptionAr: "معالجة العقبات وصقل جودة المخرجات.",
       },
       {
         id: "week_4",
-        title: "Week 4: Delivery & Celebrate",
-        titleAr: "الأسبوع 4: التسليم والاحتفال",
-        icon: "ribbon-outline",
+        title: "Week 4: Final Sprint & Review",
+        titleAr: "الأسبوع 4: الحسم والمراجعة",
+        icon: "checkmark-done-circle-outline",
         color: "#EA580C",
-        description: "Final shipping, retrospective, celebrating wins, and future plan.",
-        descriptionAr: "إنهاء التسليمات، مراجعة الإنجازات، والاحتفاء بالنجاح.",
+        description: "Crossing the finish line, celebrating wins, and retrospective analysis.",
+        descriptionAr: "إنهاء التسليم، قياس النتائج، والاحتفال بالإنجاز.",
       },
     ],
   },
   {
     templateId: "atomic_habits",
-    name: "Atomic Systems & Habits",
-    nameAr: "الأنظمة والعادات الذرية",
-    description: "Focus on identity-driven recurring systems and friction elimination.",
-    descriptionAr: "التركيز على بناء الأنظمة اليومية القوية وإزالة المشتتات.",
-    icon: "repeat-outline",
-    badge: "Habit Focus",
+    name: "Atomic Keystone Systems",
+    nameAr: "منظومة العادات الذرية",
+    description: "Focus on identity-based keystone habits and strict anti-goals boundaries.",
+    descriptionAr: "التركيز على بناء الهوية عبر عادات يومية حاسمة وتجنب مشتتات التركيز.",
+    icon: "infinite-outline",
+    badge: "Habit System",
     badgeAr: "بناء العادات",
     bg: "#FED7AA",
-    ink: "#451A03",
-    accent: "#D97706",
-    accentSecondary: "#B45309",
-    color: "#D97706",
-    gradientColors: ["#FED7AA", "#D97706"],
-    artType: "sunRays",
+    ink: "#431407",
+    accent: "#EA580C",
+    accentSecondary: "#C2410C",
+    color: "#EA580C",
+    gradientColors: ["#FED7AA", "#EA580C"],
+    artType: "grid",
     order: 4,
     categories: [
       {
-        id: "target_outcomes",
-        title: "Target Outcomes (The Destination)",
-        titleAr: "النتائج المستهدفة (الوجهة)",
-        icon: "golf-outline",
+        id: "keystone_deliverable",
+        title: "Prime Monthly Outcome",
+        titleAr: "المخرج الأساسي للشهر",
+        icon: "star-outline",
         color: "#EA580C",
-        description: "The tangible deliverables or achievements for the month.",
-        descriptionAr: "المخرجات الملموسة التي ستصل إليها بنهاية الشهر.",
+        description: "The single milestone or project that anchors this month's identity.",
+        descriptionAr: "الإنجاز الملموس الذي يمثل عنوان الشهر وهدفه الأكبر.",
       },
       {
-        id: "daily_keystone",
-        title: "Daily Keystone Habits",
-        titleAr: "عادات التميز اليومية",
+        id: "daily_habits",
+        title: "Daily Keystone Rituals",
+        titleAr: "العادات اليومية الحاكمة",
         icon: "flame-outline",
         color: "#D97706",
         description: "Non-negotiable daily rituals that compound into victory.",
@@ -503,7 +503,7 @@ async function callLLMForGoals(systemPrompt: string, userPrompt: string): Promis
   throw new Error("Could not generate goals plan: No LLM service responded successfully.");
 }
 
-// ─── Queries & Mutations ──────────────────────────────────────────────────
+// ─── Queries & Mutations ───────────────────────────────────────────────────
 
 /**
  * Get all available goal templates from database.
@@ -513,7 +513,6 @@ export const getTemplates = query({
   handler: async (ctx) => {
     const templates = await ctx.db.query("goalTemplates").collect();
     if (templates.length === 0) {
-      // Return static seed fallback if DB hasn't been seeded yet
       return SEED_TEMPLATES;
     }
     return templates.sort((a, b) => a.order - b.order);
@@ -610,32 +609,24 @@ Your mission is to transform the user's stated goals into a clear, realistic, an
 CRITICAL PRINCIPLE — USER INPUT IS THE ONLY SOURCE OF TRUTH:
 1. Base all goals and milestones EXCLUSIVELY on what the user explicitly specified.
 2. NEVER invent, hallucinate, or force unrelated life categories. For example:
-   - If the user talks about coding or building an app, DO NOT invent health courses (e.g. diabetes or asthma), financial goals, or random hobbies.
+   - If the user talks about coding or building an app, DO NOT invent health courses, financial goals, or random hobbies.
    - If the user talks about fitness, DO NOT invent software or business goals.
-   - NEVER add courses, screening, or generic filler topics that the user never asked for.
-3. If the user only specified ONE goal or focus area, generate goals ONLY for that specific topic. Break that single goal down into smart, actionable milestones.
+   - NEVER add generic filler topics that the user never asked for.
+3. If the user only specified ONE goal, generate goals ONLY for that specific topic. Break that single goal down into smart, actionable milestones.
 4. If the user specified MULTIPLE goals, generate goals covering only those specific stated goals.
 ======================================================================
 
 Selected Framework Archetype: "${template.name}" (${template.description})
 Target Period: ${targetPeriodText}
-Language: ${isArabic ? "Arabic (العربية الفصحى الراقية والواضحة)" : "English"}
+Language: ${isArabic ? "Arabic (العربية الفصحى)" : "English"}
 
 Framework Category Reference:
 ${categorySpecs}
 
-How to Apply the Framework Archetype:
-- The framework is a structural lens and card design style to format the user's actual goals:
-  * For phased/process frameworks (e.g., Weekly Sprint, Deep Work & Launch): Decompose the user's specific goals across the sequential phases (e.g. Week 1 Kickoff, Week 2 Build, Week 3 Polish, Week 4 Deliver; or Scope MVP, QA Polish, Launch).
-  * For metric/OKR frameworks (e.g., OKR Ambition Engine): Frame the user's stated goals as Objectives with measurable Key Results as milestones.
-  * For habit/behavior frameworks (e.g., Atomic Systems): Structure the user's goal into Target Deliverable (Outcome) + Daily Keystone Habits + Distraction Boundaries / Anti-Goals.
-  * For life domain frameworks (e.g., Life Pillars, Balance Wheel, Health, Wealth):
-    ONLY include the category or categories that match what the user actually asked for. OMIT all unmentioned categories. If none of the template's predefined category IDs fit the user's goal, use a clean relevant title and categoryId that directly reflects the user's focus (e.g. categoryId: "software_mvp", title: "Mobile App Development").
-
 Strict JSON Output Schema:
 {
-  "themeTitle": "${isYearly ? "Short 3-6 word grand annual motto or theme reflecting user's goals" : "Short 3-6 word punchy theme reflecting user's goals"}",
-  "motivationalQuote": "A memorable 1-sentence quote or driving principle directly relevant to user's goals",
+  "themeTitle": "${isYearly ? "Short 3-6 word grand annual motto" : "Short 3-6 word punchy theme"}",
+  "motivationalQuote": "A memorable 1-sentence driving principle directly relevant to user's goals",
   "sections": [
     {
       "categoryId": "Matching category ID from framework or a clean snake_case ID matching user's topic",
@@ -653,13 +644,7 @@ Strict JSON Output Schema:
       ]
     }
   ]
-}
-
-Guidelines:
-1. Generate 1 to 3 relevant sections containing only the goals the user requested.
-2. Provide 2-4 concrete, actionable sub-milestones per goal that actually guide execution.
-3. Keep the tone practical, disciplined, energizing, and free of fluff.
-4. All text content MUST strictly match the requested language (${isArabic ? "Arabic" : "English"}).`;
+}`;
 
     const userContent = `User Aspirations & Goals for ${isYearly ? `Year ${args.year}` : `Month ${args.month}, ${args.year}`}:
 """
@@ -695,7 +680,7 @@ export const refineMonthlyPlan = action({
     const systemPrompt = `You are an elite productivity strategist.
 The user has an existing goals blueprint and wants to tweak or refine it based on their instructions.
 
-Language: ${isArabic ? "Arabic (العربية الفصحى الراقية)" : "English"}
+Language: ${isArabic ? "Arabic (العربية الفصحى)" : "English"}
 
 CRITICAL RULES:
 1. Apply the user's requested adjustments to the existing goals and milestones.
@@ -775,7 +760,6 @@ export const saveMonthlyBlueprint = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // 1. Update or create blueprint
     let existingBlueprint = null;
     if (args.month !== undefined) {
       existingBlueprint = await ctx.db
@@ -813,7 +797,6 @@ export const saveMonthlyBlueprint = mutation({
       });
     }
 
-    // 2. Batch insert goals
     const now = Date.now();
     for (let i = 0; i < args.goals.length; i++) {
       const g = args.goals[i];
@@ -827,6 +810,7 @@ export const saveMonthlyBlueprint = mutation({
         color: g.color,
         icon: g.icon,
         templateId: args.templateId,
+        visualStyleId: "default",
         milestones: g.milestones,
         order: i,
         isCompleted: false,
@@ -834,7 +818,6 @@ export const saveMonthlyBlueprint = mutation({
       });
     }
 
-    // 3. Batch insert target achievements (if any provided)
     if (args.achievements && args.achievements.length > 0) {
       for (let j = 0; j < args.achievements.length; j++) {
         const a = args.achievements[j];
@@ -846,6 +829,7 @@ export const saveMonthlyBlueprint = mutation({
           description: a.description,
           category: a.category,
           color: a.color,
+          visualStyleId: "default",
           isCompleted: false,
           createdAt: now + j,
         });
@@ -861,55 +845,55 @@ export const saveMonthlyBlueprint = mutation({
 });
 
 /**
- * UI Design Templates for Goal Cards
+ * Visual Layout Registry for Goal Cards (Section 11-13).
  */
-export const GOAL_UI_TEMPLATES = [
+export const GOAL_VISUAL_TEMPLATES = [
   {
-    id: "roadmap",
-    name: "Milestone Roadmap",
+    frameworkId: "roadmap",
+    name: "Sequential Roadmap",
     nameAr: "خارطة طريق مرحلية",
-    description: "Step-by-step progress roadmap with connected milestones track.",
-    descriptionAr: "مسار تصاعدي متسلسل ممتاز للكورسات والمشاريع التدريجية.",
+    description: "Step-by-step progress rail with chronological milestone nodes.",
+    descriptionAr: "مسار مرحلي متتابع مع نقاط إنجاز مرتبطة بخط تقدم.",
     icon: "git-commit-outline",
-    badge: "Sequential",
-    badgeAr: "مرحلي",
-    color: "#3B82F6",
+    badge: "Structured",
+    badgeAr: "منظم ومرحلي",
+    color: "#2563EB",
   },
   {
-    id: "checklist",
-    name: "Clean Checklist",
-    nameAr: "قائمة إنجاز أنيقة",
-    description: "Modern, focused checklist layout with quick status toggles.",
-    descriptionAr: "تصميم أنيق وسريع للمهام المباشرة والأهداف التنفيذية.",
-    icon: "checkmark-circle-outline",
-    badge: "Actionable",
-    badgeAr: "تنفيذي",
-    color: "#10B981",
+    frameworkId: "checklist",
+    name: "Executive Checklist",
+    nameAr: "قائمة مهام تنفيذية",
+    description: "Crisp checkboxes with strikethrough and completion counter.",
+    descriptionAr: "مربعات تحقق واضحة وسريعة مع عداد إنجاز تفاعلي.",
+    icon: "checkbox-outline",
+    badge: "Direct",
+    badgeAr: "مباشر وسريع",
+    color: "#059669",
   },
   {
-    id: "metric",
-    name: "Target Metric & Counter",
-    nameAr: "مقياس رقمي وإحصائي",
-    description: "Progress gauge with target stats, percentage counters, and numerical goals.",
-    descriptionAr: "شريط نسبة مئوية ومؤشرات رقمية للأهداف المقاسة بالأرقام أو الكميات.",
-    icon: "analytics-outline",
+    frameworkId: "metric",
+    name: "Target Gauge & Counter",
+    nameAr: "مؤشر أداء رقمي",
+    description: "Horizontal progress gauge, percentage pill, and target fraction.",
+    descriptionAr: "مؤشر قياس أفقي، نسبة مئوية، وعداد كسري للنتائج الرقمية.",
+    icon: "speedometer-outline",
     badge: "Quantifiable",
-    badgeAr: "رقمي",
-    color: "#F59E0B",
+    badgeAr: "رقمي ومقاس",
+    color: "#D97706",
   },
   {
-    id: "sprint",
-    name: "Sprint Capsule",
-    nameAr: "كبسولة السبرنت السريعة",
-    description: "High-intensity agile card with sprint phase badges and high focus.",
-    descriptionAr: "بطاقة رشيقة ومحفزة للأهداف المحددة بوقت وتحديات الأسبوع واليوم.",
+    frameworkId: "sprint",
+    name: "High-Energy Sprint",
+    nameAr: "سبرنت تركيز مكثف",
+    description: "Time-boxed focus card with intensity accent and sprint badge.",
+    descriptionAr: "بطاقة إنجاز سريعة ومكثفة مع شارة سبرنت وأولوية زمنية.",
     icon: "flash-outline",
-    badge: "High Energy",
-    badgeAr: "رشيق",
-    color: "#EF4444",
+    badge: "High Tempo",
+    badgeAr: "زخم عالٍ",
+    color: "#EA580C",
   },
   {
-    id: "pillar",
+    frameworkId: "pillar",
     name: "Deep Focus Pillar",
     nameAr: "ركيزة التركيز الاستراتيجي",
     description: "Strategic pillar card with colored focus spine and foundational sub-habits.",
@@ -922,8 +906,74 @@ export const GOAL_UI_TEMPLATES = [
 ];
 
 /**
+ * Detects generic category names that must never be assigned to goals.
+ */
+export function isGenericCategory(name?: string): boolean {
+  const lower = (name || "").trim().toLowerCase();
+  return (
+    !lower ||
+    lower === "general" ||
+    lower === "general goals" ||
+    lower === "goals" ||
+    lower === "miscellaneous" ||
+    lower === "other" ||
+    lower === "personal" ||
+    lower === "عام" ||
+    lower === "عامة" ||
+    lower === "أهداف عامة" ||
+    lower === "أهداف"
+  );
+}
+
+/**
+ * Derives a domain-specific category from user text.
+ */
+export function deriveCategoryFromIntent(text: string, isArabic = false): string {
+  const t = (text || "").toLowerCase();
+
+  // Software / Mobile / Web / Coding / Engineering
+  if (/flutter|react|react-native|mobile|app|code|coding|developer|software|programming|python|javascript|typescript|backend|frontend|api|convex|database|web|ai|model|llm|dev|git|linux|deploy/i.test(t)) {
+    return isArabic ? "تطوير البرمجيات والتطبيقات" : "Software & App Development";
+  }
+
+  // Health / Fitness / Sports / Gym / Diet
+  if (/gym|run|running|fitness|health|workout|diet|exercise|marathon|weight|cardio|sleep|water|muscle|training|nutrition/i.test(t)) {
+    return isArabic ? "الصحة واللياقة البدنية" : "Health & Physical Fitness";
+  }
+
+  // Learning / Reading / Education / Languages / Study
+  if (/learn|study|read|book|course|language|english|german|spanish|french|exam|certification|degree|research|ielts|toefl|lecture/i.test(t)) {
+    return isArabic ? "التعلم وتطوير المهارات" : "Learning & Skill Growth";
+  }
+
+  // Finance / Wealth / Investment / Savings / Business / Money
+  if (/save|saving|money|finance|financial|invest|investment|budget|crypto|stock|income|revenue|profit|business|dollar|usd|egp|funds/i.test(t)) {
+    return isArabic ? "المالية والاستثمار" : "Finance & Wealth Building";
+  }
+
+  // Career / Professional / Work / Job
+  if (/job|career|work|promotion|client|freelance|portfolio|resume|interview|leadership|team|manager|client|sales|marketing/i.test(t)) {
+    return isArabic ? "المسار المهني والأعمال" : "Career & Professional Growth";
+  }
+
+  // Creative / Art / Design / Writing / Music / Content
+  if (/design|ui|ux|draw|paint|art|music|write|book|blog|youtube|content|video|photo|editing|podcast|film/i.test(t)) {
+    return isArabic ? "الإبداع وصناعة المحتوى" : "Creative & Content Design";
+  }
+
+  // Mindset / Spiritual / Habits / Personal
+  if (/pray|meditation|mind|habit|focus|discipline|routine|quran|dhikr|salah|mental/i.test(t)) {
+    return isArabic ? "التركيز والنمط اليومي" : "Mindset & Daily Habits";
+  }
+
+  return isArabic ? "أهداف المسار الأساسي" : "Core Focus Objectives";
+}
+
+/**
  * Intelligent Conversational Goal Architect Action.
- * Transforms user natural language (voice/text) into a tailored goal, sub-goals, header section suggestion, and UI template recommendation.
+ * Transforms user natural language (voice/text) into a tailored goal, intent analysis,
+ * hybrid category mapping, and up to 3 template recommendations.
+ * Implements Section 1-15, 35, 36, 53-55 of Nizam_AI_Goals_Implementation_Blueprint.md.
  */
 export const architectGoalIntent = action({
   args: {
@@ -933,6 +983,10 @@ export const architectGoalIntent = action({
     month: v.optional(v.number()),
     day: v.optional(v.number()),
     existingSections: v.optional(v.array(v.string())),
+    existingCategories: v.optional(v.array(v.string())),
+    existingSubCategories: v.optional(v.array(v.string())),
+    existingProjects: v.optional(v.array(v.string())),
+    existingRelatedGoals: v.optional(v.array(v.string())),
     previousGoalsInSession: v.optional(
       v.array(
         v.object({
@@ -950,98 +1004,234 @@ export const architectGoalIntent = action({
 
     const timeframeContext =
       timeframe === "day"
-        ? `Day ${args.day}, Month ${(args.month ?? 0) + 1}, Year ${args.year} (Daily execution focus - immediate today goals and steps)`
+        ? `Day ${args.day}, Month ${(args.month ?? 0) + 1}, Year ${args.year} (Daily execution scope: immediate, focused single-day outcome)`
         : timeframe === "month"
-        ? `Month ${(args.month ?? 0) + 1}, Year ${args.year} (Monthly objective - 2-4 week milestone breakdown)`
-        : `Full Year ${args.year} (Annual vision - quarterly or macro milestones)`;
+        ? `Month ${(args.month ?? 0) + 1}, Year ${args.year} (Monthly scope: 2-4 week concrete deliverables and milestones)`
+        : `Full Year ${args.year} (Annual vision scope: strategic direction, macro milestones)`;
+
+    // Consolidate known categories (strictly filtering out any generic names)
+    const allCategories = Array.from(
+      new Set([
+        ...(args.existingCategories || []),
+        ...(args.existingSections || []),
+      ])
+    ).filter((c) => Boolean(c && c.trim() && !isGenericCategory(c)));
 
     const existingSecsStr =
-      args.existingSections && args.existingSections.length > 0
-        ? `Existing Header Categories in this view: [${args.existingSections.map((s) => `"${s}"`).join(", ")}]`
-        : "No existing header categories yet.";
+      allCategories.length > 0
+        ? `Known User Categories in Nizam: [${allCategories.map((s) => `"${s}"`).join(", ")}]`
+        : "No existing categories yet.";
+
+    const knownProjectsStr =
+      args.existingProjects && args.existingProjects.length > 0
+        ? `Known Existing Projects: [${args.existingProjects.map((p) => `"${p}"`).join(", ")}]`
+        : "";
 
     const prevGoalsStr =
       args.previousGoalsInSession && args.previousGoalsInSession.length > 0
         ? `Previous goals created in this architect session:\n${args.previousGoalsInSession
             .map((g) => `- "${g.text}" (Section: "${g.category}")`)
             .join("\n")}`
-        : "No previous goals created yet in this session.";
+        : "";
 
-    const systemPrompt = `You are an elite AI Goal Architect and executive productivity coach.
+    const systemPrompt = `You are an elite AI Goal Architect and executive productivity coach in Nizam.
 Your mission is to understand the user's natural language goal intent (in Arabic or English) and convert it into a precise, beautifully structured goal blueprint.
 
 ======================================================================
-CRITICAL PRINCIPLES:
+SECTION A: INTENT & BOUNDARY RULES (CRITICAL)
 1. USER INTENT IS THE SOLE SOURCE OF TRUTH:
    - Base the goal STRICTLY and EXCLUSIVELY on what the user stated.
-   - NEVER invent, hallucinate, or add unrelated domains (e.g., if user mentions a programming course, DO NOT invent health, diet, gym, or financial goals).
-2. STRICT SUB-GOALS POLICY (NO AUTOMATIC SUB-GOALS):
-   - DO NOT generate sub-goals or milestones automatically.
-   - ALWAYS return "suggestedMilestones": [] (empty array).
-   - The user will choose on demand whether to create sub-goals and talk to the AI about them.
-   - EXCEPTION: Only include milestones if the user explicitly dictated numbered steps or specific milestone breakdowns in their initial message.
-3. SECTION / HEADER TITLE INTELLIGENCE:
-   - Analyze ${existingSecsStr}.
-   - Determine whether this new goal logically fits into one of the existing sections or deserves a fresh, relevant new section header.
-   - Provide a recommended "suggestedHeader", and "headerOptions":
-     * Include matching or relevant existing sections as { "title": "...", "isExisting": true }.
-     * Include a new suggested section as { "title": "...", "isExisting": false }.
-4. UI TEMPLATE RECOMMENDATION:
-   - Choose the best matching UI design template for this specific goal from:
-     * "roadmap" -> for courses, sequential learning, phased projects, book chapters.
-     * "checklist" -> for standard deliverables, actionable tasks, check-off items.
-     * "metric" -> for quantifiable metrics (e.g. read 100 pages, save $500, run 30km, finish 15 lessons).
-     * "sprint" -> for urgent, high-energy sprints, time-boxed weekly challenges.
-     * "pillar" -> for daily foundational habits, identity goals, core focus.
-5. LANGUAGE FIDELITY:
-   - Respond strictly in the user's requested language (${isArabic ? "العربية الفصحى الواضحة والراقية" : "English"}).
-   - Provide a motivating, brief 1-2 sentence "aiResponseText" explaining what you crafted.
-======================================================================
+   - NEVER invent, hallucinate, or add unrelated domains.
+   - ANTI-EXAMPLE: If user says "Learn Flutter and build small apps", DO NOT invent gym workouts, dieting, reading 10 books, or saving money.
+   - Separate core intent from supporting practice: e.g. Core = "Flutter Mastery", Practice = "Build small apps".
+2. STRICT SUB-GOALS POLICY (NO AUTOMATIC MILESTONES):
+   - DO NOT generate milestones or sub-goals automatically.
+   - ALWAYS return "suggestedMilestones": [] unless the user explicitly provided numbered steps in their message.
+   - The user will interactively choose to add or expand milestones later.
+3. TIMEFRAME SCOPE:
+   - ${timeframeContext}
+   - Adapt outcome scope to the timeframe without altering intent.
 
+======================================================================
+SECTION B: CATEGORY INTELLIGENCE (STRICT DOMAIN CLASSIFICATION)
+- STRICT PROHIBITION: NEVER output generic, lazy, or placeholder category names like "General", "General Goals", "عام", "أهداف عامة", "Miscellaneous", "Other", or "Personal".
+- If any existing category in ${existingSecsStr} accurately reflects the user's specific domain, use it.
+- Otherwise, generate a crisp, domain-specific category name describing the life or professional sphere (e.g. "Mobile & App Development", "Health & Physical Fitness", "Language & Learning", "Financial Growth", "Creative Arts", "Career & Leadership").
+- In Arabic: "تطوير البرمجيات والتطبيقات", "الصحة واللياقة البدنية", "التعلم وتطوير المهارات", "المالية والاستثمار", "المسار المهني والأعمال", etc.
+- Provide "categoryRecommendation" with:
+  {
+    "mode": "existing" | "new",
+    "name": "Category Name",
+    "reason": "Why this category fits the purpose"
+  }
+
+======================================================================
+SECTION C: TEMPLATE RECOMMENDATION RULES (MAX 3)
+- Recommend MAXIMUM 3 template choices separating Framework from Visual Style:
+  * Frameworks (Data Structure):
+    - "roadmap" -> for courses, sequential learning, phased projects.
+    - "checklist" -> for standard deliverables, actionable tasks, check-off lists.
+    - "metric" -> for quantifiable metrics (e.g. read 100 pages, save $1000, 30km run).
+    - "sprint" -> for urgent, high-energy sprints, time-boxed challenges.
+    - "pillar" -> for foundational habits, identity grounding, core focus.
+  * Visual Styles (Appearance):
+    - "book", "paper", "glass", "editorial", "minimal", "dark-capsule", "notebook"
+- Recommendations MUST have:
+  - Exactly 1 "primary" fit (best match).
+  - Up to 2 "alternative" fits.
+  - Clear rationale explaining why each layout fits the user's goal.
+
+======================================================================
+SECTION D: LANGUAGE FIDELITY
+- Respond strictly in ${isArabic ? "Arabic (العربية الفصحى الواضحة والراقية)" : "English"}.
+- Preserve technical terms like Flutter, React, Firebase, Docker as proper nouns.
+- Provide a brief, motivating, friendly 1-2 sentence "aiResponseText".
+
+======================================================================
 Strict JSON Output Schema:
 {
-  "goalTitle": "Concise, punchy outcome title matching user intent",
-  "description": "1 sentence definition of done or target clarity",
-  "suggestedHeader": "Recommended section/category name",
-  "suggestedHeaderIsExisting": false,
-  "headerOptions": [
-    { "title": "Section Name", "isExisting": true },
-    { "title": "New Section Name", "isExisting": false }
+  "intent": {
+    "coreSubject": "Primary subject (e.g. Flutter, Marathon, Budget)",
+    "corePurpose": "Purpose/why (e.g. Learn through practice, Prepare for race)",
+    "goalType": "learning | project | fitness | health | habit | financial | academic | career | creative | personal | custom",
+    "domain": "e.g. Technology, Sports, Personal Finance",
+    "desiredOutcome": "Target outcome definition",
+    "supportingOutcomes": ["Supporting deliverable or practice item"]
+  },
+  "goal": {
+    "title": "Punchy, specific outcome title",
+    "description": "1 sentence definition of done or target clarity"
+  },
+  "categoryRecommendation": {
+    "mode": "existing | new",
+    "name": "Recommended Category Name",
+    "reason": "Why this category was chosen"
+  },
+  "templateRecommendations": [
+    {
+      "frameworkId": "roadmap | checklist | metric | sprint | pillar",
+      "visualStyleId": "book | paper | glass | editorial | minimal | dark-capsule | notebook",
+      "title": "${isArabic ? "عنوان القالب بالعربية" : "Template combination title"}",
+      "reason": "${isArabic ? "سبب ملاءمة هذا التنسيق للهدف" : "Why this layout fits the goal"}",
+      "fit": "primary"
+    },
+    {
+      "frameworkId": "...",
+      "visualStyleId": "...",
+      "title": "...",
+      "reason": "...",
+      "fit": "alternative"
+    }
   ],
   "suggestedMilestones": [],
-  "suggestedTemplateId": "roadmap | checklist | metric | sprint | pillar",
+  "suggestedProjects": [
+    {
+      "name": "Project Name (only if user explicitly mentioned buildable deliverables)",
+      "description": "Brief description"
+    }
+  ],
+  "suggestedExpansionQuestion": "${isArabic ? "هل ترغب في إضافة مهام فرعية، مشاريع، أو حفظ الهدف هكذا؟" : "Would you like to add milestones, projects, or keep it focused?"}",
   "color": "#2563EB",
   "icon": "school-outline",
-  "aiResponseText": "${isArabic ? "رسالة ودية موجزة تشرح ما صممه الذكاء الاصطناعي ولماذا اختار هذا القالب" : "Brief friendly explanation of how the goal was architected"}"
+  "aiResponseText": "${isArabic ? "رسالة موجزة تشرح ما صممه الذكاء الاصطناعي ولماذا اختار هذا القالب" : "Brief friendly explanation of how the goal was architected"}"
 }`;
 
-    const userPrompt = `User Prompt / Voice Transcription:
+    const userPrompt = `User Goal Request:
 """
 ${args.userMessage.trim()}
 """
 
 ${existingSecsStr}
+${knownProjectsStr}
 ${prevGoalsStr}
 
 Architect this goal into valid JSON now.`;
 
-    const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
-    const parsed = JSON.parse(rawJson);
+    let parsed: any = {};
+    try {
+      const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
+      parsed = JSON.parse(rawJson);
+    } catch (e) {
+      console.warn("architectGoalIntent fallback triggered:", e);
+      const fallbackDomain = deriveCategoryFromIntent(args.userMessage, isArabic);
+      parsed = {
+        goal: { title: args.userMessage.slice(0, 40), description: "" },
+        intent: { coreSubject: args.userMessage.slice(0, 30), corePurpose: args.userMessage, goalType: "custom", domain: fallbackDomain },
+        categoryRecommendation: { mode: allCategories.length > 0 ? "existing" : "new", name: allCategories[0] || fallbackDomain, reason: "Inferred domain category" },
+        templateRecommendations: [
+          { frameworkId: "roadmap", visualStyleId: "glass", reason: "Standard milestone roadmap", fit: "primary" },
+          { frameworkId: "checklist", visualStyleId: "paper", reason: "Clean execution checklist", fit: "alternative" },
+        ],
+        suggestedMilestones: [],
+      };
+    }
+
+    // Resolve category and compatibility values
+    const goalTitle = parsed.goal?.title || parsed.goalTitle || (isArabic ? "هدف جديد" : "New Goal");
+    const description = parsed.goal?.description || parsed.description || "";
+    
+    let catRecName = (parsed.categoryRecommendation?.name || parsed.suggestedHeader || "").trim();
+    if (isGenericCategory(catRecName)) {
+      catRecName = allCategories[0] || deriveCategoryFromIntent(args.userMessage, isArabic);
+    }
+
+    const isExistingCat = parsed.categoryRecommendation?.mode === "existing" || allCategories.includes(catRecName);
+
+    // Build header options for backward compatibility
+    const headerOptions = [
+      { title: catRecName, isExisting: isExistingCat },
+      ...allCategories.filter((c) => c !== catRecName).map((c) => ({ title: c, isExisting: true })),
+    ];
+
+    const primaryTpl = Array.isArray(parsed.templateRecommendations) && parsed.templateRecommendations[0]
+      ? parsed.templateRecommendations[0].frameworkId || parsed.templateRecommendations[0].templateId
+      : parsed.suggestedTemplateId || "roadmap";
 
     return {
-      goalTitle: parsed.goalTitle || (isArabic ? "هدف جديد" : "New Goal"),
-      description: parsed.description || "",
-      suggestedHeader: parsed.suggestedHeader || (isArabic ? "أهداف عامة" : "General Goals"),
-      suggestedHeaderIsExisting: Boolean(parsed.suggestedHeaderIsExisting),
-      headerOptions:
-        Array.isArray(parsed.headerOptions) && parsed.headerOptions.length > 0
-          ? parsed.headerOptions
-          : [
-              {
-                title: parsed.suggestedHeader || (isArabic ? "أهداف عامة" : "General Goals"),
-                isExisting: false,
-              },
-            ],
+      // New Architect Blueprint fields
+      intent: parsed.intent || {
+        coreSubject: goalTitle,
+        corePurpose: description,
+        goalType: "custom",
+        domain: catRecName,
+      },
+      goal: {
+        title: goalTitle,
+        description,
+      },
+      categoryRecommendation: {
+        recommendedCategory: {
+          mode: isExistingCat ? "existing" : "new",
+          name: catRecName,
+          reason: parsed.categoryRecommendation?.reason || "",
+        },
+        alternatives: allCategories.filter((c) => c !== catRecName).map((c) => ({ name: c, reason: "Existing category" })),
+        createNewCategory: !isExistingCat,
+      },
+      templateRecommendations: Array.isArray(parsed.templateRecommendations)
+        ? parsed.templateRecommendations.slice(0, 3)
+        : [
+            {
+              frameworkId: primaryTpl,
+              visualStyleId: "glass",
+              reason: "Recommended layout for this goal",
+              fit: "primary",
+            },
+          ],
+      suggestedExpansionQuestion:
+        parsed.suggestedExpansionQuestion ||
+        (isArabic
+          ? "هل ترغب في إضافة مهام فرعية، مشاريع، أو حفظ الهدف هكذا؟"
+          : "Would you like to add milestones, projects, or keep it focused?"),
+      suggestedProjects: Array.isArray(parsed.suggestedProjects) ? parsed.suggestedProjects : [],
+      aiResponseText: parsed.aiResponseText || "",
+
+      // Backward compatibility fields
+      goalTitle,
+      description,
+      suggestedHeader: catRecName,
+      suggestedHeaderIsExisting: isExistingCat,
+      headerOptions,
       suggestedMilestones: Array.isArray(parsed.suggestedMilestones)
         ? parsed.suggestedMilestones.map((m: any, idx: number) => ({
             id: m.id || `m_${Date.now()}_${idx}`,
@@ -1049,89 +1239,109 @@ Architect this goal into valid JSON now.`;
             isCompleted: false,
           }))
         : [],
-      suggestedTemplateId: parsed.suggestedTemplateId || "roadmap",
-      color: parsed.color || "#EA580C",
+      suggestedTemplateId: primaryTpl,
+      color: parsed.color || "#2563EB",
       icon: parsed.icon || "flag-outline",
-      aiResponseText: parsed.aiResponseText || "",
     };
   },
 });
 
 /**
  * Conversational Refinement of the active goal draft.
+ * Refines the goal while protecting user edits and preserving untouched fields.
+ * Implements Section 30-32 of Nizam_AI_Goals_Implementation_Blueprint.md.
  */
 export const refineGoalIntent = action({
   args: {
-    currentDraft: v.object({
-      goalTitle: v.string(),
-      description: v.optional(v.string()),
-      category: v.string(),
-      templateId: v.string(),
-      color: v.optional(v.string()),
-      icon: v.optional(v.string()),
-      milestones: v.array(
-        v.object({
-          id: v.string(),
-          text: v.string(),
-          isCompleted: v.boolean(),
-        })
-      ),
-    }),
+    currentDraft: v.any(), // accepts legacy or normalized draft
     instruction: v.string(),
     existingSections: v.optional(v.array(v.string())),
     language: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const isArabic = args.language === "ar";
+    const draft = args.currentDraft;
+
+    const goalTitle = draft.goal?.title || draft.goalTitle || draft.text || "";
+    const description = draft.goal?.description || draft.description || "";
+    const category = draft.category?.selectedName || draft.category || "";
+    const frameworkId = draft.presentation?.frameworkId || draft.templateId || "roadmap";
+    const visualStyleId = draft.presentation?.visualStyleId || "default";
+    const milestones = draft.milestones || [];
+
     const systemPrompt = `You are an elite AI Goal Architect.
 The user wants to tweak or refine their current goal draft via natural language instruction.
 
-Current Draft JSON:
-${JSON.stringify(args.currentDraft, null, 2)}
+Current Draft:
+- Title: "${goalTitle}"
+- Description: "${description}"
+- Category: "${category}"
+- Framework Layout: "${frameworkId}"
+- Visual Style: "${visualStyleId}"
+- Milestones Count: ${milestones.length}
+- Milestones: ${JSON.stringify(milestones)}
 
-Existing Sections: ${JSON.stringify(args.existingSections || [])}
-Language: ${isArabic ? "Arabic (العربية)" : "English"}
+Language: ${isArabic ? "Arabic (العربية الفصحى)" : "English"}
 
-Apply the user's requested refinements directly (e.g. adjusting milestones, sub-goals, title, description, category, or UI template).
-Return the updated goal in identical JSON schema:
+CRITICAL REFINEMENT RULES:
+1. ONLY modify what the user explicitly requested to adjust (e.g. shortening title, changing layout style, removing/adding a specific milestone).
+2. DO NOT overwrite or delete untouched user data.
+3. If user requests visual style change (e.g. "make it book style" or "use paper style"), update "visualStyleId".
+4. If user asks to remove an item, remove only that item.
+5. Return ONLY valid JSON matching this schema:
 {
   "goalTitle": "...",
   "description": "...",
   "category": "...",
-  "templateId": "roadmap | checklist | metric | sprint | pillar",
-  "color": "...",
-  "icon": "...",
+  "frameworkId": "roadmap | checklist | metric | sprint | pillar",
+  "visualStyleId": "book | paper | glass | editorial | minimal | dark-capsule | notebook",
   "milestones": [
     { "id": "...", "text": "...", "isCompleted": false }
   ],
-  "aiResponseText": "${isArabic ? "رسالة توضيحية قصيرة بالتعديل الذي تم" : "Brief sentence explaining the refinement"}"
+  "color": "...",
+  "icon": "...",
+  "aiResponseText": "${isArabic ? "رسالة توضيحية لما تم تعديله" : "Brief sentence explaining what was refined"}"
 }`;
 
     const userPrompt = `Refinement Instruction:
 """
-${args.instruction}
+${args.instruction.trim()}
 """
 
-Return the refined JSON now.`;
+Return the refined goal JSON now.`;
 
-    const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
-    const parsed = JSON.parse(rawJson);
+    let parsed: any = {};
+    try {
+      const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
+      parsed = JSON.parse(rawJson);
+    } catch (e) {
+      console.warn("refineGoalIntent error:", e);
+      parsed = {};
+    }
+
+    const finalTitle = parsed.goalTitle || goalTitle;
+    const finalDesc = parsed.description !== undefined ? parsed.description : description;
+    const finalCat = parsed.category || category;
+    const finalFw = parsed.frameworkId || parsed.templateId || frameworkId;
+    const finalStyle = parsed.visualStyleId || visualStyleId;
+    const finalMilestones = Array.isArray(parsed.milestones)
+      ? parsed.milestones.map((m: any, idx: number) => ({
+          id: m.id || `m_${Date.now()}_${idx}`,
+          text: typeof m === "string" ? m : m.text || "",
+          isCompleted: Boolean(m.isCompleted),
+        }))
+      : milestones;
 
     return {
-      goalTitle: parsed.goalTitle || args.currentDraft.goalTitle,
-      description:
-        parsed.description !== undefined ? parsed.description : args.currentDraft.description,
-      category: parsed.category || args.currentDraft.category,
-      templateId: parsed.templateId || args.currentDraft.templateId,
-      color: parsed.color || args.currentDraft.color || "#EA580C",
-      icon: parsed.icon || args.currentDraft.icon || "flag-outline",
-      milestones: Array.isArray(parsed.milestones)
-        ? parsed.milestones.map((m: any, idx: number) => ({
-            id: m.id || `m_${Date.now()}_${idx}`,
-            text: typeof m === "string" ? m : m.text || "",
-            isCompleted: Boolean(m.isCompleted),
-          }))
-        : args.currentDraft.milestones,
+      goalTitle: finalTitle,
+      description: finalDesc,
+      category: finalCat,
+      templateId: finalFw,
+      frameworkId: finalFw,
+      visualStyleId: finalStyle,
+      milestones: finalMilestones,
+      color: parsed.color || draft.color || "#2563EB",
+      icon: parsed.icon || draft.icon || "flag-outline",
       aiResponseText:
         parsed.aiResponseText ||
         (isArabic ? "تم تحديث الهدف وفقاً لطلبك." : "Goal updated according to your instruction."),
@@ -1140,8 +1350,102 @@ Return the refined JSON now.`;
 });
 
 /**
- * On-Demand Sub-Goals Generation.
- * Only called when the user explicitly chooses to create sub-goals and instructs the AI about them.
+ * Conversational Goal Expansion Action.
+ * Breaks down goal into milestones, sub-goals, or project suggestions on demand.
+ * Implements Section 17-21 of Nizam_AI_Goals_Implementation_Blueprint.md.
+ */
+export const expandGoalIntent = action({
+  args: {
+    goalTitle: v.string(),
+    description: v.optional(v.string()),
+    category: v.string(),
+    timeframe: v.string(), // "day" | "month" | "year"
+    userInstructions: v.string(), // e.g. "suggest milestones", "break into 4 weeks", "add Firebase"
+    currentMilestones: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          isCompleted: v.boolean(),
+        })
+      )
+    ),
+    language: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const isArabic = args.language === "ar";
+    const existingMs = args.currentMilestones || [];
+
+    const systemPrompt = `You are an elite productivity architect in Nizam.
+The user wants to expand their goal with structured milestones, sub-goals, or project candidates.
+
+Goal Context:
+- Title: "${args.goalTitle}"
+- Description: "${args.description || ""}"
+- Category: "${args.category}"
+- Timeframe: ${args.timeframe}
+- Existing Milestones: ${JSON.stringify(existingMs)}
+- Language: ${isArabic ? "Arabic (العربية الفصحى)" : "English"}
+
+RULES:
+1. Base all expansion items STRICTLY on the user's instructions and the core goal outcome.
+2. Provide 2 to 5 high-impact, realistic milestones or concrete sub-goals.
+3. If the user mentions existing items, PRESERVE them and append/modify accordingly.
+4. Detect any deliverable that qualifies as a standalone project (e.g. apps, websites, launches) and suggest them in "suggestedProjects".
+5. Return valid JSON only:
+{
+  "milestones": [
+    { "id": "m1", "text": "Specific milestone outcome", "isCompleted": false }
+  ],
+  "suggestedProjects": [
+    { "name": "Project Name", "description": "Scope description" }
+  ],
+  "aiResponseText": "${isArabic ? "رسالة توضح الهيكل المقترح" : "Brief explanation of the suggested structure"}"
+}`;
+
+    const userPrompt = `User Expansion Request:
+"""
+${args.userInstructions.trim()}
+"""
+
+Expand this goal now in valid JSON.`;
+
+    let parsed: any = {};
+    try {
+      const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
+      parsed = JSON.parse(rawJson);
+    } catch (e) {
+      console.warn("expandGoalIntent error:", e);
+      parsed = {};
+    }
+
+    const milestones = Array.isArray(parsed.milestones)
+      ? parsed.milestones.map((m: any, idx: number) => ({
+          id: m.id || `ms_${Date.now()}_${idx}`,
+          text: typeof m === "string" ? m : m.text || "",
+          isCompleted: Boolean(m.isCompleted),
+        }))
+      : existingMs;
+
+    const suggestedProjects = Array.isArray(parsed.suggestedProjects)
+      ? parsed.suggestedProjects.map((p: any) => ({
+          name: typeof p === "string" ? p : p.name || "",
+          description: p.description || "",
+        }))
+      : [];
+
+    return {
+      milestones,
+      suggestedProjects,
+      aiResponseText:
+        parsed.aiResponseText ||
+        (isArabic ? "تم تجهيز المراحل المقترحة لهدفك." : "Structure prepared for your goal."),
+    };
+  },
+});
+
+/**
+ * On-Demand Sub-Goals Generation (Backward Compatibility).
  */
 export const generateSubGoalsAction = action({
   args: {
@@ -1149,14 +1453,13 @@ export const generateSubGoalsAction = action({
     description: v.optional(v.string()),
     category: v.string(),
     timeframe: v.string(), // "day" | "month" | "year"
-    userInstructions: v.string(), // user's voice or text guidance
+    userInstructions: v.string(),
     language: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const isArabic = args.language === "ar";
     const systemPrompt = `You are an elite productivity coach and goal architect.
 The user wants to break down a specific goal into concrete, high-impact sub-goals / milestones.
-The user has provided their SPECIFIC instructions for this breakdown.
 
 Goal Details:
 - Goal: "${args.goalTitle}"
@@ -1167,25 +1470,22 @@ Goal Details:
 
 CRITICAL RULES:
 1. Base all sub-goals STRICTLY on the user's instructions regarding how they want this goal broken down.
-2. DO NOT generate generic boilerplate, filler tasks, or unrelated advice.
+2. DO NOT generate generic boilerplate or unrelated advice.
 3. Make each sub-goal a clear, concrete, outcome-oriented step (between 2 to 5 items).
-4. All text MUST be in ${isArabic ? "Arabic" : "English"}.
-
-Strict JSON Output Schema:
+4. Output JSON:
 {
   "milestones": [
-    { "id": "m1", "text": "Specific, actionable milestone 1" },
-    { "id": "m2", "text": "Specific, actionable milestone 2" }
+    { "id": "m1", "text": "Specific, actionable milestone 1" }
   ],
-  "aiExplanation": "${isArabic ? "رسالة موجزة توضح ما تم صياغته وفقاً لتعليمات المستخدم" : "Short confirmation of how milestones were created"}"
+  "aiExplanation": "Brief message"
 }`;
 
-    const userPrompt = `User's Specific Instructions for Sub-Goals:
+    const userPrompt = `User Instructions for Sub-Goals:
 """
 ${args.userInstructions.trim()}
 """
 
-Generate the tailored sub-goals JSON now.`;
+Generate the sub-goals JSON now.`;
 
     const rawJson = await callLLMForGoals(systemPrompt, userPrompt);
     const parsed = JSON.parse(rawJson);
@@ -1205,6 +1505,8 @@ Generate the tailored sub-goals JSON now.`;
 
 /**
  * Save Architect Goals directly to database in batch.
+ * Inserts into yearlyGoals and optionally links/updates monthlyBlueprints.
+ * Implements Section 48-50 of Nizam_AI_Goals_Implementation_Blueprint.md.
  */
 export const saveArchitectGoals = mutation({
   args: {
@@ -1217,9 +1519,13 @@ export const saveArchitectGoals = mutation({
         text: v.string(),
         description: v.optional(v.string()),
         category: v.string(),
+        categoryId: v.optional(v.id("projectCategories")),
+        subCategoryId: v.optional(v.id("projectSubCategories")),
+        projectId: v.optional(v.string()),
         color: v.optional(v.string()),
         icon: v.optional(v.string()),
         templateId: v.optional(v.string()),
+        visualStyleId: v.optional(v.string()),
         milestones: v.optional(
           v.array(
             v.object({
@@ -1239,6 +1545,10 @@ export const saveArchitectGoals = mutation({
 
     for (let i = 0; i < args.goals.length; i++) {
       const g = args.goals[i];
+      const sanitizedCategory = isGenericCategory(g.category)
+        ? deriveCategoryFromIntent(g.text)
+        : g.category;
+
       const id = await ctx.db.insert("yearlyGoals", {
         userId: args.userId,
         year: args.year,
@@ -1246,10 +1556,14 @@ export const saveArchitectGoals = mutation({
         day: args.day,
         text: g.text,
         description: g.description,
-        category: g.category,
-        color: g.color || "#EA580C",
+        category: sanitizedCategory,
+        categoryId: g.categoryId,
+        subCategoryId: g.subCategoryId,
+        projectId: g.projectId,
+        color: g.color || "#2563EB",
         icon: g.icon || "flag-outline",
         templateId: g.templateId || "roadmap",
+        visualStyleId: g.visualStyleId || "default",
         milestones: g.milestones,
         order: i,
         isCompleted: false,
@@ -1297,7 +1611,7 @@ export const saveArchitectGoals = mutation({
     return {
       success: true,
       addedGoals: createdIds.length,
+      createdIds,
     };
   },
 });
-
