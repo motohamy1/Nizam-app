@@ -5,7 +5,12 @@ import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
-import { createScrollStackStyles, CARD_ACCENTS, createCardFrame, CardAccent } from '@/assets/styles/scrollStack.styles';
+import { 
+  createScrollStackStyles, 
+  STACK_CARD_PALETTES, 
+  createMonthCardFrame, 
+  MonthPalette 
+} from '@/assets/styles/scrollStack.styles';
 import { Id } from '@/convex/_generated/dataModel';
 
 export interface ChecklistTaskItem {
@@ -29,6 +34,7 @@ interface ChecklistCardProps {
   onAddNewTask?: () => void;
   onAddChecklistItem?: () => void;
   onOpenChecklistItem?: (id: Id<"todos">) => void;
+  palette?: MonthPalette;
 }
 
 export const ChecklistCard: React.FC<ChecklistCardProps> = ({
@@ -42,26 +48,16 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   onAddNewTask,
   onAddChecklistItem,
   onOpenChecklistItem,
+  palette = STACK_CARD_PALETTES.checklist,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createCardFrame(CARD_ACCENTS.rose, isDarkMode, colors.secondaryText);
-
-  const getPriorityColor = (priority?: string) => {
-    const map: Record<string, CardAccent> = {
-      Urgent: CARD_ACCENTS.urgent,
-      High: CARD_ACCENTS.cream,
-      Medium: CARD_ACCENTS.mint,
-    };
-    const accent = map[priority || ''] || CARD_ACCENTS.rose;
-    const pf = createCardFrame(accent, isDarkMode, colors.secondaryText);
-    return { bg: pf.washBg, text: pf.fg };
-  };
+  const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   return (
-    <View style={[styles.card, { borderColor: frame.edge }]}>
+    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
       {/* Header - Tapping triggers scroll to full Tasks section */}
       <TouchableOpacity 
         style={styles.cardHeader} 
@@ -73,8 +69,8 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             <Ionicons name="checkmark-done" size={20} color={frame.badgeFg} />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={styles.cardTitle}>{t.todaysChecklist}</Text>
-            <Text style={styles.cardSubtitle}>
+            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.todaysChecklist}</Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
               {totalCount === 0
                 ? (isArabic ? 'لا توجد مهام مجدولة' : '0 tasks scheduled')
                 : `${doneCount}/${totalCount} ${t.tasksCompleted}`}
@@ -93,20 +89,28 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       {/* Body: Checklist Tasks with Internal Nested Scroll to Prevent Overflow */}
       {tasks.length === 0 ? (
         <View style={styles.emptyCardContent}>
-          <Ionicons name="sparkles-outline" size={28} color={frame.fg} />
-          <Text style={styles.emptyCardTitle}>{t.noTasksTodayChecklist}</Text>
+          <Ionicons name="sparkles-outline" size={28} color={frame.accent} />
+          <Text style={[styles.emptyCardTitle, { color: frame.text }]}>{t.noTasksTodayChecklist}</Text>
           {(onAddNewTask || onAddChecklistItem) && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {onAddNewTask && (
-                <TouchableOpacity style={[styles.emptyCardBtn, { borderColor: frame.border }]} onPress={onAddNewTask} activeOpacity={0.8}>
-                  <Ionicons name="add" size={16} color={frame.fg} />
-                  <Text style={[styles.emptyCardBtnText, { color: frame.fg }]}>{t.startTask}</Text>
+                <TouchableOpacity 
+                  style={[styles.emptyCardBtn, { backgroundColor: frame.pillBg, borderColor: frame.cardBorder }]} 
+                  onPress={onAddNewTask} 
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color={frame.text} />
+                  <Text style={[styles.emptyCardBtnText, { color: frame.text }]}>{t.startTask}</Text>
                 </TouchableOpacity>
               )}
               {onAddChecklistItem && (
-                <TouchableOpacity style={[styles.emptyCardBtn, { borderColor: frame.border }]} onPress={onAddChecklistItem} activeOpacity={0.8}>
-                  <Ionicons name="checkbox-outline" size={16} color={frame.fg} />
-                  <Text style={[styles.emptyCardBtnText, { color: frame.fg }]}>{t.addChecklistItemBtn}</Text>
+                <TouchableOpacity 
+                  style={[styles.emptyCardBtn, { backgroundColor: frame.pillBg, borderColor: frame.cardBorder }]} 
+                  onPress={onAddChecklistItem} 
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkbox-outline" size={16} color={frame.text} />
+                  <Text style={[styles.emptyCardBtnText, { color: frame.text }]}>{t.addChecklistItemBtn}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -127,10 +131,12 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           {tasks.map((task) => {
             const isDone = task.status === 'done';
             const isChecklistItem = task.kind === 'checklist';
-            const priorityTheme = getPriorityColor(task.priority);
 
             return (
-              <View key={task._id} style={styles.checklistItem}>
+              <View 
+                key={task._id} 
+                style={[styles.checklistItem, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}
+              >
                 <View style={styles.checklistItemLeft}>
                   {/* Interactive Checkbox */}
                   <TouchableOpacity
@@ -142,10 +148,11 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     style={[
                       styles.checkbox, 
                       isChecklistItem && { borderRadius: 11 },
-                      isDone && { backgroundColor: CARD_ACCENTS.rose.pastel, borderColor: CARD_ACCENTS.rose.pastel }
+                      { borderColor: frame.textMuted },
+                      isDone && { backgroundColor: frame.accent, borderColor: frame.accent }
                     ]}
                   >
-                    {isDone && <Ionicons name="checkmark" size={14} color={colors.secondaryText} />}
+                    {isDone && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                   </TouchableOpacity>
 
                   {/* Text: tasks open TaskDetailModal, checklist items open ChecklistItemModal */}
@@ -158,7 +165,11 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     activeOpacity={0.7}
                   >
                     <Text 
-                      style={[styles.checkItemText, isDone && styles.checkItemTextDone]}
+                      style={[
+                        styles.checkItemText, 
+                        { color: frame.text },
+                        isDone && { textDecorationLine: 'line-through', opacity: 0.45 }
+                      ]}
                       numberOfLines={1}
                     >
                       {task.text}
@@ -167,20 +178,20 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                 </View>
 
                 {isChecklistItem ? (
-                  <View style={[styles.kindDot, { backgroundColor: frame.washBg }]}>
+                  <View style={[styles.kindDot, { backgroundColor: frame.pillBg }]}>
                     <Ionicons
                       name={(task.linkedCount || 0) > 0 ? 'git-branch-outline' : 'list-outline'}
                       size={11}
-                      color={frame.fg}
+                      color={frame.text}
                     />
                     {(task.linkedCount || 0) > 0 && (
-                      <Text style={[styles.kindDotText, { color: frame.fg }]}>{task.linkedCount}</Text>
+                      <Text style={[styles.kindDotText, { color: frame.text }]}>{task.linkedCount}</Text>
                     )}
                   </View>
                 ) : (
                   task.priority && (
-                    <View style={[styles.priorityTag, { backgroundColor: priorityTheme.bg }]}>
-                      <Text style={[styles.priorityTagText, { color: priorityTheme.text }]}>
+                    <View style={[styles.priorityTag, { backgroundColor: frame.pillBg }]}>
+                      <Text style={[styles.priorityTagText, { color: frame.text }]}>
                         {task.priority}
                       </Text>
                     </View>
@@ -195,34 +206,34 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       {/* Add Checklist Item entry point */}
       {onAddChecklistItem && tasks.length > 0 && (
         <TouchableOpacity
-          style={styles.checklistAddRow}
+          style={[styles.checklistAddRow, { borderColor: frame.textMuted, backgroundColor: isDarkMode ? undefined : frame.pillBg }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onAddChecklistItem();
           }}
           activeOpacity={0.75}
         >
-          <Ionicons name="add" size={14} color={frame.fg} />
-          <Text style={[styles.checklistAddRowText, { color: frame.fg }]}>{t.addChecklistItemBtn}</Text>
+          <Ionicons name="add" size={14} color={frame.text} />
+          <Text style={[styles.checklistAddRowText, { color: frame.text }]}>{t.addChecklistItemBtn}</Text>
         </TouchableOpacity>
       )}
 
       {/* Footer: Quick Manage Icon & Scroll Hint */}
-      <View style={styles.cardFooter}>
+      <View style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}>
         <TouchableOpacity 
           style={styles.footerActionBtn}
           onPress={onQuickManage}
           activeOpacity={0.7}
         >
-          <Ionicons name="create-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.footerActionText}>{t.manageTask}</Text>
+          <Ionicons name="create-outline" size={16} color={frame.footerText} />
+          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.manageTask}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           onPress={onScrollToTasksSection}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Text style={[styles.footerHintText, { color: frame.fg }]}>{t.tapToScrollTasks} ↓</Text>
+          <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>{t.tapToScrollTasks} ↓</Text>
         </TouchableOpacity>
       </View>
     </View>

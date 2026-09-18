@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
-import { createScrollStackStyles, CARD_ACCENTS, createCardFrame } from '@/assets/styles/scrollStack.styles';
+import { 
+  createScrollStackStyles, 
+  STACK_CARD_PALETTES, 
+  createMonthCardFrame, 
+  MonthPalette 
+} from '@/assets/styles/scrollStack.styles';
 
 interface MonthlyOverviewCardProps {
   monthName: string;
@@ -13,6 +18,7 @@ interface MonthlyOverviewCardProps {
   totalTasks: number;
   activeGoalsCount: number;
   onPress: () => void;
+  palette?: MonthPalette;
 }
 
 export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
@@ -22,12 +28,13 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
   totalTasks,
   activeGoalsCount,
   onPress,
+  palette = STACK_CARD_PALETTES.monthly,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createCardFrame(CARD_ACCENTS.cream, isDarkMode, colors.secondaryText);
+  const frame = createMonthCardFrame(palette, isDarkMode, colors);
   const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   const handlePress = () => {
@@ -35,7 +42,7 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
   };
 
   return (
-    <View style={[styles.card, { borderColor: frame.edge }]}>
+    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
       {/* Header */}
       <TouchableOpacity 
         style={styles.cardHeader} 
@@ -47,16 +54,16 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
             <Ionicons name="stats-chart" size={20} color={frame.badgeFg} />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={styles.cardTitle}>{t.monthlyOverview}</Text>
-            <Text style={styles.cardSubtitle}>
+            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.monthlyOverview}</Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
               {monthName} {year}
             </Text>
           </View>
         </View>
 
-        <View style={styles.headerPill}>
-          <Ionicons name="open-outline" size={14} color={colors.primary} />
-          <Text style={styles.headerPillText}>{t.tabPlanner}</Text>
+        <View style={[styles.headerPill, { backgroundColor: frame.pillBg }]}>
+          <Ionicons name="open-outline" size={14} color={frame.pillFg} />
+          <Text style={[styles.headerPillText, { color: frame.pillFg }]}>{t.tabPlanner}</Text>
         </View>
       </TouchableOpacity>
 
@@ -67,30 +74,30 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
         activeOpacity={0.85}
       >
         {/* Stat 1: Tasks Completion */}
-        <View style={styles.monthlyStatItem}>
-          <Text style={styles.monthlyStatNumber}>{completionRate}%</Text>
-          <Text style={styles.monthlyStatLabel}>
+        <View style={[styles.monthlyStatItem, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}>
+          <Text style={[styles.monthlyStatNumber, { color: frame.text }]}>{completionRate}%</Text>
+          <Text style={[styles.monthlyStatLabel, { color: frame.textMuted }]}>
             {completedTasks}/{totalTasks} {t.completed}
           </Text>
-          <View style={styles.monthlyProgressBarContainer}>
+          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : frame.pillBg }]}>
             <View 
               style={[
                 styles.monthlyProgressBarFill, 
-                { width: `${Math.min(100, Math.max(0, completionRate))}%`, backgroundColor: isDarkMode ? CARD_ACCENTS.lavender.pastel : CARD_ACCENTS.lavender.ink }
+                { width: `${Math.min(100, Math.max(0, completionRate))}%`, backgroundColor: frame.accent }
               ]} 
             />
           </View>
         </View>
 
         {/* Stat 2: Active Goals */}
-        <View style={styles.monthlyStatItem}>
-          <Text style={[styles.monthlyStatNumber, { color: frame.fg }]}>{activeGoalsCount}</Text>
-          <Text style={styles.monthlyStatLabel}>{t.activeGoals}</Text>
-          <View style={styles.monthlyProgressBarContainer}>
+        <View style={[styles.monthlyStatItem, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}>
+          <Text style={[styles.monthlyStatNumber, { color: frame.accent }]}>{activeGoalsCount}</Text>
+          <Text style={[styles.monthlyStatLabel, { color: frame.textMuted }]}>{t.activeGoals}</Text>
+          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : frame.pillBg }]}>
             <View 
               style={[
                 styles.monthlyProgressBarFill, 
-                { width: activeGoalsCount > 0 ? '75%' : '0%', backgroundColor: frame.fg }
+                { width: activeGoalsCount > 0 ? '75%' : '0%', backgroundColor: frame.accent }
               ]} 
             />
           </View>
@@ -99,16 +106,16 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
 
       {/* Footer */}
       <TouchableOpacity 
-        style={styles.cardFooter}
+        style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
         <View style={styles.footerActionBtn}>
-          <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.footerActionText}>{t.tapToOpenPlanner}</Text>
+          <Ionicons name="calendar-outline" size={16} color={frame.footerText} />
+          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.tapToOpenPlanner}</Text>
         </View>
 
-        <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={colors.primary} />
+        <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={frame.text} />
       </TouchableOpacity>
     </View>
   );

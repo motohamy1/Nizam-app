@@ -83,15 +83,17 @@ export const WavyBorder = ({
   accentColor,
   style,
 }: WavyBorderProps) => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const [layoutWidth, setLayoutWidth] = useState(0);
 
+  if (isDarkMode || height <= 0) return null;
+
   const baseFill = fillColor || colors.surface;
+  if (baseFill === 'transparent') return null;
+
   // No accent tint on the layered waves; the border line is removed
   const primaryWave = waveColor || 'transparent';
   const secondaryWave = accentColor || 'transparent';
-
-  if (height <= 0) return null;
 
   const w = layoutWidth;
   const h = height;
@@ -203,8 +205,11 @@ export const WavyHeader = ({
   waveColor,
   accentColor,
 }: WavyHeaderProps) => {
-  const { colors } = useTheme();
-  const headerBg = backgroundColor || colors.surface;
+  const { colors, isDarkMode } = useTheme();
+  // In dark mode, ensure header is transparent so background atmospheric gradient flows through seamlessly
+  const headerBg = isDarkMode
+    ? (backgroundColor === colors.bg ? 'transparent' : (backgroundColor || 'transparent'))
+    : (backgroundColor || colors.surface);
 
   return (
     <View style={[styles.headerWrapper, containerStyle]}>
@@ -213,13 +218,15 @@ export const WavyHeader = ({
         {children}
       </View>
 
-      {/* Static Layered Wavy Bottom Edge */}
-      <WavyBorder
-        height={waveHeight}
-        fillColor={headerBg}
-        waveColor={waveColor}
-        accentColor={accentColor}
-      />
+      {/* Static Layered Wavy Bottom Edge (shown in light mode only) */}
+      {!isDarkMode && (
+        <WavyBorder
+          height={waveHeight}
+          fillColor={headerBg}
+          waveColor={waveColor}
+          accentColor={accentColor}
+        />
+      )}
     </View>
   );
 };

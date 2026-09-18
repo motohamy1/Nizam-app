@@ -1,9 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
-import Svg, { Defs, RadialGradient, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import useTheme from '@/hooks/useTheme';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface ScreenBackgroundProps {
   children?: React.ReactNode;
@@ -13,63 +11,55 @@ interface ScreenBackgroundProps {
 export const ScreenBackground: React.FC<ScreenBackgroundProps> = ({ children, style }) => {
   const { colors, isDarkMode } = useTheme();
 
+  if (!isDarkMode) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }, style]}>
+        {children}
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }, style]}>
-      {isDarkMode && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Svg
-            width="100%"
-            height="100%"
-            viewBox={`0 0 ${SCREEN_WIDTH} ${SCREEN_HEIGHT}`}
-            style={StyleSheet.absoluteFill}
-          >
-            <Defs>
-              {/* Primary Top-Right Diagonal Ambient Glow (matches reference image atmospheric light) */}
-              <RadialGradient
-                id="ambientTopRightGlow"
-                cx="85%"
-                cy="12%"
-                rx="65%"
-                ry="45%"
-                fx="85%"
-                fy="12%"
-                gradientUnits="userSpaceOnUse"
-              >
-                <Stop offset="0%" stopColor="#dbd4fd" stopOpacity="0.10" />
-                <Stop offset="35%" stopColor="#c7d2fe" stopOpacity="0.06" />
-                <Stop offset="70%" stopColor="#818cf8" stopOpacity="0.02" />
-                <Stop offset="100%" stopColor={colors.bg} stopOpacity="0" />
-              </RadialGradient>
+    <View style={[styles.container, { backgroundColor: '#050704' }, style]}>
+      {/* 1. Base Dark Forest Atmosphere: deep emerald-olive top fading into rich obsidian floor */}
+      <LinearGradient
+        colors={['#182B14', '#12200F', '#0D160B', '#070A06', '#050704']}
+        locations={[0, 0.20, 0.42, 0.70, 1.0]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-              {/* Secondary Soft Mid-Body Sheen */}
-              <RadialGradient
-                id="ambientMidSheen"
-                cx="18%"
-                cy="52%"
-                rx="50%"
-                ry="35%"
-                fx="18%"
-                fy="52%"
-                gradientUnits="userSpaceOnUse"
-              >
-                <Stop offset="0%" stopColor="#defef9" stopOpacity="0.035" />
-                <Stop offset="60%" stopColor={colors.bg} stopOpacity="0" />
-              </RadialGradient>
+      {/* 2. Top Header & Status Bar Aurora Glow (matches reference image top glow) */}
+      <LinearGradient
+        colors={['rgba(72, 128, 48, 0.45)', 'rgba(38, 72, 26, 0.25)', 'rgba(16, 32, 11, 0.08)', 'transparent']}
+        locations={[0, 0.22, 0.52, 1.0]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.42 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-              {/* Soft Diagonal Studio Sheen */}
-              <LinearGradient id="topSheen" x1="100%" y1="0%" x2="0%" y2="55%">
-                <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.03" />
-                <Stop offset="45%" stopColor={colors.bg} stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
+      {/* 3. Top-Right Ambient Sheen (matches reference image diagonal lighting) */}
+      <LinearGradient
+        colors={['rgba(110, 185, 75, 0.20)', 'rgba(45, 85, 30, 0.08)', 'transparent']}
+        locations={[0, 0.35, 1.0]}
+        start={{ x: 1.0, y: 0 }}
+        end={{ x: 0.3, y: 0.38 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-            {/* Ambient Lighting Layers */}
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#ambientTopRightGlow)" />
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#ambientMidSheen)" />
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#topSheen)" />
-          </Svg>
-        </View>
-      )}
+      {/* 4. Top-Left Soft Ambient Sheen */}
+      <LinearGradient
+        colors={['rgba(55, 105, 38, 0.20)', 'rgba(22, 45, 15, 0.08)', 'transparent']}
+        locations={[0, 0.38, 1.0]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.65, y: 0.35 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
       {children}
     </View>
   );

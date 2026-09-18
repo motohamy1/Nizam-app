@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -2220,7 +2221,7 @@ const Projects: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.bg} />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
       <SafeAreaView style={styles.safeArea}>
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           {layer === 'categories' ? (

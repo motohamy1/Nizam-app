@@ -5,7 +5,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
   // Light register: pastel lime controls read as washed-out on white,
   // so they flip to the lime ink with white content marks.
   const isDark = colors.statusBarStyle === 'light-content';
-  const limeFill = isDark ? '#e5f19d' : '#A4E200';
+  const limeFill = isDark ? '#C8F135' : '#A4E200';
   const limeMark = '#16270E';
   const styles = StyleSheet.create({
     container: {

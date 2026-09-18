@@ -1,15 +1,15 @@
-import React, { Children, useState, useCallback, useRef } from 'react';
+import React, { Children, useState, useCallback, useRef, useMemo } from 'react';
 import { 
   View, 
   TouchableOpacity, 
   StyleProp, 
   ViewStyle, 
-  PanResponder 
+  PanResponder,
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
-import { createScrollStackStyles } from '@/assets/styles/scrollStack.styles';
+import { createScrollStackStyles, STACK_CARD_PALETTE_LIST } from '@/assets/styles/scrollStack.styles';
 import ScrollStackItem from './ScrollStackItem';
 
 interface ScrollStackProps {
@@ -17,15 +17,18 @@ interface ScrollStackProps {
   style?: StyleProp<ViewStyle>;
   onCardChange?: (index: number) => void;
   isArabic?: boolean;
+  /** Title shown on each peeking card's tab, in children order. */
+  labels?: string[];
 }
 
-const SWIPE_THRESHOLD = 35;
+const SWIPE_THRESHOLD = 15;
 
 export const ScrollStack: React.FC<ScrollStackProps> = ({
   children,
   style,
   onCardChange,
   isArabic = false,
+  labels = [],
 }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
@@ -38,81 +41,76 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
   activeIndexRef.current = activeIndex;
 
   const goToCard = useCallback((targetIndex: number) => {
-    const nextIdx = (targetIndex + totalCards) % totalCards;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveIndex(nextIdx);
-    onCardChange?.(nextIdx);
+    const nextIdx = ((targetIndex % totalCards) + totalCards) % totalCards;
+    if (nextIdx !== activeIndexRef.current) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setActiveIndex(nextIdx);
+      onCardChange?.(nextIdx);
+    }
   }, [totalCards, onCardChange]);
 
-  // PanResponder to handle horizontal swipe gestures on the card deck
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Capture swipe if horizontal movement is dominant
-        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const isSwipeLeft = gestureState.dx < -SWIPE_THRESHOLD;
-        const isSwipeRight = gestureState.dx > SWIPE_THRESHOLD;
-
-        const current = activeIndexRef.current;
-
-        if (isArabic) {
-          if (isSwipeRight) {
+  // Vertical swipe deck (same gesture model as the planner month cards):
+  // swipe UP -> next card, swipe DOWN -> previous card.
+  // Taps are never stolen (no start-grab) so card content stays interactive.
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return Math.abs(gestureState.dy) > 12 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.4;
+        },
+        onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+          // Capture vertical swipes before the parent ScrollView intercepts them
+          return Math.abs(gestureState.dy) > 12 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.4;
+        },
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderRelease: (_, gestureState) => {
+          const current = activeIndexRef.current;
+          if (gestureState.dy < -SWIPE_THRESHOLD) {
             goToCard(current + 1);
-          } else if (isSwipeLeft) {
+          } else if (gestureState.dy > SWIPE_THRESHOLD) {
             goToCard(current - 1);
           }
-        } else {
-          if (isSwipeLeft) {
-            goToCard(current + 1);
-          } else if (isSwipeRight) {
-            goToCard(current - 1);
-          }
-        }
-      },
-    })
-  ).current;
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  if (totalCards === 0) return null;
 
   return (
     <View style={[styles.container, style]}>
       {/* Stacked Cards Container */}
       <View style={styles.stackContainer} {...panResponder.panHandlers}>
-        {cardArray.map((child, idx) => (
-          <ScrollStackItem
-            key={idx}
-            index={idx}
-            activeIndex={activeIndex}
-            totalCards={totalCards}
-            onSelect={() => goToCard(idx)}
-            isArabic={isArabic}
-          >
-            {child}
-          </ScrollStackItem>
-        ))}
+        {cardArray.map((child, idx) => {
+          const palette = STACK_CARD_PALETTE_LIST[idx % STACK_CARD_PALETTE_LIST.length];
+          return (
+            <ScrollStackItem
+              key={idx}
+              index={idx}
+              activeIndex={activeIndex}
+              totalCards={totalCards}
+              label={labels[idx]}
+              palette={palette}
+              onSelect={() => goToCard(idx)}
+              isArabic={isArabic}
+            >
+              {child}
+            </ScrollStackItem>
+          );
+        })}
       </View>
 
-      {/* Pagination & Next/Prev Controls */}
+      {/* Pagination Dots */}
       {totalCards > 1 && (
         <View style={styles.paginationRow}>
-          {/* Previous Arrow */}
-          <TouchableOpacity
-            onPress={() => goToCard(activeIndex - 1)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.6}
-            style={{ paddingHorizontal: 6 }}
-          >
-            <Ionicons 
-              name={isArabic ? "chevron-forward" : "chevron-back"} 
-              size={16} 
-              color={colors.textMuted} 
-            />
-          </TouchableOpacity>
-
-          {/* Dots */}
           {cardArray.map((_, dotIdx) => {
             const isActive = dotIdx === activeIndex;
+            const dotPalette = STACK_CARD_PALETTE_LIST[dotIdx % STACK_CARD_PALETTE_LIST.length];
             return (
               <TouchableOpacity
                 key={dotIdx}
@@ -122,24 +120,11 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
                 style={[
                   styles.paginationDot,
                   isActive && styles.paginationDotActive,
+                  isActive && !isDarkMode && { backgroundColor: dotPalette.accent },
                 ]}
               />
             );
           })}
-
-          {/* Next Arrow */}
-          <TouchableOpacity
-            onPress={() => goToCard(activeIndex + 1)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.6}
-            style={{ paddingHorizontal: 6 }}
-          >
-            <Ionicons 
-              name={isArabic ? "chevron-back" : "chevron-forward"} 
-              size={16} 
-              color={colors.textMuted} 
-            />
-          </TouchableOpacity>
         </View>
       )}
     </View>

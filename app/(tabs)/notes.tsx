@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,

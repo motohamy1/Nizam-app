@@ -15,6 +15,7 @@ const convex = new ConvexReactClient(convexUrl, {
 });
 
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
+import ScreenBackground from "@/components/ScreenBackground";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useOfflineFirstInit } from "@/hooks/useOfflineFirstInit";
@@ -23,7 +24,7 @@ import { useSyncManager } from "@/hooks/useSyncManager";
 import { useTranslation } from "@/utils/i18n";
 import { NOTIFICATION_CATEGORIES, Notifications, TIMER_ACTIONS } from "@/utils/notifications";
 import { useEffect } from "react";
-import { Platform, UIManager } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 // Register the background task (already defined in backgroundTask.ts via defineTask)
 
@@ -88,11 +89,13 @@ function RootLayoutContent() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="goals-detail" options={{ animation: 'slide_from_right', gestureEnabled: true }} />
-    </Stack>
+    <ScreenBackground style={StyleSheet.absoluteFill}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="goals-detail" options={{ animation: 'slide_from_right', gestureEnabled: true }} />
+      </Stack>
+    </ScreenBackground>
   );
 }
 

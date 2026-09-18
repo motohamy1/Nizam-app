@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback, StatusBar, Switch, Platform, Modal, TextInput, Alert, Image, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -180,7 +181,7 @@ const Settings = () => {
 
   return (
     <View style={[styles.container]}>
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.bg} />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
       <SafeAreaView style={styles.safeArea}>
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           <Animated.View entering={FadeInDown.duration(500)} style={[styles.header, { paddingTop: 4, paddingBottom: 4 }]}>
