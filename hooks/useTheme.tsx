@@ -94,35 +94,35 @@ export interface ColorScheme {
 }
 
 const darkColors: ColorScheme = {
-  bg: "#0E0F14",
-  surface: "#181922",
-  surfaceHigh: "#222432",
-  text: "#FFFFFF",
-  textMuted: "#8E92A0",
-  border: "#282A38",
-  primary: "#dbd4fd",
-  primaryText: "#181326",
-  secondary: "#e5f19d",
-  secondaryText: "#1a1a2e",
+  bg: "#060805",              // Deep dark forest obsidian matching reference base
+  surface: "#111510",         // Dark obsidian card surface with subtle olive undertone
+  surfaceHigh: "#181E15",     // Elevated card / modal surface
+  text: "#FFFFFF",            // Crisp white text
+  textMuted: "#8E9A86",       // Sophisticated muted olive-tinted neutral
+  border: "#1E261A",          // Subtle border matching dark forest tones
+  primary: "#C8F135",         // Neon Chartreuse / Electric Lime from reference!
+  primaryText: "#0D1405",     // Deep forest ink on electric lime (>12:1 contrast)
+  secondary: "#B8F628",       // Saturated Lime accent
+  secondaryText: "#0D1405",   // Deep forest ink
   success: "#10B981",
-  warning: "#f6e5c9",
+  warning: "#FBBF24",
   danger: "#FB7185",
-  info: "#defef9",
+  info: "#38BDF8",
   shadow: "#000000",
-  infoBg: "rgba(222, 254, 249, 0.15)",
+  infoBg: "rgba(56, 189, 248, 0.15)",
   successBg: "rgba(16, 185, 129, 0.15)",
-  warningBg: "rgba(246, 229, 201, 0.15)",
+  warningBg: "rgba(251, 191, 36, 0.15)",
   dangerBg: "rgba(251, 113, 133, 0.15)",
-  taskInProgressBg: "#1C1D2B",
-  taskNotStartedBg: "#181922",
-  taskDoneBg: "#141F1C",
-  taskPausedBg: "#1A1B24",
+  taskInProgressBg: "#172013",
+  taskNotStartedBg: "#121610",
+  taskDoneBg: "#0E170C",
+  taskPausedBg: "#151B12",
   taskNotDoneBg: "#221619",
   surfaceText: "#FFFFFF",
   statusBarStyle: "light-content" as const,
   palette: {
     cream: "#f6e5c9",
-    lime: "#e5f19d",
+    lime: "#C8F135",
     mint: "#defef9",
     lavender: "#dbd4fd",
   },
@@ -157,18 +157,18 @@ const darkColors: ColorScheme = {
       elevation: 10,
     },
     glow: {
-      shadowColor: "#dbd4fd",
+      shadowColor: "#C8F135",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.35,
       shadowRadius: 16,
       elevation: 8,
     },
     auroraGlow: {
-      shadowColor: "#defef9",
+      shadowColor: "#2E4E20",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 14,
-      elevation: 6,
+      shadowOpacity: 0.35,
+      shadowRadius: 16,
+      elevation: 8,
     },
   },
 };

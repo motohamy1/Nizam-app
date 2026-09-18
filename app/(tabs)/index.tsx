@@ -29,6 +29,7 @@ import { useDeadlineReminders } from "@/hooks/useDeadlineReminders";
 import { useScreenGuide } from "@/hooks/useScreenGuide";
 import { useTaskTimers } from "@/hooks/useTaskTimers";
 
+import ScreenBackground from "@/components/ScreenBackground";
 import Header from "@/components/Header";
 import DateBar from "@/components/DateBar";
 import ActionModal from "@/components/ActionModal";
@@ -528,7 +529,7 @@ const Index = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.bg} />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
       <SafeAreaView style={homeStyles.safeArea} edges={['top']}>
         <Header />
         
@@ -557,7 +558,16 @@ const Index = () => {
             />
 
             {/* 2. Hero Section: Scroll Stack Component */}
-            <ScrollStack isArabic={isArabic}>
+            <ScrollStack
+              isArabic={isArabic}
+              labels={[
+                t.todaysChecklist,
+                t.remindersAndEvents,
+                t.monthlyOverview,
+                t.productivityFocus,
+                t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'),
+              ]}
+            >
               {/* Card 1: Today's Checklist (tasks + checklist items) */}
               <ChecklistCard
                 tasks={todayChecklistTasks}

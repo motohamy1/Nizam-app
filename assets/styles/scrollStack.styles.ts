@@ -1,14 +1,66 @@
 import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet, Dimensions } from "react-native";
+import { MONTH_PALETTES, MonthPalette } from "@/components/MonthCreditCard";
+
+export type { MonthPalette };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Shared ScrollStack card accent system.
-// Each accent is a pair: a VIVID light tint (bright, colorful, 8:1+ WCAG on
-// the dark card surface #181922) and a deep INK of the same hue (for light
-// surfaces). Tints are used as solid gem fills and as text/icons on dark;
-// inks are used for text/icons and washes on light. Hues are spread ~60-90
-// deg apart so sibling cards never collide.
+// Reuse the planner's month palettes so the homepage stack feels like the same
+// visual system instead of introducing a second set of card colors.
+export const STACK_CARD_PALETTES = {
+  // Checklist: June's coral month card.
+  checklist: MONTH_PALETTES[5],
+  // Events: November's ice-cyan month card.
+  upcoming: MONTH_PALETTES[10],
+  // Monthly overview: October's amber month card.
+  monthly: MONTH_PALETTES[9],
+  // Productivity: March's mint month card.
+  productivity: MONTH_PALETTES[2],
+  // Insights: September's lavender month card.
+  insights: MONTH_PALETTES[8],
+} as const;
+
+export const STACK_CARD_PALETTE_LIST: MonthPalette[] = [
+  STACK_CARD_PALETTES.checklist,
+  STACK_CARD_PALETTES.upcoming,
+  STACK_CARD_PALETTES.monthly,
+  STACK_CARD_PALETTES.productivity,
+  STACK_CARD_PALETTES.insights,
+];
+
+/**
+ * Creates full styling tokens for a Month-palette-filled ScrollStack card.
+ * Mirrors the planner month-card treatment: the card fills with the month's
+ * palette.bg, while text, subtext, chips, rows, borders and footers are
+ * tonal overlays of the same palette.ink, and accent fills come from
+ * palette.accent — no separate color system.
+ */
+export const createMonthCardFrame = (
+  palette: MonthPalette,
+  _isDarkMode?: boolean,
+  _colors?: ColorScheme
+) => {
+  return {
+    cardBg: palette.bg,
+    cardBorder: `${palette.ink}20`,
+    text: palette.ink,
+    textMuted: `${palette.ink}A6`,
+    badgeBg: `${palette.ink}18`,
+    badgeFg: palette.ink,
+    pillBg: `${palette.ink}18`,
+    pillFg: palette.ink,
+    rowBg: `${palette.ink}0E`,
+    rowBorder: `${palette.ink}18`,
+    accent: palette.accent,
+    footerBorder: `${palette.ink}18`,
+    footerText: `${palette.ink}CC`,
+    ctaBg: palette.ink,
+    ctaFg: '#FFFFFF',
+  };
+};
+
+// Shared ScrollStack card accent system for legacy / fallback uses.
 export interface CardAccent {
   pastel: string;
   ink: string;
@@ -27,19 +79,13 @@ export const CARD_ACCENTS = {
 
 export type CardAccentName = keyof typeof CARD_ACCENTS;
 
-// solidInk = near-black used for marks on solid pastel fills (badges, pills,
-// checkboxes) — always high contrast in both modes.
 export const createCardFrame = (accent: CardAccent, isDarkMode: boolean, solidInk: string) => ({
-  // text/icons sitting directly on the card surface
   fg: isDarkMode ? accent.pastel : accent.ink,
-  // solid gem chip: same treatment in both modes, it is the card's signature
   badgeBg: accent.pastel,
   badgeFg: solidInk,
   pillBg: accent.pastel,
   pillFg: solidInk,
-  // translucent tint for chips/rows/banners
   washBg: isDarkMode ? `${accent.pastel}33` : `${accent.pastel}8C`,
-  // hairline accents: chip borders and the card edge tint
   border: isDarkMode ? `${accent.pastel}4D` : `${accent.ink}59`,
   edge: isDarkMode ? `${accent.pastel}38` : `${accent.pastel}B3`,
 });
@@ -49,13 +95,16 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     // Main Container
     container: {
       width: '100%',
-      marginVertical: 10,
+      marginTop: 34,
+      marginBottom: 10,
     },
     stackContainer: {
       width: '100%',
-      height: 295,
+      height: 336,
       paddingHorizontal: 16,
       position: 'relative',
+      justifyContent: 'center',
+      overflow: 'visible',
     },
     stackCardWrapper: {
       position: 'absolute',
@@ -64,12 +113,10 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       top: 0,
     },
     
-    // Card Base (20% increase: 215 -> 260px)
+    // Card Base (260px)
     card: {
-      backgroundColor: colors.surface,
       borderRadius: 24,
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
       padding: 18,
       height: 260,
       justifyContent: 'space-between',
@@ -101,13 +148,11 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     cardTitle: {
       fontSize: 17,
       fontWeight: '700',
-      color: colors.text,
       letterSpacing: -0.3,
     },
     cardSubtitle: {
       fontSize: 12,
       fontWeight: '500',
-      color: colors.textMuted,
     },
     headerPill: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -115,120 +160,259 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       gap: 4,
       paddingHorizontal: 10,
       paddingVertical: 5,
-      borderRadius: 12,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+      borderRadius: 20,
     },
     headerPillText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
-      color: colors.primary,
     },
 
-    // Card 1: Checklist Card
+    // Card 1: Checklist Specific Styles
     checklistScrollView: {
       flex: 1,
-      maxHeight: 155,
       marginVertical: 4,
     },
     checklistScrollContent: {
-      gap: 8,
-      paddingBottom: 4,
-    },
-    checklistContent: {
-      flex: 1,
-      justifyContent: 'center',
-      gap: 8,
-      marginVertical: 4,
+      gap: 6,
+      paddingVertical: 2,
     },
     checklistItem: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-      borderRadius: 14,
+      paddingVertical: 8,
       paddingHorizontal: 12,
-      paddingVertical: 9,
+      borderRadius: 12,
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
     },
     checklistItemLeft: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 10,
       flex: 1,
+      minWidth: 0,
     },
     checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 7,
-      borderWidth: 2,
-      borderColor: colors.textMuted,
-      justifyContent: 'center',
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      borderWidth: 1.5,
       alignItems: 'center',
-    },
-    checkboxChecked: {
-      backgroundColor: colors.success,
-      borderColor: colors.success,
+      justifyContent: 'center',
     },
     checkItemText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '600',
-      color: colors.text,
-      flex: 1,
-      textAlign: isArabic ? 'right' : 'left',
     },
-    checkItemTextDone: {
-      textDecorationLine: 'line-through',
-      color: colors.textMuted,
-      fontWeight: '400',
+    kindDot: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      marginLeft: 6,
     },
-    priorityTag: {
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: 8,
-    },
-    priorityTagText: {
+    kindDotText: {
       fontSize: 10,
       fontWeight: '700',
-      textTransform: 'uppercase',
     },
     checklistAddRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      paddingVertical: 7,
-      borderRadius: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.14)',
+      marginTop: 4,
       marginBottom: 2,
     },
     checklistAddRowText: {
-      fontSize: 12.5,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    priorityTag: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+      marginLeft: 6,
+    },
+    priorityTagText: {
+      fontSize: 11,
       fontWeight: '700',
     },
-    kindDot: {
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 7,
+
+    // Card 2: Upcoming Events Specific Styles
+    eventScrollView: {
+      flex: 1,
+      marginVertical: 4,
+    },
+    eventScrollContent: {
+      gap: 6,
+      paddingVertical: 2,
+    },
+    eventRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 3,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 10,
     },
-    kindDotText: {
-      fontSize: 10,
+    eventTimeChip: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      flexShrink: 0,
+    },
+    eventTimeText: {
+      fontSize: 11,
       fontWeight: '700',
     },
+    eventInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    eventTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    eventMeta: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 1,
+    },
+    eventMetaText: {
+      fontSize: 11,
+      fontWeight: '500',
+    },
+
+    // Card 3: Monthly Overview Specific Styles
+    monthlyStatsGrid: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginVertical: 10,
+    },
+    monthlyStatItem: {
+      flex: 1,
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      alignItems: isArabic ? 'flex-end' : 'flex-start',
+    },
+    monthlyStatNumber: {
+      fontSize: 22,
+      fontWeight: '800',
+      letterSpacing: -0.5,
+    },
+    monthlyStatLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 2,
+      marginBottom: 6,
+    },
+    monthlyProgressBarContainer: {
+      width: '100%',
+      height: 5,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    monthlyProgressBarFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+
+    // Card 4: Productivity & Focus Specific Styles
+    productivityRow: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginVertical: 10,
+    },
+    streakCard: {
+      flex: 1,
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 10,
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    streakIconCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    streakNumber: {
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    streakLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    focusActionBtn: {
+      flex: 1,
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      height: 54,
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      ...colors.shadows.sm,
+    },
+    focusActionBtnText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+
+    // Empty States inside Cards
+    emptyCardContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+    },
+    emptyCardTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    emptyCardBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 8,
+      borderWidth: 1,
+      marginTop: 4,
+    },
+    emptyCardBtnText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+
+    // Card Common Footer
     cardFooter: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingTop: 8,
       borderTopWidth: 1,
-      borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-      marginTop: 'auto',
-      height: 36,
+      paddingTop: 10,
+      marginTop: 6,
     },
     footerActionBtn: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -238,223 +422,29 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     footerActionText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.textMuted,
     },
     footerHintText: {
-      fontSize: 11,
-      fontWeight: '500',
-      color: colors.primary,
-    },
-
-    // Card 2: Upcoming Events
-    eventScrollView: {
-      flex: 1,
-      maxHeight: 155,
-      marginVertical: 4,
-    },
-    eventScrollContent: {
-      gap: 8,
-      paddingBottom: 4,
-    },
-    eventList: {
-      flex: 1,
-      gap: 8,
-      marginVertical: 4,
-    },
-    eventRow: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-      borderRadius: 14,
-      padding: 10,
-      borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-    },
-    eventTimeChip: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: isDarkMode ? 'rgba(142, 167, 233, 0.15)' : 'rgba(92, 107, 192, 0.1)',
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      borderRadius: 10,
-    },
-    eventTimeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.primary,
-    },
-    eventInfo: {
-      flex: 1,
-      minWidth: 0,
-      marginHorizontal: 8,
-      justifyContent: 'center',
-    },
-    eventTitle: {
-      fontSize: 13.5,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: isArabic ? 'right' : 'left',
-      flex: 1,
-      flexShrink: 1,
-    },
-    eventMeta: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      gap: 5,
-      marginTop: 2,
-      minWidth: 0,
-    },
-    eventMetaText: {
-      fontSize: 11,
-      color: colors.textMuted,
-    },
-
-    // Card 3: Monthly Overview
-    monthlyStatsGrid: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: 12,
-      marginVertical: 6,
-    },
-    monthlyStatItem: {
-      flex: 1,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-      padding: 12,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-      alignItems: isArabic ? 'flex-end' : 'flex-start',
-    },
-    monthlyStatNumber: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    monthlyStatLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    monthlyProgressBarContainer: {
-      width: '100%',
-      height: 6,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-      borderRadius: 3,
-      marginTop: 8,
-      overflow: 'hidden',
-    },
-    monthlyProgressBarFill: {
-      height: '100%',
-      borderRadius: 3,
-    },
-
-    // Card 4: Productivity Tracker
-    productivityRow: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 14,
-      marginVertical: 6,
-    },
-    streakCard: {
-      flex: 1,
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: isDarkMode ? 'rgba(229, 241, 157, 0.10)' : 'rgba(84, 118, 0, 0.08)',
-      padding: 14,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(229, 241, 157, 0.30)' : 'rgba(84, 118, 0, 0.28)',
-    },
-    streakIconCircle: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: isDarkMode ? '#e5f19d' : colors.secondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    streakNumber: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    streakLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textMuted,
-    },
-    focusActionBtn: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: isDarkMode ? '#dbd4fd' : '#C7C2FF',
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderRadius: 18,
-      ...colors.shadows.sm,
-    },
-    focusActionBtnText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#23173D',
-    },
-
-    // Empty State Inside Cards
-    emptyCardContent: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: 12,
-      gap: 6,
-    },
-    emptyCardTitle: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textMuted,
-      textAlign: 'center',
-    },
-    emptyCardBtn: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 12,
-      backgroundColor: isDarkMode ? 'rgba(142, 167, 233, 0.15)' : 'rgba(92, 107, 192, 0.1)',
-      marginTop: 4,
-    },
-    emptyCardBtnText: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.primary,
     },
 
-    // Pagination Dots
+    // Pagination Dots & Indicators
     paginationRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
+      flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
-      marginTop: 10,
+      marginTop: 24,
     },
     paginationDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
       backgroundColor: colors.border,
     },
     paginationDotActive: {
-      width: 18,
-      backgroundColor: colors.primary,
+      width: 22,
+      borderRadius: 5,
     },
 
     // Event Management Modal
@@ -676,3 +666,5 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     },
   });
 };
+
+export default createScrollStackStyles;

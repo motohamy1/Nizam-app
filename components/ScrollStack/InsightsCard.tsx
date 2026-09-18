@@ -5,27 +5,33 @@ import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
-import { createScrollStackStyles, CARD_ACCENTS, createCardFrame } from '@/assets/styles/scrollStack.styles';
+import { 
+  createScrollStackStyles, 
+  STACK_CARD_PALETTES, 
+  createMonthCardFrame, 
+  MonthPalette 
+} from '@/assets/styles/scrollStack.styles';
 
 interface InsightsCardProps {
   insights: any;
   onPress: () => void;
+  palette?: MonthPalette;
 }
 
 export const InsightsCard: React.FC<InsightsCardProps> = ({
   insights,
   onPress,
+  palette = STACK_CARD_PALETTES.insights,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const baseStyles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createCardFrame(CARD_ACCENTS.lavender, isDarkMode, colors.secondaryText);
+  const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   const productivity = insights?.productivityScore ?? 85;
   const balance = insights?.balanceScore ?? 78;
   const streak = insights?.consistencyStreak ?? 0;
-  const stress = insights?.stressLevel ?? 20;
   const neglectedCount = insights?.neglectedTopics?.length ?? 0;
 
   const getScoreColor = (score: number) => {
@@ -40,7 +46,7 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
   };
 
   return (
-    <View style={[baseStyles.card, { borderColor: frame.edge }]}>
+    <View style={[baseStyles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
       {/* Header */}
       <TouchableOpacity
         style={baseStyles.cardHeader}
@@ -57,8 +63,10 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
             <Ionicons name="analytics" size={20} color={frame.badgeFg} />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={baseStyles.cardTitle}>{t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights & Wellbeing')}</Text>
-            <Text style={baseStyles.cardSubtitle}>
+            <Text style={[baseStyles.cardTitle, { color: frame.text }]}>
+              {t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights & Wellbeing')}
+            </Text>
+            <Text style={[baseStyles.cardSubtitle, { color: frame.textMuted }]}>
               {productivity}% {isArabic ? 'درجة الإنتاجية' : 'Productivity Score'}
             </Text>
           </View>
@@ -78,22 +86,22 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
         onPress={handlePress}
         activeOpacity={0.85}
       >
-        <View style={[styles.metricPill, { backgroundColor: isDarkMode ? '#1F222A' : '#F4F5F8' }]}>
+        <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
           <View style={[styles.miniDot, { backgroundColor: getScoreColor(productivity) }]} />
-          <Text style={[styles.metricVal, { color: colors.text }]}>{productivity}%</Text>
-          <Text style={[styles.metricLbl, { color: colors.textMuted }]}>{isArabic ? 'إنتاجية' : 'Productivity'}</Text>
+          <Text style={[styles.metricVal, { color: frame.text }]}>{productivity}%</Text>
+          <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'إنتاجية' : 'Productivity'}</Text>
         </View>
 
-        <View style={[styles.metricPill, { backgroundColor: isDarkMode ? '#1F222A' : '#F4F5F8' }]}>
+        <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
           <View style={[styles.miniDot, { backgroundColor: getScoreColor(balance) }]} />
-          <Text style={[styles.metricVal, { color: colors.text }]}>{balance}%</Text>
-          <Text style={[styles.metricLbl, { color: colors.textMuted }]}>{isArabic ? 'توازن' : 'Balance'}</Text>
+          <Text style={[styles.metricVal, { color: frame.text }]}>{balance}%</Text>
+          <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'توازن' : 'Balance'}</Text>
         </View>
 
-        <View style={[styles.metricPill, { backgroundColor: isDarkMode ? '#1F222A' : '#F4F5F8' }]}>
+        <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
           <View style={[styles.miniDot, { backgroundColor: colors.warning }]} />
-          <Text style={[styles.metricVal, { color: colors.text }]}>{streak}d</Text>
-          <Text style={[styles.metricLbl, { color: colors.textMuted }]}>{isArabic ? 'استمرار' : 'Streak'}</Text>
+          <Text style={[styles.metricVal, { color: frame.text }]}>{streak}d</Text>
+          <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'استمرار' : 'Streak'}</Text>
         </View>
       </TouchableOpacity>
 
@@ -105,13 +113,13 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
           style={[
             styles.alertBanner,
             {
-              backgroundColor: isDarkMode ? 'rgba(234, 179, 8, 0.12)' : 'rgba(234, 179, 8, 0.14)',
-              borderColor: isDarkMode ? 'rgba(234, 179, 8, 0.25)' : 'rgba(234, 179, 8, 0.3)',
+              backgroundColor: frame.pillBg,
+              borderColor: frame.cardBorder,
             },
           ]}
         >
-          <Ionicons name="alert-circle-outline" size={16} color={isDarkMode ? '#fef08a' : '#854d0e'} />
-          <Text style={[styles.alertText, { color: isDarkMode ? '#fef08a' : '#854d0e' }]} numberOfLines={1}>
+          <Ionicons name="alert-circle-outline" size={16} color={frame.text} />
+          <Text style={[styles.alertText, { color: frame.text }]} numberOfLines={1}>
             {neglectedCount} {isArabic ? 'مجالات تحتاج إلى انتباه اليوم' : 'areas need attention today'}
           </Text>
         </TouchableOpacity>
@@ -122,13 +130,13 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
           style={[
             styles.alertBanner,
             {
-              backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.12)',
-              borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.25)',
+              backgroundColor: frame.pillBg,
+              borderColor: frame.cardBorder,
             },
           ]}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color="#22c55e" />
-          <Text style={[styles.alertText, { color: isDarkMode ? '#86efac' : '#15803d' }]} numberOfLines={1}>
+          <Ionicons name="checkmark-circle-outline" size={16} color={frame.accent} />
+          <Text style={[styles.alertText, { color: frame.text }]} numberOfLines={1}>
             {isArabic ? 'كل مجالات التركيز متوازنة بشكل ممتاز' : 'All focus topics are on track'}
           </Text>
         </TouchableOpacity>
@@ -136,18 +144,18 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
 
       {/* Footer */}
       <TouchableOpacity 
-        style={baseStyles.cardFooter}
+        style={[baseStyles.cardFooter, { borderTopColor: frame.footerBorder }]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
         <View style={baseStyles.footerActionBtn}>
-          <Ionicons name="arrow-forward" size={14} color={frame.fg} />
-          <Text style={[baseStyles.footerActionText, { color: frame.fg }]}>
+          <Ionicons name="arrow-forward" size={14} color={frame.footerText} />
+          <Text style={[baseStyles.footerActionText, { color: frame.footerText }]}>
             {isArabic ? 'عرض التقرير الكامل ورادار التركيز' : 'View Full Insights & Radar'}
           </Text>
         </View>
 
-        <Text style={baseStyles.footerHintText}>
+        <Text style={[baseStyles.footerHintText, { color: frame.text, fontWeight: '700' }]}>
           {isArabic ? 'تحديث يومي' : 'Daily Sync'}
         </Text>
       </TouchableOpacity>

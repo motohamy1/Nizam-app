@@ -1,3 +1,4 @@
+import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -1481,7 +1482,7 @@ const Planner = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
 
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.bg} />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
       <SafeAreaView style={styles.safeArea}>
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           <View style={[styles.header, { paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>

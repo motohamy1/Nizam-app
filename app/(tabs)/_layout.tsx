@@ -22,7 +22,7 @@ import ScreenBackground from '@/components/ScreenBackground';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // Colors & Dimensions matching reference
-const ACTIVE_ACCENT = '#e5f19d';
+const ACTIVE_ACCENT = '#C8F135';
 const ACTIVE_INK = '#101116';
 const DOCK_HEIGHT = 60;
 const DOCK_CORNER = 26;
@@ -450,7 +450,7 @@ const TabLayout = () => {
 
   const paddingBottom = Math.max(insets.bottom, 0);
   const dockHeight = DOCK_HEIGHT + paddingBottom;
-  const dockFill = isDarkMode ? '#16171B' : '#FFFFFF';
+  const dockFill = isDarkMode ? '#111510' : '#FFFFFF';
   const dockStroke = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
   // The floating dock bubble + punched icon knockout must share one color;
   // pastel lime on the white dock reads as 'off', so light uses the lime ink.
