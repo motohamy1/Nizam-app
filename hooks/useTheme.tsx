@@ -48,6 +48,7 @@ export interface ColorScheme {
   surface: string;
   surfaceHigh: string;
   text: string;
+  textSecondary: string;
   textMuted: string;
   border: string;
   primary: string;
@@ -58,6 +59,8 @@ export interface ColorScheme {
   warning: string;
   danger: string;
   info: string;
+  special: string;
+  specialBg: string;
   shadow: string;
   infoBg: string;
   successBg: string;
@@ -120,6 +123,9 @@ const darkColors: ColorScheme = {
   taskNotDoneBg: "#221619",
   surfaceText: "#FFFFFF",
   statusBarStyle: "light-content" as const,
+  textSecondary: "#A8B29E",   // additive token — unused by dark rendering
+  special: "#dbd4fd",        // additive token — unused by dark rendering
+  specialBg: "rgba(142, 117, 246, 0.15)", // additive token — unused by dark rendering
   palette: {
     cream: "#f6e5c9",
     lime: "#C8F135",
@@ -173,46 +179,48 @@ const darkColors: ColorScheme = {
   },
 };
 
-// Light register of the Nizam quartet. Dark mode paints with pastels on
-// obsidian; light mode paints with saturated same-hue INKS on warm-white.
-// The pastel quartet would sit at ~1.1-1.4:1 on white (invisible), so every
-// accent here is an OKLCH-derived ink: same hue as its pastel twin,
-// L 0.50-0.55, near-max chroma. All pass WCAG AA >=4.5:1 on white surfaces and
-// carry white text at >=5:1. Where the brand wants pastel GEM presence (FAB, dock
-// bubble, status pills, date pills) fillColor() supplies vivid light twins. Neutrals carry a
-// whisper of the brand's violet hue (chroma 0.005-0.045, H 285) for cohesion.
+// ─── LIGHT MODE — "Warm Ivory" visual system ───────────────────────────────
+// A warm ivory environment (#F3EBDD) brought alive by ambient light layers
+// (soft peach + pale sage) rendered in ScreenBackground. Orange is the PRIMARY
+// brand color, teal the SECONDARY; yellow/purple/blue/coral/soft-green are
+// semantic supporting states. Neutrals stay warm so surfaces harmonize with
+// the ivory base. DARK MODE has its own independent register above — none of
+// these values are shared with it.
 const lightColors: ColorScheme = {
-  bg: "#F3F3FC",
-  surface: "#FFFFFF",
-  surfaceHigh: "#ECECF9",
-  text: "#1E1B35",
-  textMuted: "#60627E",
-  border: "#DDDCEF",
-  primary: "#6C38E9",
-  primaryText: "#FFFFFF",
-  secondary: "#547600",
-  secondaryText: "#16270E",
-  success: "#007835",
-  warning: "#9D5200",
-  danger: "#BB2441",
-  info: "#007973",
-  shadow: "#1E1B35",
-  infoBg: "#CCF7F3",
-  successBg: "#DFF4E4",
-  warningBg: "#FFE8D8",
-  dangerBg: "#FDE2E8",
-  taskInProgressBg: "#EBEAFF",
+  bg: "#F3EBDD",              // very light warm ivory base (ambient layers live in ScreenBackground)
+  surface: "#FFFFFF",         // clean warm-white card surface
+  surfaceHigh: "#FBFAF7",     // warm-white elevated / secondary surface
+  text: "#111111",            // primary text
+  textSecondary: "#66635E",   // secondary text — warm gray
+  textMuted: "#8C8881",       // muted text / captions
+  border: "#E7E2D8",          // soft warm border
+  primary: "#FD8B2D",         // Nizam ORANGE — primary brand (CTA, active states)
+  primaryText: "#231303",     // dark warm ink on orange fills (≈7:1)
+  secondary: "#149375",       // Nizam TEAL — secondary brand
+  secondaryText: "#20201C",   // dark warm ink used on pastel/pill fills
+  success: "#55B999",         // soft green — success / completion
+  warning: "#FBC432",         // yellow — warnings / attention / categories
+  danger: "#F06F63",          // coral — urgent / destructive / errors
+  info: "#5292F1",            // blue — informational states
+  special: "#8E75F6",         // purple — AI / creative / special categories
+  shadow: "#3A2E1F",          // warm shadow ink
+  infoBg: "#E3EEFC",
+  successBg: "#E3F3EC",
+  warningBg: "#FDF1D4",
+  dangerBg: "#FDE7E4",
+  specialBg: "#EEEAFD",
+  taskInProgressBg: "#FBEFDE", // peach tint — in progress
   taskNotStartedBg: "#FFFFFF",
-  taskDoneBg: "#E5F3D3",
-  taskPausedBg: "#F1F0F8",
-  taskNotDoneBg: "#FDE2E8",
-  surfaceText: "#1E1B35",
+  taskDoneBg: "#E5F0E9",       // soft green tint — done
+  taskPausedBg: "#F4F1E8",     // warm pause tint
+  taskNotDoneBg: "#FDE7E4",    // coral tint — overdue
+  surfaceText: "#111111",
   statusBarStyle: "dark-content" as const,
   palette: {
-    cream: "#9D5200",
-    lime: "#547600",
-    mint: "#007973",
-    lavender: "#6C38E9",
+    cream: "#AD5210",          // burnt-orange ink (cream family, AA on white)
+    lime: "#547600",           // leaf lime ink
+    mint: "#0E7A62",           // deep teal ink (mint family)
+    lavender: "#6C38E9",       // violet ink
   },
   radii: {
     sm: 6,
@@ -224,37 +232,37 @@ const lightColors: ColorScheme = {
   },
   shadows: {
     sm: {
-      shadowColor: "#0F172A",
+      shadowColor: "#3A2E1F",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.06,
       shadowRadius: 6,
       elevation: 2,
     },
     md: {
-      shadowColor: "#0F172A",
+      shadowColor: "#3A2E1F",
       shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.08,
+      shadowOpacity: 0.09,
       shadowRadius: 12,
       elevation: 4,
     },
     lg: {
-      shadowColor: "#0F172A",
+      shadowColor: "#3A2E1F",
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.12,
+      shadowOpacity: 0.13,
       shadowRadius: 20,
       elevation: 8,
     },
     glow: {
-      shadowColor: "#6C38E9",
+      shadowColor: "#FD8B2D",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.20,
+      shadowOpacity: 0.25,
       shadowRadius: 16,
       elevation: 6,
     },
     auroraGlow: {
-      shadowColor: "#007973",
+      shadowColor: "#149375",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.18,
+      shadowOpacity: 0.20,
       shadowRadius: 12,
       elevation: 4,
     },

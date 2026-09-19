@@ -5,11 +5,11 @@ export const createSettingsStyles = (colors: ColorScheme, isArabic: boolean = fa
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: "row",

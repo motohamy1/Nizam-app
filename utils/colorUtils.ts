@@ -46,11 +46,11 @@ export const textOn = (bg: string, onLight = '#101116', onDark = '#FFFFFF'): str
 
 /** Brand pastels -> saturated same-hue inks for light mode. */
 export const PASTEL_TO_LIGHT_INK: Record<string, string> = {
-  '#f6e5c9': '#9D5200', // Warm Cream  -> burnt apricot (was honey-brown; warmer, alive)
+  '#f6e5c9': '#AD5210', // Warm Cream  -> burnt-orange ink (Nizam orange family)
   '#e5f19d': '#547600', // Pastel Lime -> leaf lime ink
   '#d4ff00': '#547600', // Electric chartreuse (notes neon) -> same leaf lime ink
-  '#defef9': '#007973', // Ice Mint    -> marine teal
-  '#dbd4fd': '#6C38E9', // Lavender    -> ultramarine brand violet
+  '#defef9': '#0E7A62', // Ice Mint    -> deep teal ink (Nizam teal family)
+  '#dbd4fd': '#6C38E9', // Lavender    -> violet ink
   '#f9a8d4': '#9D174D', // Pink        -> rose ink
   '#10b981': '#007835', // Emerald     -> fresh grass ink
 };

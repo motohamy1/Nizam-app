@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, PanResponder, LayoutAnimation
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -242,7 +243,10 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
+    <LinearGradient
+      colors={[frame.gradTop, frame.gradBottom]}
+      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    >
       {/* Header */}
       <TouchableOpacity 
         style={styles.cardHeader} 
@@ -374,7 +378,7 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
           <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>{t.addReminder} +</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

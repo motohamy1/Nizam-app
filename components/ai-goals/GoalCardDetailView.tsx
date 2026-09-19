@@ -19,6 +19,8 @@ import {
   TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import { GoalLinkedTasks } from '@/components/GoalLinkedTasks';
 import { AIGoalFrameworkId, AIGoalVisualStyleId, MilestoneItem } from '@/types/aiGoals';
 
@@ -55,6 +57,8 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
   onDelete,
   onOpenTaskDetail,
 }) => {
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const milestones: MilestoneItem[] = goal.milestones || [];
   const completedMilestones = milestones.filter((m) => m.isCompleted).length;
   const totalMilestones = milestones.length;
@@ -119,7 +123,7 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
                     activeOpacity={0.7}
                   >
                     {ms.isCompleted ? (
-                      <Ionicons name="checkmark" size={12} color="#FFF" />
+                      <Ionicons name="checkmark" size={12} color={T.accentFillText} />
                     ) : (
                       <Text style={[styles.roadmapNodeIndex, { color: theme.nodeText }]}>
                         {idx + 1}
@@ -357,8 +361,8 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
             {/* Achieved Win Badge */}
             {goal.isCompleted && (
               <View style={[styles.badgePill, { backgroundColor: '#10B98120' }, isArabic && styles.rowReverse]}>
-                <Ionicons name="trophy" size={11} color="#10B981" />
-                <Text style={[styles.badgeText, { color: '#10B981' }]}>
+                <Ionicons name="trophy" size={11} color={T.success} />
+                <Text style={[styles.badgeText, { color: T.success }]}>
                   {isArabic ? 'إنجاز محقق' : 'Completed'}
                 </Text>
               </View>
@@ -368,39 +372,39 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
             {frameworkId === 'roadmap' && (
               <View style={[styles.badgePill, { backgroundColor: '#3B82F618' }, isArabic && styles.rowReverse]}>
                 <Ionicons name="git-commit-outline" size={11} color="#3B82F6" />
-                <Text style={[styles.badgeText, { color: '#3B82F6' }]}>
+                <Text style={[styles.badgeText, { color: T.info }]}>
                   {isArabic ? 'خارطة طريق' : 'Roadmap'}
                 </Text>
               </View>
             )}
             {frameworkId === 'checklist' && (
               <View style={[styles.badgePill, { backgroundColor: '#10B98118' }, isArabic && styles.rowReverse]}>
-                <Ionicons name="checkbox-outline" size={11} color="#10B981" />
-                <Text style={[styles.badgeText, { color: '#10B981' }]}>
+                <Ionicons name="checkbox-outline" size={11} color={T.success} />
+                <Text style={[styles.badgeText, { color: T.success }]}>
                   {isArabic ? 'قائمة مهام' : 'Checklist'}
                 </Text>
               </View>
             )}
             {frameworkId === 'metric' && (
               <View style={[styles.badgePill, { backgroundColor: '#F59E0B18' }, isArabic && styles.rowReverse]}>
-                <Ionicons name="analytics-outline" size={11} color="#F59E0B" />
-                <Text style={[styles.badgeText, { color: '#F59E0B' }]}>
+                <Ionicons name="analytics-outline" size={11} color={T.warning} />
+                <Text style={[styles.badgeText, { color: T.warning }]}>
                   {progressPercent}%
                 </Text>
               </View>
             )}
             {frameworkId === 'sprint' && (
               <View style={[styles.badgePill, { backgroundColor: '#EF444418' }, isArabic && styles.rowReverse]}>
-                <Ionicons name="flash" size={11} color="#EF4444" />
-                <Text style={[styles.badgeText, { color: '#EF4444' }]}>
+                <Ionicons name="flash" size={11} color={T.danger} />
+                <Text style={[styles.badgeText, { color: T.danger }]}>
                   {isArabic ? 'سبرنت' : 'Sprint'}
                 </Text>
               </View>
             )}
             {frameworkId === 'pillar' && (
               <View style={[styles.badgePill, { backgroundColor: '#8B5CF618' }, isArabic && styles.rowReverse]}>
-                <Ionicons name="shield-checkmark" size={11} color="#8B5CF6" />
-                <Text style={[styles.badgeText, { color: '#8B5CF6' }]}>
+                <Ionicons name="shield-checkmark" size={11} color={T.special} />
+                <Text style={[styles.badgeText, { color: T.special }]}>
                   {isArabic ? 'ركيزة' : 'Pillar'}
                 </Text>
               </View>
@@ -473,7 +477,7 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
             style={styles.actionIconBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            <Ionicons name="trash-outline" size={16} color={T.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -512,7 +516,7 @@ export const GoalCardDetailView: React.FC<GoalCardDetailViewProps> = ({
                 style={[styles.inlineAddBtn, { backgroundColor: accentColor }]}
                 activeOpacity={0.7}
               >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
+                <Ionicons name="add" size={16} color={T.accentFillText} />
               </TouchableOpacity>
             )}
           </View>
@@ -735,7 +739,7 @@ function getCardTheme(
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   cardContainer: {
     marginVertical: 6,
     padding: 14,

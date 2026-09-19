@@ -77,10 +77,13 @@ const RESOURCE_TYPES: { key: string; label: string; icon: string; color: string 
 ];
 
 function getStatusColor(status: string | undefined, colors: any) {
+  // Dark mode keeps its vivid text-on-tint pairing; light mode derives a
+  // readable ink from the chip background itself (spec hexes are fills first).
+  const dark = isDarkScheme(colors);
   switch (status) {
-    case 'completed': return { bg: colors.successBg, text: colors.success };
-    case 'on_hold':   return { bg: colors.warningBg, text: colors.warning };
-    default:          return { bg: colors.primary + '20', text: colors.primary };
+    case 'completed': return { bg: colors.successBg, text: dark ? colors.success : textOn(colors.successBg) };
+    case 'on_hold':   return { bg: colors.warningBg, text: dark ? colors.warning : textOn(colors.warningBg) };
+    default:          return { bg: colors.primary + '20', text: dark ? colors.primary : textOn(colors.primary + '20') };
   }
 }
 

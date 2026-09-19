@@ -16,6 +16,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import { AIGoalDraft, AIGoalPresentation } from '@/types/aiGoals';
 import { GoalPresentationRenderer } from './GoalPresentationRenderer';
 
@@ -46,6 +48,9 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
   existingCategories = [],
   isArabic = false,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   // Inline edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(draft.goal.title);
@@ -98,7 +103,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
             <Ionicons
               name={timeframe === 'day' ? 'today-outline' : timeframe === 'month' ? 'calendar-outline' : 'ribbon-outline'}
               size={12}
-              color="#EA580C"
+              color={T.accent}
             />
             <Text style={styles.timeframeText}>{timeframeLabel}</Text>
           </View>
@@ -120,7 +125,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="arrow-undo-outline" size={13} color="#475569" />
+            <Ionicons name="arrow-undo-outline" size={13} color={T.textSecondary} />
             <Text style={styles.undoText}>{isArabic ? 'تراجع' : 'Undo'}</Text>
           </TouchableOpacity>
         )}
@@ -163,7 +168,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
               value={editTitle}
               onChangeText={setEditTitle}
               placeholder={isArabic ? 'اكتب عنوان الهدف...' : 'Enter goal title...'}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={T.placeholder}
             />
 
             <Text style={[styles.inputLabel, isArabic && styles.textRtl]}>
@@ -174,7 +179,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
               value={editDesc}
               onChangeText={setEditDesc}
               placeholder={isArabic ? 'توضيح إضافي (اختياري)...' : 'Additional context (optional)...'}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={T.placeholder}
               multiline
               numberOfLines={3}
             />
@@ -228,7 +233,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
                     >
                       {cat}
                     </Text>
-                    {isSelected && <Ionicons name="checkmark" size={16} color="#EA580C" />}
+                    {isSelected && <Ionicons name="checkmark" size={16} color={T.accent} />}
                   </TouchableOpacity>
                 );
               })}
@@ -243,7 +248,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
                 value={customCatInput}
                 onChangeText={setCustomCatInput}
                 placeholder={isArabic ? 'اسم التصنيف...' : 'Category name...'}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={T.placeholder}
               />
               <TouchableOpacity
                 onPress={handleAddCustomCategory}
@@ -266,7 +271,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     marginVertical: 4,
   },
@@ -292,43 +297,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: T.accentBorder,
   },
   timeframeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#EA580C',
+    color: T.accent,
   },
   editedBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: T.bubbleAlt,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   editedBadgeText: {
     fontSize: 10,
-    color: '#64748B',
+    color: T.textMuted,
     fontWeight: '500',
   },
   undoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
   },
   undoText: {
     fontSize: 11,
-    color: '#475569',
+    color: T.textSecondary,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -341,7 +346,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 16,
     padding: 18,
     shadowColor: '#000',
@@ -353,24 +358,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: T.text,
     marginBottom: 14,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: T.textSecondary,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-    color: '#0F172A',
+    color: T.text,
     marginBottom: 12,
   },
   textArea: {
@@ -387,24 +392,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: T.bubbleAlt,
     alignItems: 'center',
   },
   cancelBtnText: {
     fontSize: 13,
-    color: '#475569',
+    color: T.textSecondary,
     fontWeight: '600',
   },
   confirmBtn: {
     paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
     alignItems: 'center',
   },
   confirmBtnText: {
     fontSize: 13,
-    color: '#FFFFFF',
+    color: T.accentFillText,
     fontWeight: '700',
   },
   catScroll: {
@@ -419,23 +424,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
   },
   selectedCatOption: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#EA580C',
+    backgroundColor: T.accentWash,
+    borderColor: T.accentBorderStrong,
   },
   catOptionText: {
     fontSize: 13,
-    color: '#334155',
+    color: T.textBody,
     fontWeight: '500',
     flex: 1,
   },
   selectedCatOptionText: {
-    color: '#C2410C',
+    color: T.accent,
     fontWeight: '700',
   },
   customCatRow: {

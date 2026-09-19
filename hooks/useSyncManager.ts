@@ -5,6 +5,7 @@ import {
   saveIdMapping,
   removeQueuedMutation,
   bumpQueuedItemRetry,
+  dropQueuedDependents,
   setServerClock,
   subscribeToQueue,
 } from '@/utils/offlineStorage';
@@ -87,6 +88,19 @@ const TEMP_ID_RE = /^temp_/;
 
 const isTempIdString = (v: any): v is string => typeof v === 'string' && TEMP_ID_RE.test(v);
 
+// Errors that mean "the mutation never reached/applied on the server" — the
+// queued item is still valid and MUST be retried later. Burning retryCount on
+// these (and dropping at 5) wiped whole queued batches during cold starts on
+// slow networks: the WebSocket isn't up yet while the OS already reports
+// "connected", so every replay failed instantly and the queue got drained.
+const TRANSIENT_NETWORK_ERROR_RE =
+  /network|offline|transport|websocket|fetch failed|client is closed|socket|timed? ?out|unavailable|ENOTFOUND|ECONNRESET|ECONNABORTED|EAI_AGAIN|50[234]/i;
+
+const isTransientNetworkError = (err: any): boolean => {
+  const msg = String(err?.message || err || '');
+  return TRANSIENT_NETWORK_ERROR_RE.test(msg);
+};
+
 // Replace any (persisted-)mapped temp ids inside args with their server ids.
 const remapValue = (v: any, map: Record<string, string>): any => {
   if (Array.isArray(v)) return v.map((x) => remapValue(x, map));
@@ -139,12 +153,18 @@ export function useSyncManager() {
     // for those, so enqueue itself must also trigger a sync pass.
     const unsubQueue = subscribeToQueue(run);
 
+    // Safety net: a queued mutation can sit unnoticed while the OS still
+    // reports "connected" but the socket is actually dead (slow networks), and
+    // NetInfo never fires in that state. Retry periodically while pending.
+    const retryInterval = setInterval(run, 30_000);
+
     // Check on initial mount
     run();
 
     return () => {
       unsubNet();
       unsubQueue();
+      clearInterval(retryInterval);
     };
   }, [convex]);
 
@@ -158,6 +178,11 @@ export function useSyncManager() {
     try {
       const queue = await getMutationQueue();
       if (queue.length === 0) {
+        isSyncing.current = false;
+        return;
+      }
+      const state = await NetInfo.fetch();
+      if (!state.isConnected || state.isInternetReachable === false) {
         isSyncing.current = false;
         return;
       }
@@ -183,6 +208,9 @@ export function useSyncManager() {
           if (Date.now() - item.timestamp > 10 * 60 * 1000) {
             console.warn(`Dropping ${item.mutationPath}: referenced temp ids never synced:`, blocking);
             await removeQueuedMutation(item.id);
+            if (item.tempId) {
+              await dropQueuedDependents(item.tempId);
+            }
             continue;
           }
           console.warn(`Deferring ${item.mutationPath}: waiting on ${blocking.length} unsynced id(s).`);
@@ -212,6 +240,14 @@ export function useSyncManager() {
           // applied mutations can never be replayed.
           await removeQueuedMutation(item.id);
         } catch (err: any) {
+          if (isTransientNetworkError(err)) {
+            // The mutation never reached the server — it is still valid and
+            // must NOT lose a retry. Stop the pass; the connectivity listener,
+            // queue events or the periodic interval will run another pass.
+            console.warn(`Network error while syncing ${item.mutationPath}; pausing queue.`, err?.message || err);
+            break;
+          }
+
           console.warn(`Failed to sync mutation ${item.mutationPath}`, err);
 
           item.retryCount = (item.retryCount || 0) + 1;
@@ -219,13 +255,19 @@ export function useSyncManager() {
           if (item.retryCount > 5) {
             console.warn(`Dropping mutation ${item.mutationPath} after exceeding retry limit.`);
             await removeQueuedMutation(item.id);
+            // If a create is dropped, anything nested under it can never
+            // resolve its parent id — drop those too instead of letting them
+            // block the queue head until the 10-minute timeout.
+            if (item.tempId) {
+              await dropQueuedDependents(item.tempId);
+            }
           } else {
             await bumpQueuedItemRetry(item.id, item.retryCount);
           }
 
           // Check if network is still connected
-          const state = await NetInfo.fetch();
-          if (!state.isConnected) {
+          const netState = await NetInfo.fetch();
+          if (!netState.isConnected) {
             console.warn('Network lost during sync. Pausing queue processing.');
             break;
           }

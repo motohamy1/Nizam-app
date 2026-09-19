@@ -16,13 +16,13 @@ import Animated, {
 import useTheme from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
-import { fillColor, textOn } from '@/utils/colorUtils';
-import ScreenBackground from '@/components/ScreenBackground';
+import { textOn } from '@/utils/colorUtils';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // Colors & Dimensions matching reference
 const ACTIVE_ACCENT = '#C8F135';
+const LIGHT_ACTIVE_ACCENT = '#FD8B2D'; // Nizam orange — light-register primary active accent
 const ACTIVE_INK = '#101116';
 const DOCK_HEIGHT = 60;
 const DOCK_CORNER = 26;
@@ -453,18 +453,18 @@ const TabLayout = () => {
   const dockFill = isDarkMode ? '#111510' : '#FFFFFF';
   const dockStroke = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
   // The floating dock bubble + punched icon knockout must share one color;
-  // pastel lime on the white dock reads as 'off', so light uses the lime ink.
-  const activeAccent = fillColor(ACTIVE_ACCENT, isDarkMode);
+  // dark uses the lime accent, light uses the Nizam orange primary.
+  const activeAccent = isDarkMode ? ACTIVE_ACCENT : LIGHT_ACTIVE_ACCENT;
   const activeInk = textOn(activeAccent, ACTIVE_INK);
   const inactiveColor = colors.textMuted;
 
   return (
-    <ScreenBackground style={StyleSheet.absoluteFill}>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarShowLabel: false,
-          tabBarBackground: () => (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: 'transparent' },
+        tabBarShowLabel: false,
+        tabBarBackground: () => (
             <DockBackground
               dockHeight={dockHeight}
               fill={dockFill}
@@ -472,8 +472,8 @@ const TabLayout = () => {
               notchX={notchX}
               setWidth={setContainerWidth}
             />
-          ),
-          tabBarStyle: {
+        ),
+        tabBarStyle: {
             backgroundColor: 'transparent',
             position: 'absolute',
             borderTopWidth: 0,
@@ -485,9 +485,9 @@ const TabLayout = () => {
             right: 0,
             bottom: 0,
             paddingHorizontal: HORIZONTAL_PADDING,
-          },
-        }}
-      >
+        },
+      }}
+    >
         <Tabs.Screen
           name="index"
           options={{
@@ -604,8 +604,7 @@ const TabLayout = () => {
             href: null,
           }}
         />
-      </Tabs>
-    </ScreenBackground>
+    </Tabs>
   );
 };
 

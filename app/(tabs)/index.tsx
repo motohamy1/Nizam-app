@@ -132,11 +132,14 @@ const Index = () => {
     { icon: 'hand-left-outline', title: 'Long Press', description: 'Long press any task to delete, share, or link it to a project.', accentColor: '#f6e5c9' },
   ];
 
-  // Normalized Todos (Tasks ONLY for Kanban board)
+  // Normalized Todos (Tasks ONLY for Kanban board).
+  // The `parentId` filter mirrors the server `todos.get` query (top-level only):
+  // if a stale or optimistically-merged cache ever leaks a subtask in here, it
+  // would otherwise render as an individual task on the board.
   const normalizedTodos = useMemo(() => {
     if (!todos) return [];
     return todos
-      .filter(t => !t.type || t.type === 'task')
+      .filter(t => !t.parentId && (!t.type || t.type === 'task'))
       .map(t => ({
         ...t,
         status: t.status || ((t as any).isCompleted ? 'done' : 'not_started')
@@ -151,12 +154,13 @@ const Index = () => {
     const nowTs = Date.now();
     return todos
       .filter(t =>
+        !t.parentId && (
         t.type === 'reminder' ||
         t.type === 'meeting' ||
         t.type === 'appointment' ||
         Boolean(t.meetingLink) ||
         Boolean(t.location) ||
-        (t.dueDate && t.dueDate >= todayStart && t.type !== 'task')
+        (t.dueDate && t.dueDate >= todayStart && t.type !== 'task'))
       )
       .sort((a, b) => (a.dueDate || a.date || 0) - (b.dueDate || b.date || 0))
       .map(t => ({
@@ -322,6 +326,7 @@ const Index = () => {
     });
 
     const dayChecklistRaw = (todos || []).filter(t => {
+      if (t.parentId) return false; // subtasks/linked children never render standalone
       const a = anchorOf(t);
       return a === selectedDate && (t.type === 'task' || t.type === 'checklist' || !t.type);
     });

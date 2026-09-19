@@ -61,11 +61,11 @@ export const createProjectsStyles = (colors: ColorScheme, isArabic: boolean = fa
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
 
     // ─── Top Header ─────────────────────────────────────────────

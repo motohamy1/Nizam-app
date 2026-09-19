@@ -8,6 +8,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import {
   AIGoalPresentation,
   AITemplateRecommendation,
@@ -31,6 +33,9 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
   onSelectPresentation,
   isArabic = false,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const [showAllStyles, setShowAllStyles] = useState(false);
 
   // Safe slice to guarantee maximum 3 recommendations per Blueprint Section 12
@@ -55,7 +60,7 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
       {/* Header */}
       <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
         <View style={[styles.titleWithIcon, isArabic && styles.rowRtl]}>
-          <Ionicons name="sparkles" size={15} color="#EA580C" />
+          <Ionicons name="sparkles" size={15} color={T.accent} />
           <Text style={styles.headerTitle}>
             {isArabic ? 'القوالب المقترحة لهدفك' : 'Recommended Layouts'}
           </Text>
@@ -74,7 +79,7 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
           <Ionicons
             name={showAllStyles ? 'chevron-up' : 'chevron-down'}
             size={12}
-            color="#64748B"
+            color={T.textMuted}
           />
         </TouchableOpacity>
       </View>
@@ -108,11 +113,11 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
               {/* Card top row: Icon + Names + Fit Badge */}
               <View style={[styles.cardTopRow, isArabic && styles.rowRtl]}>
                 <View style={styles.iconAndNames}>
-                  <View style={[styles.recIconCircle, { backgroundColor: isSelected ? '#EA580C' : '#F1F5F9' }]}>
+                  <View style={[styles.recIconCircle, { backgroundColor: isSelected ? T.accentFill : T.bubbleAlt }]}>
                     <Ionicons
                       name={(fwMeta?.icon as any) || 'grid-outline'}
                       size={14}
-                      color={isSelected ? '#FFF' : '#475569'}
+                      color={isSelected ? T.accentFillText : T.textSecondary}
                     />
                   </View>
                   <View>
@@ -127,7 +132,7 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
 
                 {isPrimary && (
                   <View style={styles.primaryBadge}>
-                    <Ionicons name="star" size={10} color="#EA580C" />
+                    <Ionicons name="star" size={10} color={T.accent} />
                     <Text style={styles.primaryBadgeText}>
                       {isArabic ? 'الأنسب' : 'Best Fit'}
                     </Text>
@@ -187,7 +192,7 @@ export const AIGoalTemplatePicker: React.FC<AIGoalTemplatePickerProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     marginVertical: 10,
   },
@@ -211,7 +216,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: T.text,
   },
   moreStylesToggle: {
     flexDirection: 'row',
@@ -222,25 +227,25 @@ const styles = StyleSheet.create({
   },
   moreStylesText: {
     fontSize: 11,
-    color: '#64748B',
+    color: T.textMuted,
     fontWeight: '500',
   },
   recommendationsList: {
     gap: 8,
   },
   recCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     padding: 10,
   },
   selectedRecCard: {
-    borderColor: '#EA580C',
-    backgroundColor: '#FFF7ED',
+    borderColor: T.accentBorderStrong,
+    backgroundColor: T.accentWash,
   },
   primaryBorder: {
-    borderColor: '#FED7AA',
+    borderColor: T.accentBorder,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -263,21 +268,21 @@ const styles = StyleSheet.create({
   recFwName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: T.text,
   },
   selectedText: {
-    color: '#C2410C',
+    color: T.accent,
   },
   recStyleName: {
     fontSize: 11,
-    color: '#64748B',
+    color: T.textMuted,
     marginTop: 1,
   },
   primaryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#FFEDD5',
+    backgroundColor: T.accentWashDeep,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -285,11 +290,11 @@ const styles = StyleSheet.create({
   primaryBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#C2410C',
+    color: T.accent,
   },
   reasonText: {
     fontSize: 11,
-    color: '#64748B',
+    color: T.textMuted,
     marginTop: 6,
     lineHeight: 16,
   },
@@ -297,12 +302,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: T.bubbleAlt,
   },
   allStylesTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#475569',
+    color: T.textSecondary,
     marginBottom: 6,
   },
   stylesScroll: {
@@ -317,21 +322,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: T.bubbleAlt,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
   },
   activeStyleChip: {
-    backgroundColor: '#EA580C',
-    borderColor: '#EA580C',
+    backgroundColor: T.accentFill,
+    borderColor: T.accentBorderStrong,
   },
   styleChipText: {
     fontSize: 11,
-    color: '#475569',
+    color: T.textSecondary,
     fontWeight: '500',
   },
   activeStyleChipText: {
-    color: '#FFFFFF',
+    color: T.accentFillText,
     fontWeight: '700',
   },
 });

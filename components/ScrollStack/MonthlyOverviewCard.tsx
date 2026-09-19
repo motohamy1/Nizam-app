@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -42,7 +43,10 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
+    <LinearGradient
+      colors={[frame.gradTop, frame.gradBottom]}
+      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    >
       {/* Header */}
       <TouchableOpacity 
         style={styles.cardHeader} 
@@ -117,7 +121,7 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
 
         <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={frame.text} />
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 };
 

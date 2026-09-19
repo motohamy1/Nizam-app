@@ -5,11 +5,11 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: "row",

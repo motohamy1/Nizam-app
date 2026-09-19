@@ -538,7 +538,7 @@ export default function YearDetailScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDarkMode ? 'transparent' : colors.bg }} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

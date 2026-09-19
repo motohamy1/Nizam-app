@@ -718,7 +718,7 @@ export default function NoteDetailScreen() {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: isDark ? 'transparent' : colors.bg }}
+      style={{ flex: 1, backgroundColor: 'transparent' }}
     >
       <View style={{ flex: 1 }}>
         <ScrollView 

@@ -64,7 +64,7 @@ const AuthScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? 'transparent' : colors.bg }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <StatusBar barStyle={colors.statusBarStyle} />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topActions}>

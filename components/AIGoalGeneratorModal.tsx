@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import { useAIGoalSession } from '@/hooks/useAIGoalSession';
 import { AIGoalPreview } from '@/components/ai-goals/AIGoalPreview';
 import { AIGoalTemplatePicker } from '@/components/ai-goals/AIGoalTemplatePicker';
@@ -79,6 +80,8 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   onPlanApplied,
 }) => {
   const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
 
   // Initial prompt state (before draft is created)
   const [initialPrompt, setInitialPrompt] = useState('');
@@ -213,15 +216,15 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC' }]}
+        style={[styles.container, { backgroundColor: T.page }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Top Header Bar */}
         <View style={[styles.modalHeader, isArabic && styles.rowRtl]}>
           <View style={styles.headerInfo}>
             <View style={[styles.titleBadgeRow, isArabic && styles.rowRtl]}>
-              <Ionicons name="sparkles" size={18} color="#EA580C" />
-              <Text style={[styles.headerTitle, { color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
+              <Ionicons name="sparkles" size={18} color={T.accent} />
+              <Text style={[styles.headerTitle, { color: T.text }]}>
                 {isArabic ? 'مهندس الأهداف الذكي' : 'AI Goal Architect'}
               </Text>
             </View>
@@ -235,7 +238,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
             style={styles.closeBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="close" size={24} color={isDarkMode ? '#94A3B8' : '#475569'} />
+            <Ionicons name="close" size={24} color={T.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -251,7 +254,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
             <View style={styles.initialScreen}>
               <View style={styles.heroCard}>
                 <View style={styles.heroIconCircle}>
-                  <Ionicons name="bulb-outline" size={28} color="#EA580C" />
+                  <Ionicons name="bulb-outline" size={28} color={T.accent} />
                 </View>
                 <Text style={[styles.heroTitle, isArabic && styles.textRtl]}>
                   {isArabic
@@ -275,7 +278,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
                         ? 'مثال: أريد إتقان فلاتر وبناء 3 تطبيقات عملية خلال الشهر...'
                         : 'e.g. Master Flutter and build 3 small apps this month...'
                     }
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={T.placeholder}
                     multiline
                     numberOfLines={3}
                   />
@@ -288,10 +291,10 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
                       activeOpacity={0.8}
                     >
                       {isInitialTranscribing ? (
-                        <ActivityIndicator size="small" color="#FFF" />
+                        <ActivityIndicator size="small" color={T.dangerFillText} />
                       ) : (
                         <>
-                          <Ionicons name="mic" size={18} color="#EA580C" />
+                          <Ionicons name="mic" size={18} color={T.accent} />
                           <Text style={styles.voiceBtnText}>
                             {isArabic ? 'تسجيل صوتي' : 'Voice Input'}
                           </Text>
@@ -308,7 +311,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
                       ]}
                       activeOpacity={0.85}
                     >
-                      <Ionicons name="sparkles" size={16} color="#FFF" />
+                      <Ionicons name="sparkles" size={16} color={T.accentFillText} />
                       <Text style={styles.startBtnText}>
                         {isArabic ? 'صياغة الهدف' : 'Shape Goal'}
                       </Text>
@@ -346,7 +349,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
           {/* STATE 2: ANALYZING SPINNER */}
           {isAnalyzing && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#EA580C" />
+              <ActivityIndicator size="large" color={T.accent} />
               <Text style={[styles.loadingTitle, isArabic && styles.textRtl]}>
                 {isArabic ? 'جاري استيعاب وصياغة الهدف...' : 'Analyzing intent & structuring goal...'}
               </Text>
@@ -441,7 +444,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -453,7 +456,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 54 : 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: T.border,
   },
   rowRtl: {
     flexDirection: 'row-reverse',
@@ -475,7 +478,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: T.textMuted,
     marginTop: 2,
   },
   closeBtn: {
@@ -492,10 +495,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   heroCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     padding: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -507,7 +510,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -515,25 +518,25 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: T.text,
     marginBottom: 6,
   },
   heroDesc: {
     fontSize: 13,
-    color: '#64748B',
+    color: T.textMuted,
     lineHeight: 19,
     marginBottom: 16,
   },
   promptInputContainer: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: T.borderStrong,
     padding: 10,
   },
   promptInput: {
     fontSize: 14,
-    color: '#0F172A',
+    color: T.text,
     minHeight: 64,
     textAlignVertical: 'top',
   },
@@ -544,26 +547,26 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: T.border,
   },
   voiceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: T.accentBorder,
   },
   voiceBtnActive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: T.danger,
   },
   voiceBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#EA580C',
+    color: T.accent,
   },
   startBtn: {
     flexDirection: 'row',
@@ -574,15 +577,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   startBtnActive: {
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
   },
   startBtnDisabled: {
-    backgroundColor: '#CBD5E1',
+    backgroundColor: T.borderStrong,
   },
   startBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: T.accentFillText,
   },
   suggestionsContainer: {
     marginTop: 4,
@@ -590,23 +593,23 @@ const styles = StyleSheet.create({
   suggestionsTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#475569',
+    color: T.textSecondary,
     marginBottom: 8,
   },
   suggestionsList: {
     gap: 8,
   },
   suggestionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   suggestionText: {
     fontSize: 13,
-    color: '#334155',
+    color: T.textBody,
     lineHeight: 18,
   },
   loadingContainer: {
@@ -618,12 +621,12 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: T.text,
     marginTop: 6,
   },
   loadingDesc: {
     fontSize: 13,
-    color: '#64748B',
+    color: T.textMuted,
     textAlign: 'center',
     maxWidth: 280,
   },

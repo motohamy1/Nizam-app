@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -32,7 +33,10 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
   const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   return (
-    <View style={[styles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
+    <LinearGradient
+      colors={[frame.gradTop, frame.gradBottom]}
+      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    >
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
@@ -89,7 +93,7 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
 
         <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>Deep Focus Mode</Text>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

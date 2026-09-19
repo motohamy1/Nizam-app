@@ -8,6 +8,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import { StagedGoal, AIGoalDraft } from '@/types/aiGoals';
 import { getFrameworkDefinition, getVisualStyleDefinition } from '@/constants/aiGoalTemplates';
 
@@ -30,6 +32,9 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
   onRemoveStagedGoal,
   isArabic = false,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const totalCount = stagedGoals.length + (activeDraft && activeDraft.goal.title.trim() ? 1 : 0);
 
   return (
@@ -37,7 +42,7 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
       {/* Summary Header */}
       <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
         <View style={[styles.badgeWithIcon, isArabic && styles.rowRtl]}>
-          <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
+          <Ionicons name="checkmark-circle-outline" size={16} color={T.success} />
           <Text style={styles.headerTitle}>
             {isArabic
               ? `جاهز للحفظ (${totalCount} ${totalCount === 1 ? 'هدف' : 'أهداف'})`
@@ -74,7 +79,7 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
                 style={styles.removeBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="trash-outline" size={16} color="#94A3B8" />
+                <Ionicons name="trash-outline" size={16} color={T.textMuted} />
               </TouchableOpacity>
             </View>
           );
@@ -114,7 +119,7 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
           style={[styles.stageBtn, isArabic && styles.rowRtl]}
           activeOpacity={0.8}
         >
-          <Ionicons name="add-circle-outline" size={18} color="#EA580C" />
+          <Ionicons name="add-circle-outline" size={18} color={T.accent} />
           <Text style={styles.stageBtnText}>
             {isArabic ? 'إضافة هذا الهدف وتصميم هدف آخر' : 'Add Goal & Shape Another'}
           </Text>
@@ -132,10 +137,10 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
           activeOpacity={0.85}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={T.accentFillText} />
           ) : (
             <>
-              <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
+              <Ionicons name="checkmark-done-circle" size={20} color={T.accentFillText} />
               <Text style={styles.saveAllBtnText}>
                 {isArabic
                   ? `حفظ الكل في الخطة (${totalCount})`
@@ -149,13 +154,13 @@ export const AIGoalFinalReview: React.FC<AIGoalFinalReviewProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     marginTop: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     padding: 14,
   },
   headerRow: {
@@ -178,7 +183,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: T.text,
   },
   goalsList: {
     gap: 8,
@@ -188,16 +193,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
   },
   activeDraftRow: {
-    borderColor: '#FED7AA',
-    backgroundColor: '#FFF7ED',
+    borderColor: T.accentBorder,
+    backgroundColor: T.accentWash,
   },
   goalInfo: {
     flex: 1,
@@ -205,7 +210,7 @@ const styles = StyleSheet.create({
   goalText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: T.text,
     marginBottom: 3,
   },
   badgesRow: {
@@ -217,24 +222,24 @@ const styles = StyleSheet.create({
   catBadge: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#2563EB',
-    backgroundColor: '#EFF6FF',
+    color: T.info,
+    backgroundColor: T.infoWash,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
   },
   layoutBadge: {
     fontSize: 10,
-    color: '#64748B',
-    backgroundColor: '#F1F5F9',
+    color: T.textMuted,
+    backgroundColor: T.bubbleAlt,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
   },
   milestoneBadge: {
     fontSize: 10,
-    color: '#059669',
-    backgroundColor: '#ECFDF5',
+    color: T.success,
+    backgroundColor: T.successWash,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
@@ -246,12 +251,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: '#FFEDD5',
+    backgroundColor: T.accentWashDeep,
   },
   currentText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#C2410C',
+    color: T.accent,
   },
   actionsContainer: {
     gap: 8,
@@ -261,16 +266,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     borderWidth: 1.5,
-    borderColor: '#EA580C',
+    borderColor: T.accentBorderStrong,
     borderRadius: 12,
     paddingVertical: 10,
   },
   stageBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#EA580C',
+    color: T.accent,
   },
   saveAllBtn: {
     flexDirection: 'row',
@@ -281,14 +286,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   saveBtnActive: {
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
   },
   saveBtnDisabled: {
-    backgroundColor: '#CBD5E1',
+    backgroundColor: T.borderStrong,
   },
   saveAllBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: T.accentFillText,
   },
 });

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -46,7 +47,10 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
   };
 
   return (
-    <View style={[baseStyles.card, { backgroundColor: frame.cardBg, borderColor: frame.cardBorder }]}>
+    <LinearGradient
+      colors={[frame.gradTop, frame.gradBottom]}
+      style={[baseStyles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    >
       {/* Header */}
       <TouchableOpacity
         style={baseStyles.cardHeader}
@@ -159,7 +163,7 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
           {isArabic ? 'تحديث يومي' : 'Daily Sync'}
         </Text>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 };
 

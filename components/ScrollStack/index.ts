@@ -1,5 +1,6 @@
 export { default as ScrollStack } from './ScrollStack';
 export { default as ScrollStackItem } from './ScrollStackItem';
+export { default as WheelPicker } from './WheelPicker';
 export { default as ChecklistCard } from './ChecklistCard';
 export { default as UpcomingEventsCard } from './UpcomingEventsCard';
 export { default as MonthlyOverviewCard } from './MonthlyOverviewCard';

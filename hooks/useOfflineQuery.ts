@@ -16,6 +16,25 @@ const singleResultQueryKeys = [
 const isEmptySingleResultCache = (queryKey: string, value: any) =>
   singleResultQueryKeys.includes(queryKey) && Array.isArray(value) && value.length === 0;
 
+// Last JSON we persisted per cache key. On flaky/slow networks the WebSocket
+// re-delivers unchanged results (and each reconnect resends snapshots);
+// re-serializing + rewriting large task lists on every update caused visible
+// tab-switch jank. Skip the write when the payload is identical.
+const lastPersistedJsonByKey: Record<string, string> = {};
+
+// Defensive read of the module-shared memory cache. During a hot-reload the
+// offlineStorage module can be re-evaluated while a mounted screen still holds
+// the old module identity; if that intermediate state is ever broken, reading
+// the binding would throw and red-screen the app — degrade to "no cache"
+// instead (the live Convex subscription still fills the screen).
+const readMemoryCache = (key: string): any => {
+  try {
+    return memoryCache?.[key];
+  } catch (e) {
+    return undefined;
+  }
+};
+
 // Only client-created temp docs are "offline ids". Real Convex ids must never
 // match, or the live subscription would be silently skipped.
 function hasOfflineId(args: any): boolean {
@@ -87,7 +106,7 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
 
   // Synchronously initialize with in-memory cache if available
   const [offlineData, setOfflineData] = useState<any>(() => {
-    const memVal = memoryCache[cacheKey];
+    const memVal = readMemoryCache(cacheKey);
     return isEmptySingleResultCache(queryKey, memVal) ? undefined : memVal;
   });
 
@@ -102,7 +121,7 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
 
   // Sync state with in-memory or persisted cache whenever cacheKey changes
   const refreshFromCache = useCallback(() => {
-    const memVal = memoryCache[cacheKey];
+    const memVal = readMemoryCache(cacheKey);
     if (memVal !== undefined && !isEmptySingleResultCache(queryKey, memVal)) {
       setOfflineData(memVal);
       return;
@@ -133,7 +152,7 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
   // Subscribe to offlineStorage events (fires on any optimistic update or cache change)
   useEffect(() => {
     const unsub = subscribeToCache(() => {
-      const memVal = memoryCache[cacheKey];
+      const memVal = readMemoryCache(cacheKey);
       if (memVal !== undefined) {
         setOfflineData(memVal);
       }
@@ -147,7 +166,16 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
   useEffect(() => {
     if (convexData !== undefined) {
       memoryCache[cacheKey] = convexData;
-      AsyncStorage.setItem(cacheKey, JSON.stringify(convexData)).catch(() => {});
+      try {
+        const json = JSON.stringify(convexData);
+        if (lastPersistedJsonByKey[cacheKey] !== json) {
+          lastPersistedJsonByKey[cacheKey] = json;
+          AsyncStorage.setItem(cacheKey, json).catch(() => {});
+        }
+      } catch (e) {
+        // non-serializable payload — persist best-effort
+        AsyncStorage.setItem(cacheKey, JSON.stringify(convexData)).catch(() => {});
+      }
       setOfflineData(convexData);
     }
   }, [convexData, cacheKey]);

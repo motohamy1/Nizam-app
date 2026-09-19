@@ -24,7 +24,7 @@ import { useSyncManager } from "@/hooks/useSyncManager";
 import { useTranslation } from "@/utils/i18n";
 import { NOTIFICATION_CATEGORIES, Notifications, TIMER_ACTIONS } from "@/utils/notifications";
 import { useEffect } from "react";
-import { Platform, StyleSheet } from "react-native";
+import { Platform } from "react-native";
 
 // Register the background task (already defined in backgroundTask.ts via defineTask)
 
@@ -89,7 +89,7 @@ function RootLayoutContent() {
   }
 
   return (
-    <ScreenBackground style={StyleSheet.absoluteFill}>
+    <ScreenBackground>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="auth" options={{ presentation: 'modal' }} />

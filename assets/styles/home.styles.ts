@@ -2,19 +2,20 @@ import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet } from "react-native";
 
 export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false) => {
-  // Light register: pastel lime controls read as washed-out on white,
-  // so they flip to the lime ink with white content marks.
+  // Light register: the primary accent flips to Nizam orange; dark keeps lime.
   const isDark = colors.statusBarStyle === 'light-content';
-  const limeFill = isDark ? '#C8F135' : '#A4E200';
+  const limeFill = isDark ? '#C8F135' : '#FD8B2D';
   const limeMark = '#16270E';
+  const accentTintBg = isDark ? 'rgba(200, 241, 53, 0.16)' : 'rgba(253, 139, 45, 0.14)';
+  const accentTintBorder = isDark ? 'rgba(200, 241, 53, 0.32)' : 'rgba(253, 139, 45, 0.34)';
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: "row",
@@ -129,9 +130,9 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 12,
-      backgroundColor: 'rgba(212, 255, 0, 0.16)',
+      backgroundColor: accentTintBg,
       borderWidth: 1,
-      borderColor: 'rgba(212, 255, 0, 0.32)',
+      borderColor: accentTintBorder,
     },
     dateBarResetText: {
       fontSize: 12,

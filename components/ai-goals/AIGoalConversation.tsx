@@ -16,6 +16,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import * as FileSystem from 'expo-file-system/legacy';
 import { FileSystemUploadType } from 'expo-file-system/legacy';
 import { useAction, useMutation } from 'convex/react';
@@ -38,6 +40,9 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
   onQuickAction,
   isArabic = false,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const [inputText, setInputText] = useState('');
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -119,7 +124,7 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
             >
               {!isUser && (
                 <View style={styles.assistantAvatar}>
-                  <Ionicons name="sparkles" size={13} color="#EA580C" />
+                  <Ionicons name="sparkles" size={13} color={T.accent} />
                 </View>
               )}
 
@@ -146,10 +151,10 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
         {isThinking && (
           <View style={[styles.messageRow, styles.assistantRow, isArabic && styles.rowNormalRtl]}>
             <View style={styles.assistantAvatar}>
-              <Ionicons name="sparkles" size={13} color="#EA580C" />
+              <Ionicons name="sparkles" size={13} color={T.accent} />
             </View>
             <View style={[styles.bubble, styles.assistantBubble, styles.thinkingBubble]}>
-              <ActivityIndicator size="small" color="#EA580C" />
+              <ActivityIndicator size="small" color={T.accent} />
               <Text style={styles.thinkingText}>
                 {isArabic ? 'جاري الصياغة...' : 'Shaping your goal...'}
               </Text>
@@ -185,9 +190,9 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
           disabled={isTranscribing || isThinking}
         >
           {isTranscribing ? (
-            <ActivityIndicator size="small" color="#FFF" />
+            <ActivityIndicator size="small" color={T.accentFillText} />
           ) : (
-            <Ionicons name="mic" size={18} color="#EA580C" />
+            <Ionicons name="mic" size={18} color={T.accent} />
           )}
         </TouchableOpacity>
 
@@ -200,7 +205,7 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
               ? 'تحدث أو اكتب للتعديل (مثلاً: أضف كورس، اختصر...)'
               : 'Speak or type instruction (e.g. add milestones...)'
           }
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={T.placeholder}
           onSubmitEditing={handleSend}
           returnKeyType="send"
         />
@@ -217,7 +222,7 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
           <Ionicons
             name={isArabic ? 'arrow-back' : 'arrow-forward'}
             size={18}
-            color="#FFFFFF"
+            color={T.accentFillText}
           />
         </TouchableOpacity>
       </View>
@@ -233,7 +238,7 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     marginTop: 8,
   },
@@ -269,9 +274,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: T.accentBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -283,11 +288,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   userBubble: {
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
     borderBottomRightRadius: 2,
   },
   assistantBubble: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: T.bubbleAlt,
     borderBottomLeftRadius: 2,
   },
   thinkingBubble: {
@@ -297,17 +302,17 @@ const styles = StyleSheet.create({
   },
   thinkingText: {
     fontSize: 12,
-    color: '#64748B',
+    color: T.textMuted,
   },
   messageText: {
     fontSize: 13,
     lineHeight: 18,
   },
   userText: {
-    color: '#FFFFFF',
+    color: T.accentFillText,
   },
   assistantText: {
-    color: '#1E293B',
+    color: T.text,
   },
   chipsContainer: {
     flexDirection: 'row',
@@ -318,26 +323,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   quickChip: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
   },
   quickChipText: {
     fontSize: 11,
-    color: '#475569',
+    color: T.textSecondary,
     fontWeight: '500',
   },
   inputDock: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     paddingHorizontal: 6,
     paddingVertical: 4,
   },
@@ -348,17 +353,17 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     alignItems: 'center',
     justifyContent: 'center',
   },
   micBtnActive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: T.danger,
   },
   inputField: {
     flex: 1,
     fontSize: 13,
-    color: '#0F172A',
+    color: T.text,
     paddingHorizontal: 6,
     paddingVertical: 6,
   },
@@ -370,9 +375,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnActive: {
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
   },
   sendBtnDisabled: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: T.border,
   },
 });

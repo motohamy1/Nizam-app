@@ -8,6 +8,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import {
   AIGoalFrameworkId,
   AIGoalPresentation,
@@ -44,6 +46,9 @@ export const GoalPresentationRenderer: React.FC<GoalPresentationRendererProps> =
   onEditGoalPress,
   onEditCategoryPress,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const { frameworkId, visualStyleId } = presentation;
   const styleTheme = getStyleTheme(visualStyleId, color);
 
@@ -97,7 +102,7 @@ export const GoalPresentationRenderer: React.FC<GoalPresentationRendererProps> =
                   activeOpacity={0.7}
                 >
                   {item.isCompleted ? (
-                    <Ionicons name="checkmark" size={12} color="#FFF" />
+                    <Ionicons name="checkmark" size={12} color={T.accentFillText} />
                   ) : (
                     <Text style={[styles.roadmapNodeText, { color: styleTheme.nodeText }]}>
                       {idx + 1}
@@ -168,7 +173,7 @@ export const GoalPresentationRenderer: React.FC<GoalPresentationRendererProps> =
               ]}
               activeOpacity={0.7}
             >
-              {item.isCompleted && <Ionicons name="checkmark" size={13} color="#FFF" />}
+              {item.isCompleted && <Ionicons name="checkmark" size={13} color={T.accentFillText} />}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -590,7 +595,7 @@ function getStyleTheme(visualStyleId: AIGoalVisualStyleId, accentColor: string):
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   cardBase: {
     padding: 16,
     position: 'relative',

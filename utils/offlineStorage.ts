@@ -498,6 +498,41 @@ export const bumpQueuedItemRetry = (id: string, retryCount: number): Promise<voi
     }
   });
 
+// Drop every queued item that still depends on a temp id whose owning create
+// was dropped (or never made it). Without this, orphaned subtasks would sit at
+// the queue head waiting on an id that will never be mapped, blocking every
+// later mutation until the deferral timeout.
+export const dropQueuedDependents = (tempId: string): Promise<void> =>
+  withQueueLock(async () => {
+    try {
+      const queue = await readQueueRaw();
+      const doomed = new Set<string>([tempId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const item of queue) {
+          if (item.id && doomed.has(item.id)) continue;
+          const deps = item.requiresIds || [];
+          if (deps.some((t) => doomed.has(t)) || (item.tempId && doomed.has(item.tempId))) {
+            doomed.add(item.id);
+            if (item.tempId && !doomed.has(item.tempId)) {
+              doomed.add(item.tempId);
+              changed = true;
+            }
+            changed = true;
+          }
+        }
+      }
+      const next = queue.filter((item) => !doomed.has(item.id));
+      if (next.length !== queue.length) {
+        console.warn(`Dropping ${queue.length - next.length} queued mutation(s) orphaned by a failed create.`);
+        await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(next));
+      }
+    } catch (err) {
+      console.warn('Failed to drop queued dependents', err);
+    }
+  });
+
 export const getMutationQueue = (): Promise<QueuedMutation[]> =>
   withQueueLock(async () => {
     try {
@@ -572,6 +607,7 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
   switch (mutationPath) {
     // ─── TODOS ─────────────────────────────────────────────────────────────────
     case 'todos:addTodo': {
+      const isSubtask = !!args.parentId;
       const newTodo = {
         _id: tempId,
         _creationTime: Date.now(),
@@ -582,19 +618,34 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
         description: args.description || '',
       };
 
-      // Add to todos query cache
-      const touchedTodoKeys = updateMatchingCaches('CACHE_todos_', (todosList) => {
-        if (!Array.isArray(todosList)) return [newTodo];
-        // If it already exists, replace; otherwise prepend
-        return [newTodo, ...todosList.filter((t: any) => t._id !== tempId)];
-      });
+      // The server `todos.get` query only returns TOP-LEVEL items, so a
+      // subtask must never be prepended to the top-level lists: injecting it
+      // there made the home Kanban/checklist render every pending subtask as
+      // an individual task until its queued add synced (long window on slow
+      // networks). Subtasks only belong in their parent's getSubtasks cache.
+      const touchedTodoKeys = isSubtask
+        ? []
+        : updateMatchingCaches('CACHE_todos_', (todosList) => {
+            if (!Array.isArray(todosList)) return [newTodo];
+            // If it already exists, replace; otherwise prepend
+            return [newTodo, ...todosList.filter((t: any) => t._id !== tempId)];
+          });
 
       // If it has a parent, also update getSubtasks cache
       if (args.parentId) {
-        const touchedSubKeys = updateMatchingCaches('CACHE_todos.getSubtasks_', (subtasks) => {
+        let touchedSubKeys = updateMatchingCaches('CACHE_todos.getSubtasks_', (subtasks) => {
           if (!Array.isArray(subtasks)) return [newTodo];
           return [...subtasks.filter((s: any) => s._id !== tempId), newTodo];
         });
+        // Seed the parent's getSubtasks cache if it doesn't exist yet (e.g.
+        // first-ever subtask for that parent, created offline), so the detail
+        // modal shows it immediately.
+        const subKey = getCacheKey('todos.getSubtasks', { parentId: args.parentId });
+        if (!touchedSubKeys.includes(subKey) && memoryCache[subKey] === undefined) {
+          memoryCache[subKey] = [newTodo];
+          AsyncStorage.setItem(subKey, JSON.stringify([newTodo])).catch(() => {});
+          touchedSubKeys = [...touchedSubKeys, subKey];
+        }
         touchedTodoKeys.push(...touchedSubKeys);
       }
 

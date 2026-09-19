@@ -9,8 +9,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Reuse the planner's month palettes so the homepage stack feels like the same
 // visual system instead of introducing a second set of card colors.
 export const STACK_CARD_PALETTES = {
-  // Checklist: June's coral month card.
-  checklist: MONTH_PALETTES[5],
+  // Checklist: To-Do pink — exact twin of the homepage Kanban's To-Do column
+  // pastel (#F9A8D4 dark / #9D174D ink family), so the card and the column it
+  // jumps to share one identity instead of June's coral.
+  checklist: {
+    bg: '#F9A8D4',
+    ink: '#500724',          // pink-950 deep berry ink (readable on the pink field)
+    accent: '#DB2777',       // pink-600 saturated accent for icons/CTA detail
+    accentSecondary: '#BE185D',
+    graphicType: 'dualDiscs',
+  } satisfies MonthPalette,
   // Events: November's ice-cyan month card.
   upcoming: MONTH_PALETTES[10],
   // Monthly overview: October's amber month card.
@@ -38,24 +46,53 @@ export const STACK_CARD_PALETTE_LIST: MonthPalette[] = [
  */
 export const createMonthCardFrame = (
   palette: MonthPalette,
-  _isDarkMode?: boolean,
+  isDarkMode: boolean = false,
   _colors?: ColorScheme
 ) => {
+  const { bg, ink, accent } = palette;
+  if (isDarkMode) {
+    // Deep-field variant: the card face is a gradient from the palette's
+    // saturated accent down to its own darkest degree (its ink). Everything
+    // painted on it flips to light inks + white-glass chips, mirroring the
+    // checklist card's contrast treatment.
+    return {
+      cardBg: ink,
+      gradTop: accent,
+      gradBottom: ink,
+      cardBorder: 'rgba(255,255,255,0.16)',
+      text: '#FFFFFF',
+      textMuted: 'rgba(255,255,255,0.72)',
+      badgeBg: 'rgba(255,255,255,0.92)',
+      badgeFg: ink,
+      pillBg: 'rgba(255,255,255,0.18)',
+      pillFg: '#FFFFFF',
+      rowBg: 'rgba(255,255,255,0.10)',
+      rowBorder: 'rgba(255,255,255,0.16)',
+      // Pastel of the hue glows against the deep field (icons, progress fills).
+      accent: bg,
+      footerBorder: 'rgba(255,255,255,0.16)',
+      footerText: 'rgba(255,255,255,0.85)',
+      ctaBg: '#FFFFFF',
+      ctaFg: ink,
+    };
+  }
   return {
-    cardBg: palette.bg,
-    cardBorder: `${palette.ink}20`,
-    text: palette.ink,
-    textMuted: `${palette.ink}A6`,
-    badgeBg: `${palette.ink}18`,
-    badgeFg: palette.ink,
-    pillBg: `${palette.ink}18`,
-    pillFg: palette.ink,
-    rowBg: `${palette.ink}0E`,
-    rowBorder: `${palette.ink}18`,
-    accent: palette.accent,
-    footerBorder: `${palette.ink}18`,
-    footerText: `${palette.ink}CC`,
-    ctaBg: palette.ink,
+    cardBg: bg,
+    gradTop: bg,
+    gradBottom: bg,
+    cardBorder: `${ink}20`,
+    text: ink,
+    textMuted: `${ink}A6`,
+    badgeBg: `${ink}18`,
+    badgeFg: ink,
+    pillBg: `${ink}18`,
+    pillFg: ink,
+    rowBg: `${ink}0E`,
+    rowBorder: `${ink}18`,
+    accent: accent,
+    footerBorder: `${ink}18`,
+    footerText: `${ink}CC`,
+    ctaBg: ink,
     ctaFg: '#FFFFFF',
   };
 };

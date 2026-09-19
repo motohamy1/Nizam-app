@@ -45,11 +45,11 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     scrollContent: {
       paddingBottom: 120,

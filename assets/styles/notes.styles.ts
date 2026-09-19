@@ -5,11 +5,11 @@ export const createNotesStyles = (colors: ColorScheme, isArabic: boolean = false
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     safeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: "row",
@@ -292,7 +292,7 @@ export const createNotesStyles = (colors: ColorScheme, isArabic: boolean = false
     },
     detailSafeArea: {
       flex: 1,
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
     },
     detailHeader: {
       flexDirection: 'row',

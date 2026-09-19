@@ -14,6 +14,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '@/hooks/useTheme';
+import { getAiTheme } from '@/utils/aiGoalTheme';
 import { MilestoneItem, ProjectCandidate } from '@/types/aiGoals';
 
 interface AIGoalExpansionPanelProps {
@@ -37,6 +39,9 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
   onRemoveProject,
   isArabic = false,
 }) => {
+  const { colors, isDarkMode } = useTheme();
+  const T = getAiTheme(colors, isDarkMode);
+  const styles = createStyles(T);
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [isManualInputOpen, setIsManualInputOpen] = useState(false);
 
@@ -59,9 +64,9 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
           activeOpacity={0.8}
         >
           {isExpanding ? (
-            <ActivityIndicator size="small" color="#EA580C" />
+            <ActivityIndicator size="small" color={T.accent} />
           ) : (
-            <Ionicons name="sparkles" size={14} color="#EA580C" />
+            <Ionicons name="sparkles" size={14} color={T.accent} />
           )}
           <Text style={styles.aiExpandText}>
             {isArabic ? 'اقتراح مراحل بالذكاء الاصطناعي' : 'Suggest Milestones with AI'}
@@ -76,7 +81,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
           <Ionicons
             name={isManualInputOpen ? 'close' : 'add-circle-outline'}
             size={14}
-            color="#475569"
+            color={T.textSecondary}
           />
           <Text style={styles.manualAddText}>
             {isArabic ? 'إضافة يدوية' : 'Add Manual'}
@@ -92,7 +97,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
             value={newMilestoneText}
             onChangeText={setNewMilestoneText}
             placeholder={isArabic ? 'اكتب مرحلة أو خطوة جديدة...' : 'Enter milestone or step...'}
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={T.placeholder}
             onSubmitEditing={handleManualAdd}
             returnKeyType="done"
           />
@@ -101,7 +106,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
             style={styles.addSubmitBtn}
             activeOpacity={0.8}
           >
-            <Ionicons name="checkmark" size={16} color="#FFF" />
+            <Ionicons name="checkmark" size={16} color={T.accentFillText} />
           </TouchableOpacity>
         </View>
       )}
@@ -110,7 +115,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
       {suggestedProjects.length > 0 && (
         <View style={styles.projectsSection}>
           <View style={[styles.projectsHeader, isArabic && styles.rowRtl]}>
-            <Ionicons name="folder-open-outline" size={14} color="#2563EB" />
+            <Ionicons name="folder-open-outline" size={14} color={T.info} />
             <Text style={styles.projectsTitle}>
               {isArabic ? 'مشاريع مقترحة مرتبطة بالهدف' : 'Suggested Projects Linked to Goal'}
             </Text>
@@ -132,7 +137,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
                   style={styles.removeProjBtn}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={16} color={T.textMuted} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -143,7 +148,7 @@ export const AIGoalExpansionPanel: React.FC<AIGoalExpansionPanelProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (T: any) => StyleSheet.create({
   container: {
     marginVertical: 6,
   },
@@ -163,9 +168,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: T.accentWash,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: T.accentBorder,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
@@ -173,15 +178,15 @@ const styles = StyleSheet.create({
   aiExpandText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#C2410C',
+    color: T.accent,
   },
   manualAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
@@ -189,7 +194,7 @@ const styles = StyleSheet.create({
   manualAddText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: T.textSecondary,
   },
   manualInputRow: {
     flexDirection: 'row',
@@ -199,17 +204,17 @@ const styles = StyleSheet.create({
   },
   manualInput: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: T.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
     fontSize: 13,
-    color: '#0F172A',
+    color: T.text,
   },
   addSubmitBtn: {
-    backgroundColor: '#EA580C',
+    backgroundColor: T.accentFill,
     width: 34,
     height: 34,
     borderRadius: 8,
@@ -218,10 +223,10 @@ const styles = StyleSheet.create({
   },
   projectsSection: {
     marginTop: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: T.input,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
     padding: 10,
   },
   projectsHeader: {
@@ -233,7 +238,7 @@ const styles = StyleSheet.create({
   projectsTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: T.text,
   },
   projectsList: {
     gap: 6,
@@ -242,12 +247,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.card,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: T.border,
   },
   projectInfo: {
     flex: 1,
@@ -255,11 +260,11 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0F172A',
+    color: T.text,
   },
   projectDesc: {
     fontSize: 11,
-    color: '#64748B',
+    color: T.textMuted,
     marginTop: 1,
   },
   removeProjBtn: {

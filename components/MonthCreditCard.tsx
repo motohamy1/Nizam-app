@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import LivePress from '@/components/LivePress';
 
-export const CARD_H = 200;
+export const CARD_H = 260;
 
 export interface MonthPalette {
   bg: string;
@@ -45,13 +45,106 @@ export const MONTH_PALETTES: MonthPalette[] = [
 export const getMonthPalette = (index: number): MonthPalette =>
   MONTH_PALETTES[index % MONTH_PALETTES.length];
 
+/**
+ * Shared Bauhaus-style artwork renderer for any palette (month or year cards).
+ * Drawn centered inside the card, purely decorative (pointerEvents none).
+ */
+export const renderPaletteArtwork = (palette: MonthPalette) => {
+  const { graphicType, accent, accentSecondary, ink, bg } = palette;
+  const secColor = accentSecondary || accent;
+
+  switch (graphicType) {
+    case 'halfCircles':
+      return (
+        <Svg width={230} height={140} viewBox="0 0 230 140" fill="none">
+          <Path d="M 50 15 A 55 55 0 0 0 50 125 Z" fill={accent} opacity={0.9} />
+          <Path d="M 115 15 A 55 55 0 0 0 115 125 Z" fill={accent} opacity={0.9} />
+          <Circle cx={175} cy={70} r={52} fill={secColor} opacity={0.95} />
+          <Circle cx={175} cy={70} r={20} fill={bg} opacity={0.9} />
+        </Svg>
+      );
+
+    case 'sunRays':
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <Circle cx={110} cy={65} r={46} fill={accent} opacity={0.3} />
+          <Circle cx={110} cy={65} r={28} fill={accent} opacity={0.85} />
+          <Path
+            d="M 110 5 L 110 20 M 110 110 L 110 125 M 50 65 L 65 65 M 155 65 L 170 65 M 68 23 L 78 33 M 142 97 L 152 107 M 68 107 L 78 97 M 142 33 L 152 23"
+            stroke={ink}
+            strokeWidth={3.5}
+            strokeLinecap="round"
+            opacity={0.4}
+          />
+        </Svg>
+      );
+
+    case 'stripes':
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <G opacity={0.45}>
+            <Path d="M 30 20 Q 80 5 130 20 T 210 20" stroke={accent} strokeWidth={5} strokeLinecap="round" />
+            <Path d="M 30 40 Q 80 25 130 40 T 210 40" stroke={accent} strokeWidth={5} strokeLinecap="round" />
+            <Path d="M 30 60 Q 80 45 130 60 T 210 60" stroke={accent} strokeWidth={5} strokeLinecap="round" />
+            <Path d="M 30 80 Q 80 65 130 80 T 210 80" stroke={accent} strokeWidth={5} strokeLinecap="round" />
+            <Path d="M 30 100 Q 80 85 130 100 T 210 100" stroke={accent} strokeWidth={5} strokeLinecap="round" />
+          </G>
+          <Circle cx={175} cy={65} r={32} fill={secColor} opacity={0.7} />
+        </Svg>
+      );
+
+    case 'rings':
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <Circle cx={110} cy={65} r={58} stroke={accent} strokeWidth={3} opacity={0.25} />
+          <Circle cx={110} cy={65} r={42} stroke={accent} strokeWidth={5} opacity={0.45} />
+          <Circle cx={110} cy={65} r={24} fill={accent} opacity={0.88} />
+          <Circle cx={110} cy={65} r={10} fill={bg} />
+        </Svg>
+      );
+
+    case 'dualDiscs':
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <Circle cx={85} cy={65} r={48} fill={accent} opacity={0.85} />
+          <Circle cx={135} cy={65} r={48} fill={secColor} opacity={0.75} />
+        </Svg>
+      );
+
+    case 'curves':
+    case 'waves':
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <Path
+            d="M 10 95 Q 60 20 110 65 T 210 35"
+            stroke={accent}
+            strokeWidth={18}
+            strokeLinecap="round"
+            opacity={0.85}
+          />
+          <Circle cx={165} cy={85} r={24} fill={secColor} opacity={0.65} />
+        </Svg>
+      );
+
+    case 'bauhaus':
+    default:
+      return (
+        <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
+          <Rect x={40} y={25} width={65} height={65} rx={14} fill={accent} opacity={0.85} />
+          <Circle cx={150} cy={60} r={34} fill={secColor} opacity={0.75} />
+          <Path d="M 95 70 L 165 70" stroke={ink} strokeWidth={4} strokeLinecap="round" opacity={0.5} />
+        </Svg>
+      );
+  }
+};
+
 interface MonthCreditCardProps {
   month: string;
   monthIndex: number;
   year: number;
   taskCount: number;
   completionRate?: number; // 0 to 100
-  isFocused: boolean;
+  isFocused?: boolean;
   isCurrent: boolean;
   isPrevious?: boolean;
   isArabic?: boolean;
@@ -68,7 +161,7 @@ const MonthCreditCard: React.FC<MonthCreditCardProps> = ({
   year,
   taskCount,
   completionRate = 0,
-  isFocused,
+  isFocused = false,
   isCurrent,
   isPrevious = false,
   isArabic = false,
@@ -79,96 +172,6 @@ const MonthCreditCard: React.FC<MonthCreditCardProps> = ({
   onPress,
 }) => {
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-  // Render distinct clean geometric planner card art
-  const renderCardArtwork = () => {
-    const { graphicType, accent, accentSecondary, ink, bg } = palette;
-    const secColor = accentSecondary || accent;
-
-    switch (graphicType) {
-      case 'halfCircles':
-        return (
-          <Svg width={230} height={140} viewBox="0 0 230 140" fill="none">
-            <Path d="M 50 15 A 55 55 0 0 0 50 125 Z" fill={accent} opacity={0.9} />
-            <Path d="M 115 15 A 55 55 0 0 0 115 125 Z" fill={accent} opacity={0.9} />
-            <Circle cx={175} cy={70} r={52} fill={secColor} opacity={0.95} />
-            <Circle cx={175} cy={70} r={20} fill={bg} opacity={0.9} />
-          </Svg>
-        );
-
-      case 'sunRays':
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <Circle cx={110} cy={65} r={46} fill={accent} opacity={0.3} />
-            <Circle cx={110} cy={65} r={28} fill={accent} opacity={0.85} />
-            <Path
-              d="M 110 5 L 110 20 M 110 110 L 110 125 M 50 65 L 65 65 M 155 65 L 170 65 M 68 23 L 78 33 M 142 97 L 152 107 M 68 107 L 78 97 M 142 33 L 152 23"
-              stroke={ink}
-              strokeWidth={3.5}
-              strokeLinecap="round"
-              opacity={0.4}
-            />
-          </Svg>
-        );
-
-      case 'stripes':
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <G opacity={0.45}>
-              <Path d="M 30 20 Q 80 5 130 20 T 210 20" stroke={accent} strokeWidth={5} strokeLinecap="round" />
-              <Path d="M 30 40 Q 80 25 130 40 T 210 40" stroke={accent} strokeWidth={5} strokeLinecap="round" />
-              <Path d="M 30 60 Q 80 45 130 60 T 210 60" stroke={accent} strokeWidth={5} strokeLinecap="round" />
-              <Path d="M 30 80 Q 80 65 130 80 T 210 80" stroke={accent} strokeWidth={5} strokeLinecap="round" />
-              <Path d="M 30 100 Q 80 85 130 100 T 210 100" stroke={accent} strokeWidth={5} strokeLinecap="round" />
-            </G>
-            <Circle cx={175} cy={65} r={32} fill={secColor} opacity={0.7} />
-          </Svg>
-        );
-
-      case 'rings':
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <Circle cx={110} cy={65} r={58} stroke={accent} strokeWidth={3} opacity={0.25} />
-            <Circle cx={110} cy={65} r={42} stroke={accent} strokeWidth={5} opacity={0.45} />
-            <Circle cx={110} cy={65} r={24} fill={accent} opacity={0.88} />
-            <Circle cx={110} cy={65} r={10} fill={bg} />
-          </Svg>
-        );
-
-      case 'dualDiscs':
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <Circle cx={85} cy={65} r={48} fill={accent} opacity={0.85} />
-            <Circle cx={135} cy={65} r={48} fill={secColor} opacity={0.75} />
-          </Svg>
-        );
-
-      case 'curves':
-      case 'waves':
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <Path
-              d="M 10 95 Q 60 20 110 65 T 210 35"
-              stroke={accent}
-              strokeWidth={18}
-              strokeLinecap="round"
-              opacity={0.85}
-            />
-            <Circle cx={165} cy={85} r={24} fill={secColor} opacity={0.65} />
-          </Svg>
-        );
-
-      case 'bauhaus':
-      default:
-        return (
-          <Svg width={220} height={130} viewBox="0 0 220 130" fill="none">
-            <Rect x={40} y={25} width={65} height={65} rx={14} fill={accent} opacity={0.85} />
-            <Circle cx={150} cy={60} r={34} fill={secColor} opacity={0.75} />
-            <Path d="M 95 70 L 165 70" stroke={ink} strokeWidth={4} strokeLinecap="round" opacity={0.5} />
-          </Svg>
-        );
-    }
-  };
 
   return (
     <View style={styles.cardContainer}>
@@ -183,7 +186,7 @@ const MonthCreditCard: React.FC<MonthCreditCardProps> = ({
       >
         {/* ─── Abstract Center Artwork ─────────────────────────────── */}
         <View style={styles.artworkContainer} pointerEvents="none">
-          {renderCardArtwork()}
+          {renderPaletteArtwork(palette)}
         </View>
 
         {/* ─── Top Row ────────────────────────────────────────────── */}
@@ -292,8 +295,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 20,
+    paddingBottom: 22,
     justifyContent: 'space-between',
     position: 'relative',
   },

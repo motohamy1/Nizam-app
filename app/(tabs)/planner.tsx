@@ -25,8 +25,8 @@ import ScreenGuide from '@/components/ScreenGuide';
 import type { GuideTip } from '@/components/ScreenGuide';
 import { LIST_TYPE_COLORS } from '@/utils/magicColors';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
-import MonthWalletDeck from '@/components/MonthWalletDeck';
-import { getMonthPalette } from '@/components/MonthCreditCard';
+import { ScrollStack, WheelPicker } from '@/components/ScrollStack';
+import MonthCreditCard, { getMonthPalette, MONTH_PALETTES } from '@/components/MonthCreditCard';
 import LivePress from '@/components/LivePress';
 import DayTimelineSchedule from '@/components/DayTimelineSchedule';
 import TaskDetailModal from '@/components/TaskDetailModal';
@@ -137,9 +137,6 @@ const Planner = () => {
   const linkProjectMutation = useOfflineMutation(api.todos.linkProject, "todos:linkProject");
   const linkTaskMutation = useOfflineMutation(api.todos.linkTask, "todos:linkTask");
   const scrollViewRef = useRef<ScrollView>(null);
-  const yearScrollRef = useRef<ScrollView>(null);
-  const monthStackRef = useRef<ScrollView>(null);
-  const autoReturnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const currentYear = new Date().getFullYear();
@@ -147,18 +144,17 @@ const Planner = () => {
   const years = useMemo(() => [currentYear - 1, currentYear, currentYear + 1, currentYear + 2], [currentYear]);
   const currentMonth = new Date().getMonth();
 
-  // Scroll year carousel to active/current year whenever viewing the month grid
-  useEffect(() => {
-    if (selectedMonth === null) {
-      const targetYear = activeYear || currentYear;
-      const targetIdx = years.indexOf(targetYear);
-      const idx = targetIdx !== -1 ? targetIdx : years.indexOf(currentYear);
-      const timer = setTimeout(() => {
-        yearScrollRef.current?.scrollTo({ x: idx * screenWidth, animated: false });
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedMonth, activeYear, screenWidth, currentYear, years]);
+  // Year deck palettes: current year wears the live month palette; the others
+  // get fixed Bauhaus-variety palettes so each card reads distinctly.
+  const yearPalettes = useMemo(
+    () => [
+      getMonthPalette(4),                       // prev year - platinum slate
+      getMonthPalette(currentMonth),            // current year - month palette
+      getMonthPalette(7),                       // +1 - emerald waves
+      getMonthPalette(9),                       // +2 - sunset amber
+    ],
+    [currentMonth]
+  );
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -278,9 +274,6 @@ const Planner = () => {
   };
 
   const renderMonthGrid = () => {
-    const activeYearIndex = years.indexOf(activeYear);
-    const initialIndex = activeYearIndex !== -1 ? activeYearIndex : years.indexOf(currentYear);
-
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -292,214 +285,148 @@ const Planner = () => {
           <Text style={styles.yearSectionSubtitle}>{t.year} {activeYear}</Text>
         </View>
 
-        <ScrollView
-          ref={yearScrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
-          onMomentumScrollEnd={(e) => {
-            const pageIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-            if (pageIndex >= 0 && pageIndex < years.length) {
-              setActiveYear(years[pageIndex]);
-            }
-          }}
-          contentContainerStyle={styles.yearScrollContainer}
-          style={{ height: 129 }}
-        >
-          {years.map((year) => {
-            const yearGoalDocs = allGoals.filter((g: any) => g.year === year);
-            const yearAchievementDocs = allAchievements.filter((a: any) => a.year === year);
-            const isCurrent = year === currentYear;
+        <WheelPicker
+          labels={years.map((y) => String(y))}
+          activeIndex={Math.max(0, years.indexOf(activeYear))}
+          onChange={(i) => setActiveYear(years[i])}
+          // Idle auto-return: after 5s without interaction the wheel snaps back
+          // to the current year, same as the home day wheel.
+          autoReturnIndex={years.indexOf(currentYear)}
+          autoReturnDelay={5000}
+          palettes={yearPalettes}
+          accentColor={yearPalettes[Math.max(0, years.indexOf(activeYear))]?.accent}
+          isArabic={isArabic}
+        />
 
-            // Aggregate checklist stats across all goal docs for this year
-            let totalGoals = 0;
-            let completedGoals = 0;
-            yearGoalDocs.forEach((doc: any) => {
-              const stats = getChecklistStats(doc.description);
-              totalGoals += stats.total;
-              completedGoals += stats.completed;
-            });
-            // Fallback: if no checklists parsed but docs exist, count docs as items
-            if (totalGoals === 0 && yearGoalDocs.length > 0) {
-              totalGoals = yearGoalDocs.length;
-              completedGoals = yearGoalDocs.filter((d: any) => d.isCompleted).length;
-            }
-
-            const goalProgress = totalGoals > 0 ? completedGoals / totalGoals : 0;
-            const achievementCount = yearAchievementDocs.length;
-
-            const currentMonthPalette = getMonthPalette(currentMonth);
-
-            // Dynamic color system for current year card (matches current month palette)
-            const cardBg = isCurrent ? currentMonthPalette.bg : colors.surface;
-            const cardBorder = isCurrent ? currentMonthPalette.ink + '20' : colors.border;
-            const textColor = isCurrent ? currentMonthPalette.ink : colors.text;
-            const textMutedColor = isCurrent ? currentMonthPalette.ink + 'A6' : colors.textMuted;
-            const badgeBg = isCurrent ? currentMonthPalette.ink + '18' : colors.primary + '18';
-            const badgeTextColor = isCurrent ? currentMonthPalette.ink : colors.primary;
-            const iconBtnBg = isCurrent ? currentMonthPalette.ink + '14' : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)');
-            const iconBtnColor = isCurrent ? currentMonthPalette.ink : colors.primary;
-            const capsuleBg = isCurrent ? currentMonthPalette.ink + '0E' : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)');
-            const capsuleBorder = isCurrent ? currentMonthPalette.ink + '18' : colors.border;
-            const flagIconColor = isCurrent ? currentMonthPalette.ink : (isDarkMode ? '#e5f19d' : colors.primary);
-            const trophyIconColor = isCurrent ? currentMonthPalette.ink : '#FBBF24';
-            const progressTrackBg = isCurrent ? currentMonthPalette.ink + '1A' : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)');
-            const progressFillBg = isCurrent ? currentMonthPalette.accent : (isDarkMode ? '#e5f19d' : colors.primary);
-            const progressTextColor = isCurrent ? currentMonthPalette.ink : (isDarkMode ? '#e5f19d' : colors.primary);
-
-            return (
-              <View key={year} style={{ width: screenWidth, paddingHorizontal: 16 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.yearCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderColor: cardBorder,
-                    },
-                    isCurrent && {
-                      shadowColor: currentMonthPalette.ink,
-                      shadowOpacity: 0.15,
-                      shadowRadius: 10,
-                      elevation: 4,
-                    }
-                  ]}
-                  onPress={() => router.push({
-                    pathname: '/goals-detail',
-                    params: {
-                      year: year.toString(),
-                      title: isArabic ? `أهداف وإنجازات عام ${year}` : `${year} Goals & Achievements`,
-                    },
-                  })}
-                  activeOpacity={0.88}
-                >
-                  {/* Top Row: Year, Badge, Edit Icon */}
-                  <View style={styles.yearCardHeader}>
-                    <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={[styles.yearCardTitle, { color: textColor }]}>{year}</Text>
-                      {isCurrent && (
-                        <View style={[styles.yearCardBadge, { backgroundColor: badgeBg }]}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: badgeTextColor }}>{t.current}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: iconBtnBg, justifyContent: 'center', alignItems: 'center' }}>
-                      <Ionicons name="create-outline" size={15} color={iconBtnColor} />
-                    </View>
+        {/* ─── Year focus capsules: Goals & To-dos (left) | Achievements (right) ─── */}
+        {(() => {
+          const py = yearPalettes[Math.max(0, years.indexOf(activeYear))] ?? getMonthPalette(0);
+          const ach = isDarkMode
+            ? { bg: '#2A2113', ink: '#F5EAD6', accent: '#FBBF24' }
+            : { bg: '#FDF3DC', ink: '#451A03', accent: '#D97706' };
+          const cardBase: any = {
+            flex: 1,
+            height: 140,
+            borderRadius: 22,
+            padding: 16,
+            justifyContent: 'space-between',
+            shadowOpacity: 0.16,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 5,
+          };
+          return (
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 14, paddingHorizontal: 16 }}>
+              {/* Goals & To-dos — wears the focused year's palette */}
+              <LivePress
+                style={[cardBase, { backgroundColor: py.bg, shadowColor: py.ink }]}
+                pressScale={0.96}
+                onPress={() => router.push({
+                  pathname: '/year-section',
+                  params: { kind: 'goals', year: String(activeYear) },
+                })}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: py.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="flag-outline" size={20} color={py.accent} />
                   </View>
-
-                  {/* Middle Row: Stats Capsules */}
-                  <View style={{
-                    flexDirection: isArabic ? 'row-reverse' : 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    marginVertical: 4,
-                  }}>
-                    {/* Goals stat capsule (Navigates to Year Goals) */}
-                    <TouchableOpacity
-                      style={[styles.yearStatCard, { backgroundColor: capsuleBg, borderColor: capsuleBorder }]}
-                      onPress={() => router.push({
-                        pathname: '/goals-detail',
-                        params: {
-                          year: year.toString(),
-                          title: isArabic ? `أهداف عام ${year}` : `${year} Goals`,
-                        }
-                      })}
-                      activeOpacity={0.75}
-                    >
-                      <Ionicons name="flag-outline" size={16} color={flagIconColor} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.yearStatValue, { color: textColor, textAlign: isArabic ? 'right' : 'left' }]}>
-                          {totalGoals > 0 ? `${completedGoals}/${totalGoals}` : '—'}
-                        </Text>
-                        <Text style={[styles.yearStatLabel, { color: textMutedColor, textAlign: isArabic ? 'right' : 'left' }]} numberOfLines={1}>
-                          {t.goalsOfTheYear}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Achievements stat capsule (Navigates to Year Goals & Wins) */}
-                    <TouchableOpacity
-                      style={[styles.yearStatCard, { backgroundColor: capsuleBg, borderColor: capsuleBorder }]}
-                      onPress={() => router.push({
-                        pathname: '/goals-detail',
-                        params: {
-                          year: year.toString(),
-                          title: isArabic ? `إنجازات عام ${year}` : `${year} Achievements`,
-                        }
-                      })}
-                      activeOpacity={0.75}
-                    >
-                      <Ionicons name="trophy-outline" size={16} color={trophyIconColor} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.yearStatValue, { color: textColor, textAlign: isArabic ? 'right' : 'left' }]}>
-                          {achievementCount}
-                        </Text>
-                        <Text style={[styles.yearStatLabel, { color: textMutedColor, textAlign: isArabic ? 'right' : 'left' }]} numberOfLines={1}>
-                          {t.achievementsOfTheYear}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: py.ink + '0D', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={py.ink} style={{ opacity: 0.55 }} />
                   </View>
-
-                  {/* Bottom Row: Progress bar or Tap to plan */}
-                  {totalGoals > 0 ? (
-                    <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                      <View style={{
-                        flex: 1,
-                        height: 5,
-                        backgroundColor: progressTrackBg,
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                      }}>
-                        <View style={{
-                          height: '100%',
-                          width: `${goalProgress * 100}%`,
-                          backgroundColor: progressFillBg,
-                          borderRadius: 3,
-                        }} />
-                      </View>
-                      <Text style={{
-                        fontSize: 10,
-                        fontWeight: '700',
-                        color: progressTextColor,
-                      }}>
-                        {Math.round(goalProgress * 100)}% {t.goalCompleted}
+                </View>
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: '900', letterSpacing: -0.2, color: py.ink }} numberOfLines={1}>
+                    {isArabic ? 'الأهداف والمهام' : 'Goals & To-dos'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: py.ink + '14' }}>
+                      <Text style={{ fontSize: 9.5, fontWeight: '800', color: py.ink, letterSpacing: 0.3 }}>
+                        {isArabic ? 'قريبًا' : 'SOON'}
                       </Text>
                     </View>
-                  ) : (
-                    <Text style={{
-                      textAlign: 'center',
-                      color: textMutedColor,
-                      fontSize: 11,
-                      fontWeight: '600',
-                      marginTop: 2,
-                    }}>
-                      {t.tapToPlan}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: py.ink, opacity: 0.6 }} numberOfLines={1}>
+                      {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
                     </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  </View>
+                </View>
+              </LivePress>
+
+              {/* Achievements — fixed gold identity, always on the right */}
+              <LivePress
+                style={[cardBase, { backgroundColor: ach.bg, shadowColor: ach.ink }]}
+                pressScale={0.96}
+                onPress={() => router.push({
+                  pathname: '/year-section',
+                  params: { kind: 'achievements', year: String(activeYear) },
+                })}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: ach.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="trophy-outline" size={20} color={ach.accent} />
+                  </View>
+                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: ach.ink + '0D', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={ach.ink} style={{ opacity: 0.55 }} />
+                  </View>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: '900', letterSpacing: -0.2, color: ach.ink }} numberOfLines={1}>
+                    {isArabic ? 'الإنجازات' : 'Achievements'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: ach.ink + '14' }}>
+                      <Text style={{ fontSize: 9.5, fontWeight: '800', color: ach.ink, letterSpacing: 0.3 }}>
+                        {isArabic ? 'قريبًا' : 'SOON'}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: ach.ink, opacity: 0.6 }} numberOfLines={1}>
+                      {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
+                    </Text>
+                  </View>
+                </View>
+              </LivePress>
+            </View>
+          );
+        })()}
+
+
+        {/* ─── Horizontal Rolodex Deck + 3D Month Wheel ─── */}
+        <ScrollStack
+          isArabic={isArabic}
+          labels={months}
+          initialIndex={currentMonth}
+          palettes={MONTH_PALETTES}
+          axis="horizontal"
+          showWheel
+          cardInset={screenWidth * 0.032 + 14.98}
+          // Idle auto-return: 5s after the last swipe/tap/wheel detent, the
+          // deck and its wheel re-center on the current month, like the home
+          // day wheel does.
+          autoReturnIndex={currentMonth}
+          autoReturnDelay={5000}
+          style={{ marginBottom: 30 }}
+        >
+          {months.map((monthName, idx) => {
+            const monthTasks = getTasksForMonth(idx);
+            const completedMonthTasks = monthTasks.filter((task) => task.status === 'done').length;
+            return (
+              <MonthCreditCard
+                key={monthName}
+                month={monthName}
+                monthIndex={idx}
+                year={currentYear}
+                taskCount={monthTasks.length}
+                completionRate={monthTasks.length > 0 ? Math.round((completedMonthTasks / monthTasks.length) * 100) : 0}
+                isCurrent={idx === currentMonth}
+                isArabic={isArabic}
+                palette={getMonthPalette(idx)}
+                currentLabel={t.current}
+                tasksLabel={monthTasks.length === 1 ? t.task : t.tasksThisMonth}
+                emptyLabel={t.empty}
+                onPress={() => setSelectedMonth(idx)}
+              />
             );
           })}
-        </ScrollView>
-
-        {/* ─── 3D Vertical Stacked Wallet Deck for Months ─── */}
-        <MonthWalletDeck
-          months={months}
-          currentYear={currentYear}
-          currentMonthIndex={currentMonth}
-          getTasksForMonth={getTasksForMonth}
-          onSelectMonth={(monthIdx) => setSelectedMonth(monthIdx)}
-          isArabic={isArabic}
-          t={{
-            current: t.current,
-            task: t.task,
-            tasksThisMonth: t.tasksThisMonth,
-            empty: t.empty,
-          }}
-        />
+        </ScrollStack>
       </ScrollView>
     );
   };

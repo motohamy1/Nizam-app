@@ -21,8 +21,8 @@ const Header = () => {
 
     return (
         <AnimatedWavyHeader
-            backgroundColor={colors.bg}
-            waveHeight={10}
+            backgroundColor="transparent"
+            waveHeight={0}
             contentStyle={{ paddingBottom: 4 }}
         >
             <View style={[homeStyles.header, { paddingTop: 8, paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>

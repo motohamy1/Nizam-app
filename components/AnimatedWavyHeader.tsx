@@ -206,10 +206,13 @@ export const WavyHeader = ({
   accentColor,
 }: WavyHeaderProps) => {
   const { colors, isDarkMode } = useTheme();
-  // In dark mode, ensure header is transparent so background atmospheric gradient flows through seamlessly
+  // Dark mode: header is transparent so the atmospheric gradient flows through.
+  // Light mode: same treatment — the warm ivory ambient (ScreenBackground) flows
+  // behind the header so it never reads as a flat white band above the glowing
+  // body. An explicit non-bg color still paints solid (e.g. tinted headers).
   const headerBg = isDarkMode
     ? (backgroundColor === colors.bg ? 'transparent' : (backgroundColor || 'transparent'))
-    : (backgroundColor || colors.surface);
+    : (backgroundColor === colors.bg ? 'transparent' : (backgroundColor || colors.surface));
 
   return (
     <View style={[styles.headerWrapper, containerStyle]}>
