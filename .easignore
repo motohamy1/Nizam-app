@@ -56,6 +56,10 @@ terminal_logs
 *.md
 
 # app store marketing assets & misc
+*.png
+!assets/**/*.png
+!node_modules/**/*.png
+store-screenshots
 todo-app-redesign.html
 todo-app-redesign.html.artifact.json
 patch_modal.js
