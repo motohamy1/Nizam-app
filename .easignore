@@ -1,8 +1,12 @@
 node_modules
 .expo
 dist
+dist-test
+dist-test-ios
 web-build
 expo-env.d.ts
+/dist-test
+/dist-test-ios
 
 # native folders
 /ios

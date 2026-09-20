@@ -77,3 +77,14 @@ export const modeColor = (hex: string | undefined, isDarkMode: boolean): string 
   if (!hex || isDarkMode) return hex ?? '';
   return PASTEL_TO_LIGHT_INK[hex.toLowerCase()] ?? hex;
 };
+
+/** Per-status forest card backgrounds (solid; append alpha hex for translucency). */
+export const taskStatusBg = (colors: any, status?: string): string => {
+  switch (status) {
+    case 'in_progress': return colors.taskInProgressBg;
+    case 'done': return colors.taskDoneBg;
+    case 'paused': return colors.taskPausedBg;
+    case 'not_done': return colors.taskNotDoneBg;
+    default: return colors.taskNotStartedBg;
+  }
+};

@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
+import { taskStatusBg } from '@/utils/colorUtils';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import useTheme from '@/hooks/useTheme';
 import { modeColor, textOn } from '@/utils/colorUtils';
@@ -205,13 +206,14 @@ const KanbanCard: React.FC<{
       <LivePress
         onPress={() => onOpenDetail(task._id)}
         style={{
-          backgroundColor: isDarkMode ? '#16171E' : '#FFFFFF',
+          backgroundColor: isDarkMode ? taskStatusBg(colors, task.status) + '81' : '#FFFFFF',
           borderWidth: 1,
-          borderColor: isDarkMode ? '#252733' : colors.border,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : colors.border,
           borderRadius: 18,
           padding: 14,
           marginBottom: 12,
-          ...colors.shadows.sm,
+          // No black cast shadow under glass (see TodoCard dark-mode note).
+          ...(isDarkMode ? { shadowOpacity: 0, shadowRadius: 0, elevation: 0 } : colors.shadows.sm),
         }}
       >
         {/* Header Row: Title & Circular Round Progress Timer */}
@@ -334,7 +336,7 @@ const KanbanCard: React.FC<{
               style={{ 
                 height: 4, 
                 borderRadius: 2, 
-                backgroundColor: isDarkMode ? '#252733' : '#E2E8F0', 
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.10)' : '#E2E8F0', 
                 overflow: 'hidden' 
               }}
             >
@@ -350,7 +352,7 @@ const KanbanCard: React.FC<{
 
             {/* Expanded Interactive Subtasks List */}
             {showSubtasks && (
-              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: isDarkMode ? '#252733' : '#E2E8F0', gap: 6 }}>
+              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#E2E8F0', gap: 6 }}>
                 {subtasks.map((sub: any) => {
                   const isSubDone = sub.status === 'done';
                   return (
@@ -423,7 +425,7 @@ const KanbanCard: React.FC<{
                     flexDirection: isArabic ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     gap: 4,
-                    backgroundColor: isDarkMode ? '#333647' : '#E2E8F0',
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.14)' : '#E2E8F0',
                     paddingHorizontal: 9,
                     paddingVertical: 4.5,
                     borderRadius: 10,
@@ -466,14 +468,14 @@ const KanbanCard: React.FC<{
                     flexDirection: isArabic ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     gap: 4,
-                    backgroundColor: colors.warning,
+                    backgroundColor: modeColor('#F9A8D4', isDarkMode),
                     paddingHorizontal: 9,
                     paddingVertical: 4.5,
                     borderRadius: 10,
                   }}
                 >
-                  <Ionicons name="play" size={11} color="#0E0F14" />
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#0E0F14' }}>
+                  <Ionicons name="play" size={11} color={textOn(modeColor('#F9A8D4', isDarkMode), '#0E0F14')} />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: textOn(modeColor('#F9A8D4', isDarkMode), '#0E0F14') }}>
                     {isArabic ? 'استئناف' : 'Resume'}
                   </Text>
                 </TouchableOpacity>
@@ -530,7 +532,7 @@ const KanbanCard: React.FC<{
                     gap: 4,
                     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                     borderWidth: 1,
-                    borderColor: isDarkMode ? '#2F3244' : colors.border,
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : colors.border,
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 10,
@@ -555,7 +557,7 @@ const KanbanCard: React.FC<{
                   gap: 4,
                   backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                   borderWidth: 1,
-                  borderColor: isDarkMode ? '#2F3244' : colors.border,
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : colors.border,
                   paddingHorizontal: 9,
                   paddingVertical: 4.5,
                   borderRadius: 10,
@@ -573,12 +575,12 @@ const KanbanCard: React.FC<{
           {task.priority ? (
             <View 
               style={{ 
-                backgroundColor: isDarkMode ? '#242634' : '#F1F5F9', 
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9', 
                 paddingHorizontal: 8, 
                 paddingVertical: 3, 
                 borderRadius: 8,
                 borderWidth: 1,
-                borderColor: isDarkMode ? '#2F3244' : colors.border,
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : colors.border,
               }}
             >
               <Text style={{ fontSize: 10, fontWeight: '700', color: priorityColor }}>

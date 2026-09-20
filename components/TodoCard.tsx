@@ -436,7 +436,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
     ({ bg: statusPillBg, text: statusPillText } = pill(colors.warning, '#f6e5c9', '#2D1E0C', colors.secondaryText));
     statusPillLabel = isArabic ? 'قيد التنفيذ' : 'In Progress';
   } else if (optimisticStatus === 'paused') {
-    statusPillBg = isDarkMode ? '#252636' : '#EBEAFF';
+    statusPillBg = isDarkMode ? 'rgba(219,212,253,0.16)' : '#EBEAFF';
     statusPillText = isDarkMode ? '#dbd4fd' : colors.text;
     statusPillLabel = isArabic ? 'مؤقت' : 'Paused';
   } else if (optimisticStatus === 'not_done' || isPastDue) {
@@ -482,14 +482,16 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
           { 
             overflow: 'hidden', 
             position: 'relative', 
-            backgroundColor: isDarkMode ? '#16171E' : '#FFFFFF', 
-            borderColor: isDarkMode ? '#252733' : colors.border, 
+            backgroundColor: isDarkMode ? getStatusBg(colors, todo.status) + '81' : '#FFFFFF', 
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : colors.border, 
             borderWidth: 1, 
             borderRadius: 20,
             paddingHorizontal: 18,
             paddingVertical: 16,
             marginBottom: 12,
-            ...getStatusShadow(colors, todo.status),
+            // Glass cards must not cast black shadows — at 50% alpha the
+            // shadow ring bleeds through the edge and reads as a dark border.
+            ...(isDarkMode ? { shadowOpacity: 0, shadowRadius: 0, elevation: 0 } : getStatusShadow(colors, todo.status)),
           }
         ]}
       >
@@ -565,7 +567,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
             <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
               {/* Priority Pill */}
               <View style={{
-                backgroundColor: isDarkMode ? '#242634' : '#F1F5F9',
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
                 paddingHorizontal: 12,
                 paddingVertical: 5,
                 borderRadius: 14,
@@ -668,7 +670,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 10,
-                    backgroundColor: isDarkMode ? '#242634' : '#F1F5F9',
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
                   }}
                 >
                   <Ionicons name="list-outline" size={13} color={colors.textMuted} />
@@ -695,7 +697,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
             <View style={{
               height: 4,
               borderRadius: 2,
-              backgroundColor: isDarkMode ? '#252733' : '#E2E8F0',
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.10)' : '#E2E8F0',
               position: 'relative',
               marginTop: 4,
               justifyContent: 'center',
@@ -717,7 +719,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
                   borderRadius: 4.5,
                   backgroundColor: colors.primary,
                   borderWidth: 2,
-                  borderColor: isDarkMode ? '#16171E' : '#FFFFFF',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.10)' : '#FFFFFF',
                   transform: [{ translateX: -4.5 }],
                 }} />
               )}
@@ -726,7 +728,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
 
           {/* Subtasks Expanded List */}
           {showSubtasks && hasSubtasks && (
-            <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? '#252733' : '#E2E8F0', gap: 8 }}>
+            <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#E2E8F0', gap: 8 }}>
               {subtasks.map((sub: any) => (
                 <SubtaskRow
                   key={sub._id}
