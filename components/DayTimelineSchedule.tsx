@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
   Alert,
+  PanResponder,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Id } from '@/convex/_generated/dataModel';
@@ -30,6 +31,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const START_HOUR = 4; // 04:00 AM (accommodates Fajr in all seasons)
 const END_HOUR = 24; // 12:00 AM midnight (20 hours total)
 const TOTAL_HOURS = END_HOUR - START_HOUR;
+const TOTAL_MINUTES = TOTAL_HOURS * 60;
+const DRAG_SNAP_MINUTES = 15;
+const MIN_LONG_PRESS_MS = 350;
 
 export interface DayTimelineItem {
   id: string;
@@ -146,6 +150,11 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
   const [itemTitle, setItemTitle] = useState('');
   const [itemContextText, setItemContextText] = useState('');
   const [itemDuration, setItemDuration] = useState(30);
+  // Editable end time — always derived from start + duration, and editing the
+  // end time recomputes the duration (the two stay in sync).
+  const [endHour, setEndHour] = useState<number>(9);
+  const [endMinute, setEndMinute] = useState<number>(30);
+  const [endIsPM, setEndIsPM] = useState<boolean>(false);
 
   // Prayer completion local state
   const [completedPrayers, setCompletedPrayers] = useState<Record<string, boolean>>({});
@@ -185,37 +194,44 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
     return () => clearInterval(timer);
   }, [isToday]);
 
-  // Build unified chronological timeline items (tasks, meetings, checklists, bullets)
-  const scheduleItems = useMemo<DayTimelineItem[]>(() => {
-    const items: DayTimelineItem[] = [];
+  // Build unified chronological timeline items. Todos WITHOUT an explicit
+  // time (no dueDate, or a midnight dueDate) are pulled out into the
+  // "Unscheduled" lane instead of being faked at a fixed hour — that fake
+  // pile-up (everything at 09:00) is what made unrelated tasks render
+  // compacted together in one column block.
+  const { scheduledItems, unscheduledTodos } = useMemo<{
+    scheduledItems: DayTimelineItem[];
+    unscheduledTodos: any[];
+  }>(() => {
+    const scheduledItems: DayTimelineItem[] = [];
+    const unscheduledTodos: any[] = [];
 
     // 1. Todos & Tasks for this day
     tasks.forEach((todo) => {
-      let timeH = 9;
-      let timeM = 0;
+      const due = todo.dueDate ? new Date(todo.dueDate) : null;
+      const hasExplicitTime = !!due && !(due.getHours() === 0 && due.getMinutes() === 0);
+      if (!hasExplicitTime) {
+        unscheduledTodos.push(todo);
+        return;
+      }
+
       let duration = todo.timerDuration ? Math.round(todo.timerDuration / 60000) : 30;
       if (duration < 15) duration = 15;
-
-      if (todo.dueDate) {
-        const d = new Date(todo.dueDate);
-        timeH = d.getHours();
-        timeM = d.getMinutes();
-      }
 
       let kind: DayTimelineItem['kind'] = 'task';
       if (todo.meetingLink || todo.type === 'meeting') kind = 'meeting';
       else if (todo.location || todo.type === 'appointment') kind = 'appointment';
       else if (todo.type === 'reminder') kind = 'appointment';
 
-      items.push({
+      scheduledItems.push({
         id: todo._id,
         source: 'todo',
         rawItem: todo,
         title: todo.text || 'Untitled Task',
         subtitle: todo.description || (todo.location ? `📍 ${todo.location}` : undefined),
         kind,
-        timeHour: timeH,
-        timeMinute: timeM,
+        timeHour: due!.getHours(),
+        timeMinute: due!.getMinutes(),
         durationMinutes: duration,
         isCompleted: todo.status === 'done',
         color: todo.status === 'done' ? '#10B981' : KIND_CONFIG[kind]?.defaultColor || colors.primary,
@@ -227,7 +243,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
     // 2. Planner items (Checklists & Bullet points with default spread)
     checklistItems.forEach((cItem, idx) => {
       const timeH = Math.min(22, 10 + (idx % 8));
-      items.push({
+      scheduledItems.push({
         id: cItem._id,
         source: 'plannerItem',
         rawItem: cItem,
@@ -244,7 +260,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
 
     bulletItems.forEach((bItem, idx) => {
       const timeH = Math.min(22, 14 + (idx % 6));
-      items.push({
+      scheduledItems.push({
         id: bItem._id,
         source: 'plannerItem',
         rawItem: bItem,
@@ -259,7 +275,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
       });
     });
 
-    return items;
+    return { scheduledItems, unscheduledTodos };
   }, [tasks, checklistItems, bulletItems, isArabic, colors.primary]);
 
   const TOP_OFFSET = 12;
@@ -267,7 +283,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
   // Compute collision positions, cluster widths, and columns for timeline items
   const laidOutItems = useMemo(() => {
     // 1. Sort by start time, then by longer duration first
-    const sorted = [...scheduleItems].sort((a, b) => {
+    const sorted = [...scheduledItems].sort((a, b) => {
       const aStart = (a.timeHour - START_HOUR) * 60 + a.timeMinute;
       const bStart = (b.timeHour - START_HOUR) * 60 + b.timeMinute;
       if (aStart !== bStart) return aStart - bStart;
@@ -360,18 +376,137 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
       colIndex: node.colIndex,
       totalCols: node.totalCols,
     }));
-  }, [scheduleItems, minuteHeight]);
+  }, [scheduledItems, minuteHeight]);
 
-  const openAddAtTime = (hour: number, minute: number = 0) => {
+  const to24 = (h: number, pm: boolean) => {
+    let h24 = h;
+    if (pm && h24 < 12) h24 += 12;
+    if (!pm && h24 === 12) h24 = 0;
+    return h24;
+  };
+
+  // Recompute the editable end time from a start (12h parts) + duration.
+  const recomputeEnd = (h12: number, minute: number, pm: boolean, dur: number) => {
+    const start24 = to24(h12, pm);
+    const endTotal = start24 * 60 + Math.max(15, Math.round(dur));
+    const endH24 = Math.floor(endTotal / 60) % 24;
+    setEndHour(endH24 % 12 === 0 ? 12 : endH24 % 12);
+    setEndMinute(endTotal % 60);
+    setEndIsPM(endH24 >= 12);
+  };
+
+  // Editing the end time directly writes back into the duration. An end at or
+  // before the start clamps to the 15-minute minimum (end snaps to start+15).
+  const applyEndTime = (h12: number, minute: number, pm: boolean) => {
+    const start24 = to24(selectedHour, isPM);
+    const end24 = to24(h12, pm);
+    const dur = end24 * 60 + minute - start24 * 60;
+    if (dur < 15) {
+      setItemDuration(15);
+      recomputeEnd(selectedHour, selectedMinute, isPM, 15);
+      return;
+    }
+    setItemDuration(dur);
+    setEndHour(h12);
+    setEndMinute(minute);
+    setEndIsPM(pm);
+  };
+
+  const openAddAtTime = (hour: number, minute: number = 0, durationMin?: number) => {
     const clampedHour = Math.max(0, Math.min(23, hour));
     const h12 = clampedHour % 12 === 0 ? 12 : clampedHour % 12;
+    const dur = durationMin && durationMin > 0 ? durationMin : 30;
     setSelectedHour(h12);
     setSelectedMinute(minute);
     setIsPM(clampedHour >= 12);
     setItemTitle('');
     setItemContextText('');
+    setItemDuration(dur);
+    recomputeEnd(h12, minute, clampedHour >= 12, dur);
     setModalVisible(true);
   };
+
+  // ─── Google-Calendar-style press-and-hold drag selection ───────────────────
+  // Long-press an empty slot → a selection stub appears; keep the finger down
+  // and drag up/down to grow it (snapped to 15-min steps). Release → the add
+  // modal opens prefilled with the dragged start time and duration. Regular
+  // scrolls are untouched: the pan responder only claims the gesture once a
+  // selection is active.
+  const [dragSel, setDragSel] = useState<{ startMin: number; endMin: number } | null>(null);
+  const dragSelRef = useRef<{ startMin: number; endMin: number } | null>(null);
+  // True once the pan responder has claimed the gesture (i.e. the user is
+  // actually dragging). Distinguishes "long-pressed then released" from
+  // "long-pressed then dragged" so the slot's press-out handler doesn't
+  // double-open the modal after a finished drag.
+  const dragClaimedRef = useRef(false);
+  const minuteHeightRef = useRef(minuteHeight);
+  minuteHeightRef.current = minuteHeight;
+
+  const startDrag = useCallback((startMin: number) => {
+    dragSelRef.current = { startMin, endMin: startMin + DRAG_SNAP_MINUTES };
+    dragClaimedRef.current = false;
+    setDragSel({ ...dragSelRef.current });
+  }, []);
+
+  const clearDrag = useCallback(() => {
+    dragSelRef.current = null;
+    dragClaimedRef.current = false;
+    setDragSel(null);
+  }, []);
+
+  const finishDrag = useCallback(() => {
+    const sel = dragSelRef.current;
+    clearDrag();
+    if (!sel) return;
+    const start = Math.min(sel.startMin, sel.endMin);
+    const end = Math.max(sel.startMin, sel.endMin);
+    const dur = end - start;
+    if (dur < DRAG_SNAP_MINUTES) {
+      // Plain long-press without a drag → quick add at that half-hour slot.
+      openAddAtTime(Math.floor(start / 60), start % 60);
+      return;
+    }
+    openAddAtTime(Math.floor(start / 60) % 24, start % 60, dur);
+  }, [clearDrag]);
+
+  const finishDragRef = useRef(finishDrag);
+  finishDragRef.current = finishDrag;
+  const clearDragRef = useRef(clearDrag);
+  clearDragRef.current = clearDrag;
+
+  const timelinePanHandlers = useMemo(() => {
+    const pr = PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      // Only claim the gesture while an active selection exists — normal
+      // scrolling and taps fall through to the ScrollView / slots untouched.
+      onMoveShouldSetPanResponderCapture: () => dragSelRef.current !== null,
+      onMoveShouldSetPanResponder: () => dragSelRef.current !== null,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        dragClaimedRef.current = true;
+      },
+      onPanResponderMove: (_, g) => {
+        const sel = dragSelRef.current;
+        if (!sel) return;
+        const rawEnd = sel.startMin + g.dy / minuteHeightRef.current;
+        const snapped = Math.round(rawEnd / DRAG_SNAP_MINUTES) * DRAG_SNAP_MINUTES;
+        const clamped = Math.max(0, Math.min(TOTAL_MINUTES, snapped));
+        // Re-render only when the snapped value actually changes.
+        if (clamped !== sel.endMin) {
+          dragSelRef.current = { ...sel, endMin: clamped };
+          setDragSel({ ...dragSelRef.current });
+        }
+      },
+      onPanResponderRelease: () => {
+        finishDragRef.current();
+      },
+      onPanResponderTerminate: () => {
+        clearDragRef.current();
+      },
+    });
+    return pr.panHandlers;
+  }, []);
 
   const handleSaveItem = async () => {
     if (!itemTitle.trim()) return;
@@ -390,6 +525,9 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
         date: selectedDateTs,
       });
     } else {
+      // Trust the (possibly user-adjusted) duration over the raw end steppers:
+      // editing the end time writes back into itemDuration, so they can't
+      // disagree here.
       await onAddTodo({
         text: itemTitle.trim(),
         dueDate: targetDate,
@@ -415,17 +553,6 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
     return `${h}:${m} ${ampm}`;
   };
 
-  const getEndTimeStr = (hour12: number, minute: number, isPmVal: boolean, durationMin: number) => {
-    let h24 = hour12;
-    if (isPmVal && h24 < 12) h24 += 12;
-    if (!isPmVal && h24 === 12) h24 = 0;
-
-    const endTotalMin = h24 * 60 + minute + durationMin;
-    const endH = Math.floor((endTotalMin / 60) % 24);
-    const endM = endTotalMin % 60;
-    return formatTime12(endH, endM);
-  };
-
   // Generate continuous hours array (05:00 to 23:00)
   const hoursArray = Array.from({ length: TOTAL_HOURS }, (_, i) => START_HOUR + i);
 
@@ -442,7 +569,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
               {t.daySchedule || (isArabic ? 'جدول اليوم الزمني' : 'Day Schedule')}
             </Text>
             <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-              {scheduleItems.length} {isArabic ? 'أحداث مجدولة' : 'scheduled events'}
+              {scheduledItems.length + unscheduledTodos.length} {isArabic ? 'حدث مجدول' : 'scheduled events'}
             </Text>
           </View>
         </View>
@@ -493,12 +620,95 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
         <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
           <Ionicons name="finger-print-outline" size={12} color={colors.primary} />
           <Text style={[styles.hintText, { color: colors.textMuted }]} numberOfLines={1}>
-            {isArabic ? 'المس لتحديد الوقت' : 'Tap slot to schedule'}
+            {isArabic ? 'اضغط مطولاً واسحب لتحديد فترة' : 'Hold & drag to block a time range'}
           </Text>
         </View>
       </View>
 
+      {/* ─── Unscheduled / All-day Lane (todos with no explicit time) ─── */}
+      {unscheduledTodos.length > 0 && (
+        <View
+          style={[
+            styles.unscheduledBar,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            isArabic && { flexDirection: 'row-reverse' },
+          ]}
+        >
+          <View style={[styles.unscheduledLabelWrap, isArabic && { flexDirection: 'row-reverse' }]}>
+            <Ionicons name="albums-outline" size={13} color={colors.primary} />
+            <Text style={[styles.unscheduledLabelText, { color: colors.text }]}>
+              {isArabic ? `بدون وقت (${unscheduledTodos.length})` : `Unscheduled (${unscheduledTodos.length})`}
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.unscheduledScroll, isArabic && { flexDirection: 'row-reverse' }]}
+          >
+            {unscheduledTodos.map((todo) => {
+              const done = todo.status === 'done';
+              const kind: DayTimelineItem['kind'] =
+                todo.meetingLink || todo.type === 'meeting'
+                  ? 'meeting'
+                  : todo.location || todo.type === 'appointment' || todo.type === 'reminder'
+                  ? 'appointment'
+                  : 'task';
+              const dotColor = done ? '#10B981' : KIND_CONFIG[kind]?.defaultColor || colors.primary;
+              return (
+                <View
+                  key={todo._id}
+                  style={[
+                    styles.unscheduledPill,
+                    {
+                      backgroundColor: done ? (isDarkMode ? '#1E293B' : '#F1F5F9') : isDarkMode ? '#1E222D' : '#FFFFFF',
+                      borderColor: done ? colors.border : dotColor + '50',
+                    },
+                    isArabic && { flexDirection: 'row-reverse' },
+                  ]}
+                >
+                  <LivePress
+                    style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 5, flexShrink: 1 }}
+                    onPress={() => onOpenTaskDetails?.(todo._id)}
+                    pressScale={0.95}
+                  >
+                    <View style={[styles.unscheduledDot, { backgroundColor: dotColor }]} />
+                    <Text
+                      style={[
+                        styles.unscheduledPillText,
+                        { color: done ? colors.textMuted : colors.text },
+                        done && styles.strikeText,
+                        isArabic && { textAlign: 'right' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {todo.text || (isArabic ? 'مهمة' : 'Task')}
+                    </Text>
+                  </LivePress>
+                  <TouchableOpacity
+                    style={[
+                      styles.eventCheckCircle,
+                      {
+                        borderColor: done ? '#10B981' : colors.border,
+                        backgroundColor: done ? '#10B981' : 'transparent',
+                      },
+                    ]}
+                    onPress={() => onToggleTodo(todo._id, todo.status)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {done && <Ionicons name="checkmark" size={10} color="#FFFFFF" />}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {/* ─── Dynamic Zoomable Timeline Canvas ─── */}
+      {/* The wrapper owns the drag-to-select gesture; it only claims moves
+          while a long-press selection is active, so normal scrolling and taps
+          pass straight through to the ScrollView and slot touchables. */}
+      <View style={{ flex: 1 }} {...timelinePanHandlers}>
       <ScrollView
         ref={timelineScrollRef}
         nestedScrollEnabled
@@ -535,6 +745,14 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                   <TouchableOpacity
                     style={[styles.slotTouchTarget, { top: 0, height: hourHeight / 2 }]}
                     onPress={() => openAddAtTime(h, 0)}
+                    onLongPress={() => startDrag(h * 60)}
+                    onPressOut={() => {
+                      // Long-press released without dragging → quick add.
+                      if (dragSelRef.current && !dragClaimedRef.current) {
+                        finishDragRef.current();
+                      }
+                    }}
+                    delayLongPress={MIN_LONG_PRESS_MS}
                     activeOpacity={0.4}
                   />
 
@@ -542,6 +760,13 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                   <TouchableOpacity
                     style={[styles.slotTouchTarget, { top: hourHeight / 2, height: hourHeight / 2 }]}
                     onPress={() => openAddAtTime(h, 30)}
+                    onLongPress={() => startDrag(h * 60 + 30)}
+                    onPressOut={() => {
+                      if (dragSelRef.current && !dragClaimedRef.current) {
+                        finishDragRef.current();
+                      }
+                    }}
+                    delayLongPress={MIN_LONG_PRESS_MS}
                     activeOpacity={0.4}
                   />
                 </View>
@@ -790,8 +1015,38 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
               );
             })}
           </View>
+
+          {/* 5. Press-and-hold drag selection overlay (Google-Calendar style) */}
+          {dragSel && (() => {
+            const s = Math.min(dragSel.startMin, dragSel.endMin);
+            const e = Math.max(dragSel.startMin, dragSel.endMin);
+            const selTop = (s - START_HOUR * 60) * minuteHeight + TOP_OFFSET;
+            const selHeight = Math.max(8, (e - s) * minuteHeight);
+            return (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dragSelectionBlock,
+                  {
+                    top: selTop,
+                    height: selHeight,
+                    backgroundColor: colors.primary + '26',
+                    borderColor: colors.primary,
+                  },
+                  isArabic ? { right: 54, left: 6 } : { left: 54, right: 6 },
+                ]}
+              >
+                <View style={[styles.dragSelectionLabel, { backgroundColor: colors.primary }, isArabic && { alignSelf: 'flex-end' }]}>
+                  <Text style={styles.dragSelectionLabelText} numberOfLines={1}>
+                    {formatTime12(Math.floor(s / 60) % 24, s % 60)} – {formatTime12(Math.floor(e / 60) % 24, e % 60)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
         </View>
       </ScrollView>
+      </View>
 
       {/* ─── Polished Add to Schedule Modal ─── */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
@@ -907,14 +1162,22 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                     <View style={styles.stepperGroup}>
                       <TouchableOpacity
                         style={[styles.miniStepBtn, { borderColor: colors.border }]}
-                        onPress={() => setSelectedHour((h) => (h > 1 ? h - 1 : 12))}
+                        onPress={() => {
+                          const next = selectedHour > 1 ? selectedHour - 1 : 12;
+                          setSelectedHour(next);
+                          recomputeEnd(next, selectedMinute, isPM, itemDuration);
+                        }}
                       >
                         <Ionicons name="remove" size={14} color={colors.text} />
                       </TouchableOpacity>
                       <Text style={[styles.timeValueText, { color: colors.text }]}>{selectedHour}</Text>
                       <TouchableOpacity
                         style={[styles.miniStepBtn, { borderColor: colors.border }]}
-                        onPress={() => setSelectedHour((h) => (h < 12 ? h + 1 : 1))}
+                        onPress={() => {
+                          const next = selectedHour < 12 ? selectedHour + 1 : 1;
+                          setSelectedHour(next);
+                          recomputeEnd(next, selectedMinute, isPM, itemDuration);
+                        }}
                       >
                         <Ionicons name="add" size={14} color={colors.text} />
                       </TouchableOpacity>
@@ -925,7 +1188,11 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                     {/* Minute Selector */}
                     <TouchableOpacity
                       style={[styles.minuteToggleBtn, { borderColor: colors.border }]}
-                      onPress={() => setSelectedMinute((m) => (m === 0 ? 15 : m === 15 ? 30 : m === 30 ? 45 : 0))}
+                      onPress={() => {
+                        const next = selectedMinute === 0 ? 15 : selectedMinute === 15 ? 30 : selectedMinute === 30 ? 45 : 0;
+                        setSelectedMinute(next);
+                        recomputeEnd(selectedHour, next, isPM, itemDuration);
+                      }}
                     >
                       <Text style={[styles.timeValueText, { color: colors.text }]}>
                         {selectedMinute < 10 ? `0${selectedMinute}` : selectedMinute}
@@ -935,9 +1202,74 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                     {/* AM / PM Toggle */}
                     <TouchableOpacity
                       style={[styles.amPmPill, { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                      onPress={() => setIsPM((p) => !p)}
+                      onPress={() => {
+                        const next = !isPM;
+                        setIsPM(next);
+                        recomputeEnd(selectedHour, selectedMinute, next, itemDuration);
+                      }}
                     >
                       <Text style={styles.amPmText}>{isPM ? (isArabic ? 'م' : 'PM') : (isArabic ? 'ص' : 'AM')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* End Time Row — directly editable; edits write back into the duration */}
+                <View style={[styles.endTimeDivider, { borderTopColor: colors.border }]} />
+                <View style={[styles.timeRow, isArabic && { flexDirection: 'row-reverse' }]}>
+                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="log-out-outline" size={16} color={colors.secondary || colors.primary} />
+                    <Text style={[styles.timeSectionTitle, { color: colors.text }]}>
+                      {isArabic ? 'وقت النهاية:' : 'End Time:'}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+                    {/* Hour Stepper */}
+                    <View style={styles.stepperGroup}>
+                      <TouchableOpacity
+                        style={[styles.miniStepBtn, { borderColor: colors.border }]}
+                        onPress={() => {
+                          const h12 = endHour > 1 ? endHour - 1 : 12;
+                          applyEndTime(h12, endMinute, endIsPM);
+                        }}
+                      >
+                        <Ionicons name="remove" size={14} color={colors.text} />
+                      </TouchableOpacity>
+                      <Text style={[styles.timeValueText, { color: colors.text }]}>{endHour}</Text>
+                      <TouchableOpacity
+                        style={[styles.miniStepBtn, { borderColor: colors.border }]}
+                        onPress={() => {
+                          const h12 = endHour < 12 ? endHour + 1 : 1;
+                          applyEndTime(h12, endMinute, endIsPM);
+                        }}
+                      >
+                        <Ionicons name="add" size={14} color={colors.text} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={{ fontWeight: '800', color: colors.text }}>:</Text>
+
+                    {/* Minute Selector */}
+                    <TouchableOpacity
+                      style={[styles.minuteToggleBtn, { borderColor: colors.border }]}
+                      onPress={() => {
+                        const m = endMinute === 0 ? 15 : endMinute === 15 ? 30 : endMinute === 30 ? 45 : 0;
+                        applyEndTime(endHour, m, endIsPM);
+                      }}
+                    >
+                      <Text style={[styles.timeValueText, { color: colors.text }]}>
+                        {endMinute < 10 ? `0${endMinute}` : endMinute}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* AM / PM Toggle */}
+                    <TouchableOpacity
+                      style={[styles.amPmPill, { backgroundColor: colors.secondary || colors.primary, borderColor: colors.secondary || colors.primary }]}
+                      onPress={() => {
+                        applyEndTime(endHour, endMinute, !endIsPM);
+                      }}
+                    >
+                      <Text style={styles.amPmText}>{endIsPM ? (isArabic ? 'م' : 'PM') : (isArabic ? 'ص' : 'AM')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -961,7 +1293,10 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                               borderColor: isSel ? colors.primary : colors.border,
                             },
                           ]}
-                          onPress={() => setItemDuration(dur)}
+                          onPress={() => {
+                            setItemDuration(dur);
+                            recomputeEnd(selectedHour, selectedMinute, isPM, dur);
+                          }}
                         >
                           <Text
                             style={[
@@ -976,7 +1311,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
                     })}
                   </View>
                   <Text style={[styles.timeRangePreview, { color: colors.primary }]}>
-                    {selectedHour}:{selectedMinute < 10 ? `0${selectedMinute}` : selectedMinute} {isPM ? 'PM' : 'AM'} ➔ {getEndTimeStr(selectedHour, selectedMinute, isPM, itemDuration)} ({itemDuration}m)
+                    {selectedHour}:{selectedMinute < 10 ? `0${selectedMinute}` : selectedMinute} {isPM ? 'PM' : 'AM'} ➔ {endHour}:{endMinute < 10 ? `0${endMinute}` : endMinute} {endIsPM ? 'PM' : 'AM'} ({itemDuration}m)
                   </Text>
                 </View>
               </View>
@@ -1135,6 +1470,70 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1,
+  },
+  unscheduledBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 8,
+  },
+  unscheduledLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  unscheduledLabelText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  unscheduledScroll: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  unscheduledPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: 170,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  unscheduledDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  unscheduledPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dragSelectionBlock: {
+    position: 'absolute',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    zIndex: 2,
+  },
+  dragSelectionLabel: {
+    position: 'absolute',
+    top: -10,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    maxWidth: '100%',
+  },
+  dragSelectionLabelText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
   prayerRibbonContainer: {
     position: 'absolute',
@@ -1340,6 +1739,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     marginVertical: 4,
+  },
+  endTimeDivider: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
   },
   timeRow: {
     flexDirection: 'row',
