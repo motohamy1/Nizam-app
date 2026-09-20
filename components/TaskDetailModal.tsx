@@ -639,12 +639,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
             styles.container, 
             { 
               backgroundColor: colors.bg,
-              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+              // Both platforms must lift the sheet above the keyboard. On iOS
+              // the window never resizes; on Android the translucent status
+              // bar (statusBarTranslucent) disables the Modal window's
+              // adjustResize, so the keyboard would otherwise overlay the
+              // sheet and bury the subtasks input at the bottom.
+              marginBottom: keyboardHeight,
               height: isKeyboardVisible 
-                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+                ? Math.max(300, screenHeight - keyboardHeight - 44) 
                 : '92%',
               maxHeight: isKeyboardVisible 
-                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+                ? Math.max(300, screenHeight - keyboardHeight - 44) 
                 : '92%',
             }
           ]}
@@ -1124,7 +1129,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                     placeholderTextColor={colors.textMuted}
                     value={newHashtag}
                     onChangeText={setNewHashtag}
-                    onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150); }}
+                    onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), Platform.OS === 'ios' ? 150 : 400); }}
                     onSubmitEditing={() => {
                       checkAndAddHashtag(newHashtag);
                     }}
@@ -1292,7 +1297,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                           onChangeText={setNewCheckItem}
                           onSubmitEditing={handleAddCheckItem}
                           autoFocus
-                          onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150); }}
+                          onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), Platform.OS === 'ios' ? 150 : 400); }}
                           onBlur={() => { if (!newCheckItem.trim()) setIsAddingCheck(false); }}
                         />
                         <TouchableOpacity onPress={handleAddCheckItem}>
@@ -1402,7 +1407,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                         ref={subtaskInputRef}
                       value={newSubtaskText}
                         onChangeText={setNewSubtaskText}
-                        onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150); }}
+                        onFocus={() => { setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), Platform.OS === 'ios' ? 150 : 400); }}
                         onSubmitEditing={() => {
                           if (newSubtaskText.trim()) {
                             if (newSubDuration || newSubDirection === 'up') handleAddSubtask();

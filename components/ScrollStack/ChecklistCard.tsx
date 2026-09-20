@@ -128,7 +128,10 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             <Text 
               style={[
                 styles.checkItemText, 
-                { color: frame.text, fontWeight: '700' },
+                // Rows ride on white/milky chips in BOTH modes, so the ink must
+                // stay dark even in dark mode — frame.text flips to white in
+                // dark mode and disappears on the white row background.
+                { color: CHIP_INK, fontWeight: '700' },
                 isDone && { textDecorationLine: 'line-through', opacity: 0.45 }
               ]}
               numberOfLines={1}

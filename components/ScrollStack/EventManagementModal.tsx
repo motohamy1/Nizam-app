@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Alert,
+  findNodeHandle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -64,6 +65,28 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const formScrollRef = useRef<ScrollView>(null);
+
+  // Scroll the focused input above the keyboard inside the sheet. Android
+  // fires the keyboard event late, hence the longer delay.
+  const focusScroll = (input: any) => {
+    setTimeout(() => {
+      const responder: any = formScrollRef.current;
+      const nodeHandle = input ? findNodeHandle(input) : null;
+      if (!responder || !nodeHandle) return;
+      const method =
+        responder.scrollResponderScrollNativeHandleToKeyboard ||
+        responder.getScrollResponder?.()?.scrollResponderScrollNativeHandleToKeyboard;
+      if (typeof method === 'function') {
+        method.call(responder, nodeHandle, 80, true);
+      }
+    }, Platform.OS === 'ios' ? 150 : 400);
+  };
+  const titleInputRef = useRef<TextInput>(null);
+  const locationInputRef = useRef<TextInput>(null);
+  const meetingLinkInputRef = useRef<TextInput>(null);
+  const notesInputRef = useRef<TextInput>(null);
+  const repeatCountInputRef = useRef<TextInput>(null);
 
   const [title, setTitle] = useState('');
   const [itemType, setItemType] = useState<ManagedItemType>('reminder');
@@ -239,6 +262,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                   maxHeight: isKeyboardVisible
                     ? Math.max(320, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 28))
                     : '90%',
+                  // Android: the Modal dialog window never resizes (no
+                  // adjustResize for dialog windows) and KAV behavior is
+                  // iOS-only — without this the keyboard pins the bottom
+                  // sheet down and buries the title/location inputs.
+                  marginBottom: Platform.OS === 'android' ? keyboardHeight : undefined,
                 },
               ]}
             >
@@ -256,6 +284,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
               </View>
 
               <ScrollView
+                ref={formScrollRef}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 140 : 40 }}
@@ -303,6 +332,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       placeholderTextColor={colors.textMuted}
                       value={title}
                       onChangeText={setTitle}
+                      ref={titleInputRef}
+                      onFocus={() => focusScroll(titleInputRef.current)}
                       autoFocus={!eventToEdit}
                     />
                   </View>
@@ -434,6 +465,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                               const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
                               setRepeatCount(Number.isFinite(n) ? Math.max(1, Math.min(60, n)) : 1);
                             }}
+                            ref={repeatCountInputRef}
+                            onFocus={() => focusScroll(repeatCountInputRef.current)}
                             keyboardType="number-pad"
                             maxLength={2}
                             selectTextOnFocus
@@ -468,6 +501,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           placeholderTextColor={colors.textMuted}
                           value={location}
                           onChangeText={setLocation}
+                          ref={locationInputRef}
+                          onFocus={() => focusScroll(locationInputRef.current)}
                         />
                       </View>
 
@@ -481,6 +516,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           onChangeText={setMeetingLink}
                           keyboardType="url"
                           autoCapitalize="none"
+                          ref={meetingLinkInputRef}
+                          onFocus={() => focusScroll(meetingLinkInputRef.current)}
                         />
                       </View>
                     </>
@@ -495,6 +532,8 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       placeholderTextColor={colors.textMuted}
                       value={notes}
                       onChangeText={setNotes}
+                      ref={notesInputRef}
+                      onFocus={() => focusScroll(notesInputRef.current)}
                       multiline={true}
                       blurOnSubmit={false}
                       textAlignVertical="top"
