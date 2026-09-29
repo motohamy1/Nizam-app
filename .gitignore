@@ -88,3 +88,7 @@ goldie
 
 #store-screenshots
 store-screenshots
+
+dist-web-test
+dist-web-test/
+/dist-web-test

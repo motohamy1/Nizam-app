@@ -646,7 +646,7 @@ Strict JSON Output Schema:
   ]
 }`;
 
-    const userContent = `User Aspirations & Goals for ${isYearly ? `Year ${args.year}` : `Month ${args.month}, ${args.year}`}:
+    const userContent = `User Aspirations & Goals for ${isYearly ? `Year ${args.year}` : `Month ${(args.month ?? 0) + 1}, ${args.year}`}:
 """
 ${args.userPrompt.trim()}
 """

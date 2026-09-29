@@ -435,6 +435,30 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
                 );
               })}
 
+              {/* Applied custom category chip (not yet in categories list) */}
+              {category.trim() && !categories.includes(category.trim()) && (
+                <TouchableOpacity
+                  key={category.trim()}
+                  style={[
+                    styles.categoryChip,
+                    {
+                      backgroundColor: color + '22',
+                      borderColor: color,
+                    },
+                  ]}
+                  onPress={() => setCategory('')}
+                >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      { color },
+                    ]}
+                  >
+                    {category.trim()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* Add Custom Category Chip */}
               {!isAddingCustomCategory ? (
                 <TouchableOpacity
