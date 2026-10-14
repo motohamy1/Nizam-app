@@ -41,6 +41,11 @@ import { AIChatMessage } from '@/types/voiceNote';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboard } from '@/hooks/useKeyboard';
+import {
+  KeyboardController,
+  AndroidSoftInputModes,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 
 const NoteHeader = React.memo(({ 
   title, 
@@ -142,6 +147,21 @@ export default function NoteDetailScreen() {
   type ActiveMenuType = 'none' | 'typography' | 'fontFamily' | 'fontSize' | 'color';
   const [activeMenu, setActiveMenu] = useState<ActiveMenuType>('none');
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+
+  // This screen is fully hand-managed: while it is mounted, disable the OS
+  // window resize/pan entirely (ADJUST_NOTHING) so the keyboard never moves
+  // our layout natively. The compact toolbar then rides the keyboard edge
+  // frame-by-frame via KeyboardStickyView (true IME insets), and the editor
+  // clears the keyboard through scroll padding. This avoids the
+  // double-compensation (OS resize + manual lift) that pushed the toolbar
+  // far above the keyboard on RN 0.86 / Android 15+.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    KeyboardController.setInputMode(AndroidSoftInputModes.SOFT_INPUT_ADJUST_NOTHING);
+    return () => {
+      KeyboardController.setDefaultMode();
+    };
+  }, []);
 
   const keepCaretVisible = useCallback((y: number | null) => {
     if (y === null && activeLineYRef.current) y = activeLineYRef.current.y;
@@ -718,7 +738,16 @@ export default function NoteDetailScreen() {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: 'transparent' }}
+      style={{
+        flex: 1,
+        backgroundColor: 'transparent',
+        // Android 15/16 edge-to-edge: the OS no longer reliably resizes the
+        // window for the keyboard (softwareKeyboardLayoutMode "resize" is
+        // flaky), so lift the whole screen — including the toolbar and AI
+        // presets — using the useKeyboard() event-listener height instead.
+        // iOS keeps the KeyboardAvoidingView padding behavior.
+        marginBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+      }}
     >
       <View style={{ flex: 1 }}>
         <ScrollView 

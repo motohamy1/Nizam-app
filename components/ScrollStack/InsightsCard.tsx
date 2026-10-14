@@ -61,26 +61,19 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
           <View
             style={[
               baseStyles.iconBadge,
-              { backgroundColor: frame.badgeBg },
+              { backgroundColor: frame.badgeBg, flexShrink: 0 },
             ]}
           >
-            <Ionicons name="analytics" size={20} color={frame.badgeFg} />
+            <Ionicons name="analytics" size={18} color={frame.badgeFg} />
           </View>
-          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[baseStyles.cardTitle, { color: frame.text }]}>
+          <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+            <Text style={[baseStyles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
               {t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights & Wellbeing')}
             </Text>
-            <Text style={[baseStyles.cardSubtitle, { color: frame.textMuted }]}>
+            <Text style={[baseStyles.cardSubtitle, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
               {productivity}% {isArabic ? 'درجة الإنتاجية' : 'Productivity Score'}
             </Text>
           </View>
-        </View>
-
-        <View style={[baseStyles.headerPill, { backgroundColor: frame.pillBg }]}>
-          <Ionicons name="sparkles" size={13} color={frame.pillFg} />
-          <Text style={[baseStyles.headerPillText, { color: frame.pillFg }]}>
-            {isArabic ? 'تحليل ذكي' : 'AI Health'}
-          </Text>
         </View>
       </TouchableOpacity>
 

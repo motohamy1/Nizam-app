@@ -36,23 +36,13 @@ interface ChecklistCardProps {
   onAddChecklistItem?: () => void;
   onOpenChecklistItem?: (id: Id<"todos">) => void;
   palette?: MonthPalette;
+  streakScore?: string | number;
+  notesCount?: string | number;
 }
 
-// To-Do pink → checklist rose. The card face gradients from the saturated
-// To-Do pastel under the header down to a second rose behind the checklist
-// rows. Light mode fades UP to a softer pink; dark mode uses the deep
-// saturated rose (#BE185D) as its face color and pushes DOWN into its own
-// darkest degree (#500724) — high contrast within the same hue. Rows ride
-// on white chips so content keeps real contrast on both ends.
-const GRAD_TOP_LIGHT = '#F9A8D4';
-const GRAD_BOTTOM_LIGHT = '#FBCFE8';
-const GRAD_TOP_DARK = '#BE185D';
-const GRAD_BOTTOM_DARK = '#500724';
-const ROW_TASK_BG = 'rgba(255,255,255,0.85)';      // To-Do task rows: firm white
-const ROW_CHECKLIST_BG = 'rgba(255,255,255,0.55)'; // checklist rows: milky rose
-const ROW_BORDER = 'rgba(131,24,67,0.14)';         // pink-900 hairline
-const CHIP_BG = 'rgba(255,255,255,0.75)';
-const CHIP_INK = '#831843';                        // pink-900 text on white chips
+// Vibrant Brand Electric Orange matching Stitch design (#ff5c16)
+const GRAD_TOP = '#ff5c16';
+const GRAD_BOTTOM = '#ff4a00';
 
 export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   tasks,
@@ -66,282 +56,385 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   onAddChecklistItem,
   onOpenChecklistItem,
   palette = STACK_CARD_PALETTES.checklist,
+  streakScore = '1,245',
+  notesCount = '186',
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
-  const gradTop = isDarkMode ? GRAD_TOP_DARK : GRAD_TOP_LIGHT;
-  const gradBottom = isDarkMode ? GRAD_BOTTOM_DARK : GRAD_BOTTOM_LIGHT;
-  // Elements over the deep end of the gradient need light inks in dark mode.
-  const footInk = isDarkMode ? '#FCE7F3' : CHIP_INK;
-  const footBorder = isDarkMode ? 'rgba(255,255,255,0.24)' : 'rgba(80,7,36,0.14)';
-  // Header sits on the face color: berry ink on light pink, white on deep rose.
-  const headInk = isDarkMode ? '#FFFFFF' : frame.text;
-  const headSubInk = isDarkMode ? 'rgba(252,231,243,0.82)' : 'rgba(80,7,36,0.72)';
-  const cardEdge = isDarkMode ? 'rgba(255,255,255,0.16)' : frame.cardBorder;
+  const displayTasks = tasks.length > 0 ? tasks : [];
+  const primaryTask = displayTasks[0];
 
-  const renderRow = (task: ChecklistTaskItem) => {
-    const isDone = task.status === 'done';
-    const isChecklistItem = task.kind === 'checklist';
-
-    return (
-      <View
-        key={task._id}
-        style={[
-          styles.checklistItem,
-          {
-            backgroundColor: isChecklistItem ? ROW_CHECKLIST_BG : ROW_TASK_BG,
-            borderColor: ROW_BORDER,
-          },
-        ]}
-      >
-        <View style={styles.checklistItemLeft}>
-          {/* Interactive Checkbox */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onToggleTask(task._id, task.status || 'not_started');
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={[
-              styles.checkbox, 
-              isChecklistItem && { borderRadius: 11 },
-              { borderColor: 'rgba(80,7,36,0.35)' },
-              isDone && { backgroundColor: frame.accent, borderColor: frame.accent }
-            ]}
-          >
-            {isDone && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-          </TouchableOpacity>
-
-          {/* Text: tasks open TaskDetailModal, checklist items open ChecklistItemModal */}
-          <TouchableOpacity
-            onPress={() => {
-              if (isChecklistItem && onOpenChecklistItem) onOpenChecklistItem(task._id);
-              else onOpenTaskDetail(task._id);
-            }}
-            style={{ flex: 1 }}
-            activeOpacity={0.7}
-          >
-            <Text 
-              style={[
-                styles.checkItemText, 
-                // Rows ride on white/milky chips in BOTH modes, so the ink must
-                // stay dark even in dark mode — frame.text flips to white in
-                // dark mode and disappears on the white row background.
-                { color: CHIP_INK, fontWeight: '700' },
-                isDone && { textDecorationLine: 'line-through', opacity: 0.45 }
-              ]}
-              numberOfLines={1}
-            >
-              {task.text}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {isChecklistItem ? (
-          <View style={[styles.kindDot, { backgroundColor: 'rgba(80,7,36,0.08)' }]}>
-            <Ionicons
-              name={(task.linkedCount || 0) > 0 ? 'git-branch-outline' : 'list-outline'}
-              size={11}
-              color={CHIP_INK}
-            />
-            {(task.linkedCount || 0) > 0 && (
-              <Text style={[styles.kindDotText, { color: CHIP_INK }]}>{task.linkedCount}</Text>
-            )}
-          </View>
-        ) : (
-          task.priority && (
-            <View style={[styles.priorityTag, { backgroundColor: 'rgba(80,7,36,0.08)' }]}>
-              <Text style={[styles.priorityTagText, { color: CHIP_INK }]}>
-                {task.priority}
-              </Text>
-            </View>
-          )
-        )}
-      </View>
-    );
+  const handleToggle = (task: ChecklistTaskItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onToggleTask(task._id, task.status || 'not_started');
   };
 
-  const taskRows = tasks.filter((x) => x.kind !== 'checklist');
-  const ckRows = tasks.filter((x) => x.kind === 'checklist');
-  const mixed = taskRows.length > 0 && ckRows.length > 0;
+  const handleTaskPress = (task: ChecklistTaskItem) => {
+    if (task.kind === 'checklist' && onOpenChecklistItem) {
+      onOpenChecklistItem(task._id);
+    } else {
+      onOpenTaskDetail(task._id);
+    }
+  };
 
   return (
     <LinearGradient
-      colors={[gradTop, gradBottom]}
-      style={[styles.card, { borderColor: cardEdge, overflow: 'hidden' }]}
+      colors={[GRAD_TOP, GRAD_BOTTOM]}
+      style={[styles.card, { borderColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' }]}
     >
-      {/* Header - Tapping triggers scroll to full Tasks section */}
+      {/* 1. Header Row */}
       <TouchableOpacity 
-        style={styles.cardHeader} 
+        style={styles.cardHeader}
         onPress={onScrollToTasksSection}
         activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: CHIP_BG }]}>
-            <Ionicons name="checkmark-done" size={20} color={CHIP_INK} />
+          {/* Rounded square checkmark badge */}
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 13,
+              backgroundColor: 'rgba(0,0,0,0.18)',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Ionicons name="checkmark" size={20} color="#000000" />
           </View>
-          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.cardTitle, { color: headInk }]}>{t.todaysChecklist}</Text>
-            <Text style={[styles.cardSubtitle, { color: headSubInk }]}>
-              {totalCount === 0
-                ? (isArabic ? 'لا توجد مهام مجدولة' : '0 tasks scheduled')
-                : `${doneCount}/${totalCount} ${t.tasksCompleted}`}
+          <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: '900',
+                color: '#000000',
+                letterSpacing: -0.3,
+                lineHeight: 21,
+              }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t.todaysChecklist || "Today's Checklist"}
             </Text>
-          </View>
-        </View>
-
-        <View style={styles.cardHeaderRight}>
-          <View style={[styles.headerPill, { backgroundColor: CHIP_BG }]}>
-            <Ionicons name="arrow-down-circle-outline" size={14} color={CHIP_INK} />
-            <Text style={[styles.headerPillText, { color: CHIP_INK, fontWeight: '800' }]}>{t.tabTodo}</Text>
+            <Text
+              style={{
+                fontSize: 11.5,
+                fontWeight: '700',
+                color: 'rgba(0,0,0,0.75)',
+                marginTop: 1,
+              }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {totalCount === 0
+                ? (isArabic ? '0/1 مهام مكتملة' : '0/1 tasks completed')
+                : `${doneCount}/${totalCount} ${t.tasksCompleted || 'tasks completed'}`}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
 
-      {/* Body: Checklist Tasks with Internal Nested Scroll to Prevent Overflow */}
-      {tasks.length === 0 ? (
-        <View style={styles.emptyCardContent}>
-          <Ionicons name="sparkles-outline" size={28} color={isDarkMode ? '#FBCFE8' : frame.accent} />
-          <Text style={[styles.emptyCardTitle, { color: headInk }]}>{t.noTasksTodayChecklist}</Text>
-          {(onAddNewTask || onAddChecklistItem) && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {onAddNewTask && (
-                <TouchableOpacity 
-                  style={[styles.emptyCardBtn, { backgroundColor: CHIP_BG, borderColor: ROW_BORDER }]} 
-                  onPress={onAddNewTask} 
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="add" size={16} color={CHIP_INK} />
-                  <Text style={[styles.emptyCardBtnText, { color: CHIP_INK }]}>{t.startTask}</Text>
-                </TouchableOpacity>
+      {/* 2. Checklist Task Row */}
+      {primaryTask ? (
+        <View
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.15)',
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.08)',
+            borderRadius: 16,
+            paddingVertical: 9,
+            paddingHorizontal: 12,
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 6,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: isArabic ? 'row-reverse' : 'row',
+              alignItems: 'center',
+              gap: 10,
+              flex: 1,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => handleToggle(primaryTask)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: 'rgba(0,0,0,0.60)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: primaryTask.status === 'done' ? '#000000' : 'transparent',
+              }}
+            >
+              {primaryTask.status === 'done' && (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
               )}
-              {onAddChecklistItem && (
-                <TouchableOpacity 
-                  style={[styles.emptyCardBtn, { backgroundColor: CHIP_BG, borderColor: ROW_BORDER }]} 
-                  onPress={onAddChecklistItem} 
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="checkbox-outline" size={16} color={CHIP_INK} />
-                  <Text style={[styles.emptyCardBtnText, { color: CHIP_INK }]}>{t.addChecklistItemBtn}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleTaskPress(primaryTask)}
+              style={{ flex: 1 }}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: '800',
+                  color: '#000000',
+                  letterSpacing: 0.2,
+                  textDecorationLine:
+                    primaryTask.status === 'done' ? 'line-through' : 'none',
+                  opacity: primaryTask.status === 'done' ? 0.5 : 1,
+                }}
+                numberOfLines={1}
+              >
+                {primaryTask.text}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Priority pill */}
+          <View
+            style={{
+              backgroundColor: '#000000',
+              borderRadius: 8,
+              paddingHorizontal: 9,
+              paddingVertical: 3.5,
+              marginLeft: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 10.5,
+                fontWeight: '900',
+                letterSpacing: 0.6,
+              }}
+            >
+              {(primaryTask.priority || 'MEDIUM').toUpperCase()}
+            </Text>
+          </View>
         </View>
       ) : (
-        <ScrollView
-          style={styles.checklistScrollView}
-          contentContainerStyle={styles.checklistScrollContent}
-          nestedScrollEnabled={true}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-          overScrollMode="never"
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-        >
-          {mixed && (
-            <View style={[local.sectionPill, isArabic && local.sectionPillRtl, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.30)' }]}>
-              <Text style={local.sectionLabel}>{t.tabTodo}</Text>
-            </View>
-          )}
-          {(mixed ? taskRows : tasks).map(renderRow)}
-          {mixed && (
-            <LinearGradient
-              colors={isDarkMode
-                ? [`${gradTop}00`, '#FBCFE8', `${gradTop}00`]
-                : [`${gradTop}00`, '#BE185D', `${gradBottom}00`]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={local.ribbon}
-            />
-          )}
-          {mixed && (
-            <View style={[local.sectionPill, local.sectionPillLate, isArabic && local.sectionPillRtl, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.24)' }]}>
-              <Text style={local.sectionLabel}>
-                {isArabic ? 'قائمة التحقق' : 'Checklist'}
-              </Text>
-            </View>
-          )}
-          {mixed && ckRows.map(renderRow)}
-        </ScrollView>
-      )}
-
-      {/* Add Checklist Item entry point */}
-      {onAddChecklistItem && tasks.length > 0 && (
+        /* Default placeholder row matching Stitch design when no tasks */
         <TouchableOpacity
-          style={[
-            styles.checklistAddRow,
-            isDarkMode
-              ? { borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(255,255,255,0.12)' }
-              : { borderColor: ROW_BORDER, backgroundColor: 'rgba(255,255,255,0.45)' },
-          ]}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onAddChecklistItem();
+            if (onAddChecklistItem) onAddChecklistItem();
+            else if (onAddNewTask) onAddNewTask();
           }}
-          activeOpacity={0.75}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.15)',
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.08)',
+            borderRadius: 16,
+            paddingVertical: 9,
+            paddingHorizontal: 12,
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 6,
+          }}
         >
-          <Ionicons name="add" size={14} color={isDarkMode ? '#FCE7F3' : CHIP_INK} />
-          <Text style={[styles.checklistAddRowText, { color: isDarkMode ? '#FCE7F3' : CHIP_INK }]}>{t.addChecklistItemBtn}</Text>
+          <View
+            style={{
+              flexDirection: isArabic ? 'row-reverse' : 'row',
+              alignItems: 'center',
+              gap: 10,
+              flex: 1,
+            }}
+          >
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: 'rgba(0,0,0,0.60)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 13.5,
+                fontWeight: '800',
+                color: '#000000',
+                letterSpacing: 0.2,
+              }}
+              numberOfLines={1}
+            >
+              {isArabic ? 'المهمة الأولى' : 'first task'}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              backgroundColor: '#000000',
+              borderRadius: 8,
+              paddingHorizontal: 9,
+              paddingVertical: 3.5,
+              marginLeft: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 10.5,
+                fontWeight: '900',
+                letterSpacing: 0.6,
+              }}
+            >
+              MEDIUM
+            </Text>
+          </View>
         </TouchableOpacity>
       )}
 
-      {/* Footer: Quick Manage Icon & Scroll Hint */}
-      <View style={[styles.cardFooter, { borderTopColor: footBorder }]}>
-        <TouchableOpacity 
-          style={styles.footerActionBtn}
+      {/* 3. Add Checklist Item Dashed Button */}
+      <TouchableOpacity
+        style={{
+          width: '100%',
+          borderWidth: 1.6,
+          borderStyle: 'dashed',
+          borderColor: 'rgba(0,0,0,0.30)',
+          borderRadius: 16,
+          paddingVertical: 8,
+          flexDirection: isArabic ? 'row-reverse' : 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          marginTop: 7,
+        }}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (onAddChecklistItem) onAddChecklistItem();
+          else if (onAddNewTask) onAddNewTask();
+        }}
+        activeOpacity={0.75}
+      >
+        <Ionicons name="add" size={15} color="#000000" />
+        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#000000' }}>
+          {isArabic ? '+ إضافة عنصر للقائمة' : '+ Add checklist item'}
+        </Text>
+      </TouchableOpacity>
+
+      {/* 4. Action Links Row */}
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(0,0,0,0.12)',
+          flexDirection: isArabic ? 'row-reverse' : 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 7,
+          paddingTop: 6,
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 5,
+          }}
           onPress={onQuickManage}
           activeOpacity={0.7}
         >
-          <Ionicons name="create-outline" size={16} color={footInk} />
-          <Text style={[styles.footerActionText, { color: footInk }]}>{t.manageTask}</Text>
+          <Ionicons name="create-outline" size={14} color="#000000" />
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '800',
+              color: 'rgba(0,0,0,0.85)',
+            }}
+          >
+            {t.manageTask || 'Manage Task'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={onScrollToTasksSection}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Text style={[styles.footerHintText, { color: footInk, fontWeight: '800' }]}>{t.tapToScrollTasks} ↓</Text>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '800',
+              color: 'rgba(0,0,0,0.85)',
+            }}
+          >
+            {isArabic ? 'اضغط لعرض لوحة المهام' : 'Tap to view task board'}{' '}
+            <Text style={{ color: '#000000', fontWeight: '900' }}>↓</Text>
+          </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 5. Big Stats Counters Row */}
+      <View
+        style={{
+          flexDirection: isArabic ? 'row-reverse' : 'row',
+          alignItems: 'baseline',
+          gap: 22,
+          marginTop: 5,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'baseline',
+            gap: 4,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 34,
+              fontWeight: '900',
+              color: '#000000',
+              letterSpacing: -0.6,
+              lineHeight: 38,
+            }}
+          >
+            {streakScore}
+          </Text>
+          <Text style={{ fontSize: 18 }}>🔥</Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'baseline',
+            gap: 4,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: '900',
+              color: '#000000',
+              letterSpacing: -0.5,
+              lineHeight: 32,
+            }}
+          >
+            {notesCount}
+          </Text>
+          <Text style={{ fontSize: 16 }}>💬</Text>
+        </View>
       </View>
     </LinearGradient>
   );
 };
 
-const local = StyleSheet.create({
-  sectionPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.30)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 8,
-    marginBottom: 2,
-  },
-  sectionPillLate: {
-    backgroundColor: 'rgba(255,255,255,0.24)',
-  },
-  sectionPillRtl: {
-    alignSelf: 'flex-end',
-  },
-  sectionLabel: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 1.1,
-    color: '#4A0722',
-  },
-  ribbon: {
-    height: 2.5,
-    borderRadius: 1.25,
-    marginTop: 10,
-    marginBottom: 2,
-    opacity: 0.6,
-  },
-});
-
 export default ChecklistCard;
+

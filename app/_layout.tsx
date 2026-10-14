@@ -25,6 +25,7 @@ import { useTranslation } from "@/utils/i18n";
 import { NOTIFICATION_CATEGORIES, Notifications, TIMER_ACTIONS } from "@/utils/notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 // Register the background task (already defined in backgroundTask.ts via defineTask)
 
@@ -102,11 +103,13 @@ function RootLayoutContent() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <ConvexProvider client={convex}>
-        <AuthProvider>
-          <RootLayoutContent />
-        </AuthProvider>
-      </ConvexProvider>
+      <KeyboardProvider>
+        <ConvexProvider client={convex}>
+          <AuthProvider>
+            <RootLayoutContent />
+          </AuthProvider>
+        </ConvexProvider>
+      </KeyboardProvider>
     </ThemeProvider>
   );
 }

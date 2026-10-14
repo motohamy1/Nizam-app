@@ -198,8 +198,9 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
         })}
       </View>
 
-      {/* 3D watch-bezel wheel (horizontal decks) or pagination dots */}
-      {showWheel && axis === 'horizontal' ? (
+
+      {/* 3D watch-bezel wheel (horizontal decks, only if requested) */}
+      {showWheel && axis === 'horizontal' && (
         <WheelPicker
           labels={labels.length > 0 ? labels : cardArray.map((_, i) => `${i + 1}`)}
           activeIndex={activeIndex}
@@ -207,28 +208,8 @@ export const ScrollStack: React.FC<ScrollStackProps> = ({
           palettes={paletteList}
           accentColor={paletteList[activeIndex % paletteList.length]?.accent}
           isArabic={isArabic}
-          style={{ marginTop: -36 }}
+          style={{ marginTop: 10 }}
         />
-      ) : totalCards > 1 && (
-        <View style={styles.paginationRow}>
-          {cardArray.map((_, dotIdx) => {
-            const isActive = dotIdx === activeIndex;
-            const dotPalette = paletteList[dotIdx % paletteList.length];
-            return (
-              <TouchableOpacity
-                key={dotIdx}
-                onPress={() => goToCard(dotIdx)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                style={[
-                  styles.paginationDot,
-                  isActive && styles.paginationDotActive,
-                  isActive && !isDarkMode && { backgroundColor: dotPalette.accent },
-                ]}
-              />
-            );
-          })}
-        </View>
       )}
     </View>
   );

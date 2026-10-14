@@ -9,24 +9,46 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Reuse the planner's month palettes so the homepage stack feels like the same
 // visual system instead of introducing a second set of card colors.
 export const STACK_CARD_PALETTES = {
-  // Checklist: To-Do pink — exact twin of the homepage Kanban's To-Do column
-  // pastel (#F9A8D4 dark / #9D174D ink family), so the card and the column it
-  // jumps to share one identity instead of June's coral.
+  // Checklist: Vibrant Electric Orange card matching Stitch design (#ff5c16)
   checklist: {
-    bg: '#F9A8D4',
-    ink: '#500724',          // pink-950 deep berry ink (readable on the pink field)
-    accent: '#DB2777',       // pink-600 saturated accent for icons/CTA detail
-    accentSecondary: '#BE185D',
+    bg: '#ff5c16',
+    ink: '#101116',
+    accent: '#ff5c16',
+    accentSecondary: '#e04705',
     graphicType: 'dualDiscs',
   } satisfies MonthPalette,
-  // Events: November's ice-cyan month card.
-  upcoming: MONTH_PALETTES[10],
-  // Monthly overview: October's amber month card.
-  monthly: MONTH_PALETTES[9],
-  // Productivity: March's mint month card.
-  productivity: MONTH_PALETTES[2],
-  // Insights: September's lavender month card.
-  insights: MONTH_PALETTES[8],
+  // Upcoming Events: Emerald Green (#10b981) - left peeking card
+  upcoming: {
+    bg: '#10b981',
+    ink: '#064e3b',
+    accent: '#059669',
+    accentSecondary: '#047857',
+    graphicType: 'dualDiscs',
+  } satisfies MonthPalette,
+  // Monthly Overview: Deep Purple (#8e3eff) - right peeking card
+  monthly: {
+    bg: '#8e3eff',
+    ink: '#2e1065',
+    accent: '#7c3aed',
+    accentSecondary: '#6d28d9',
+    graphicType: 'dualDiscs',
+  } satisfies MonthPalette,
+  // Productivity & Focus: Neon Lime (#d4ff32)
+  productivity: {
+    bg: '#d4ff32',
+    ink: '#1c1c1e',
+    accent: '#a3e635',
+    accentSecondary: '#84cc16',
+    graphicType: 'dualDiscs',
+  } satisfies MonthPalette,
+  // AI Insights: Vibrant Sky Blue / Lavender
+  insights: {
+    bg: '#38bdf8',
+    ink: '#0c4a6e',
+    accent: '#0284c7',
+    accentSecondary: '#0369a1',
+    graphicType: 'dualDiscs',
+  } satisfies MonthPalette,
 } as const;
 
 export const STACK_CARD_PALETTE_LIST: MonthPalette[] = [
@@ -132,13 +154,12 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     // Main Container
     container: {
       width: '100%',
-      marginTop: 34,
-      marginBottom: 10,
+      marginTop: 4,
+      marginBottom: 5,
     },
     stackContainer: {
       width: '100%',
-      height: 336,
-      paddingHorizontal: 16,
+      height: 276,
       position: 'relative',
       justifyContent: 'center',
       overflow: 'visible',
@@ -149,59 +170,100 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       right: 16,
       top: 0,
     },
+    categoryTagsRow: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 6,
+      marginBottom: 3,
+    },
+    categoryTagLeft: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+      color: isDarkMode ? '#a1a1aa' : '#71717a',
+      textTransform: 'uppercase',
+    },
+    categoryTagDot: {
+      fontSize: 10,
+      fontWeight: '900',
+      color: isDarkMode ? '#71717a' : '#a1a1aa',
+    },
+    categoryTagRight: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+      color: '#10b981',
+      textTransform: 'uppercase',
+    },
     
-    // Card Base (260px)
+    // Card Base (270px, Stitch rounded-[32px])
     card: {
-      borderRadius: 24,
+      borderRadius: 32,
       borderWidth: 1,
-      padding: 18,
-      height: 260,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      height: 270,
       justifyContent: 'space-between',
-      ...colors.shadows.md,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: isDarkMode ? 0.45 : 0.25,
+      shadowRadius: 16,
+      elevation: 8,
     },
     cardHeader: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      gap: 8,
+      marginBottom: 8,
+      width: '100%',
     },
     cardHeaderLeft: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 8,
+      flex: 1,
+      minWidth: 0,
     },
     cardHeaderRight: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
+      flexShrink: 0,
     },
     iconBadge: {
-      width: 38,
-      height: 38,
+      width: 36,
+      height: 36,
       borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
+      flexShrink: 0,
     },
     cardTitle: {
-      fontSize: 17,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '800',
       letterSpacing: -0.3,
     },
     cardSubtitle: {
-      fontSize: 12,
-      fontWeight: '500',
+      fontSize: 11.5,
+      fontWeight: '600',
     },
     headerPill: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 20,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 16,
+      flexShrink: 0,
     },
     headerPillText: {
-      fontSize: 12,
-      fontWeight: '600',
+      fontSize: 11.5,
+      fontWeight: '800',
+      lineHeight: 14,
     },
 
     // Card 1: Checklist Specific Styles

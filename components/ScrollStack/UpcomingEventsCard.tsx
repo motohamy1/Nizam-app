@@ -254,25 +254,18 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg }]}>
-            <Ionicons name="calendar" size={20} color={frame.badgeFg} />
+          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg, flexShrink: 0 }]}>
+            <Ionicons name="calendar" size={18} color={frame.badgeFg} />
           </View>
-          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.remindersAndEvents}</Text>
-            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
+          <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+            <Text style={[styles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
+              {t.remindersAndEvents}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
               {upcoming.length} {t.remindersAndEventsSubtitle}
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity
-          style={[styles.headerPill, { backgroundColor: frame.pillBg }]}
-          onPress={() => onOpenEventModal()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add-circle" size={15} color={frame.pillFg} />
-          <Text style={[styles.headerPillText, { color: frame.pillFg }]}>{isArabic ? 'إضافة' : 'Add'}</Text>
-        </TouchableOpacity>
       </TouchableOpacity>
 
       {/* Body: Events list with Nested Scroll or Empty State */}

@@ -54,20 +54,17 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg }]}>
-            <Ionicons name="stats-chart" size={20} color={frame.badgeFg} />
+          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg, flexShrink: 0 }]}>
+            <Ionicons name="stats-chart" size={18} color={frame.badgeFg} />
           </View>
-          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.monthlyOverview}</Text>
-            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
+          <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+            <Text style={[styles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
+              {t.monthlyOverview}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
               {monthName} {year}
             </Text>
           </View>
-        </View>
-
-        <View style={[styles.headerPill, { backgroundColor: frame.pillBg }]}>
-          <Ionicons name="open-outline" size={14} color={frame.pillFg} />
-          <Text style={[styles.headerPillText, { color: frame.pillFg }]}>{t.tabPlanner}</Text>
         </View>
       </TouchableOpacity>
 

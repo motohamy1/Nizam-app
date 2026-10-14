@@ -363,11 +363,17 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
             {
               backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
-              height: isKeyboardVisible 
-                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+              // Same proven pattern as TaskDetailModal: RN Modals rendered
+              // with statusBarTranslucent never get OS adjustResize on
+              // Android, so the keyboard would cover the input. Lift the
+              // sheet on BOTH platforms using the useKeyboard() height.
+              marginBottom: keyboardHeight,
+              height: isKeyboardVisible
+                ? Math.max(300, screenHeight - keyboardHeight - 44)
                 : '75%',
-              maxHeight: Platform.OS === 'ios' ? (screenHeight - 44) : '96%',
+              maxHeight: isKeyboardVisible
+                ? Math.max(300, screenHeight - keyboardHeight - 44)
+                : '75%',
             },
           ]}
         >

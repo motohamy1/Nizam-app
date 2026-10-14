@@ -87,7 +87,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
 
     // Date Bar
     dateBarContainer: {
-      marginBottom: 20,
+      marginBottom: 5,
     },
     dateBarHeader: {
       flexDirection: 'row',

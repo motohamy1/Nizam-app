@@ -40,6 +40,9 @@ import TaskKanban, { KanbanColumn } from "@/components/TaskKanban";
 import TimerModal from "@/components/TimerModal";
 import FloatingActionButton from "@/components/FloatingActionButton";
 import LivePress from "@/components/LivePress";
+import HomeStatCards from "@/components/HomeStatCards";
+import StackedTaskModals from "@/components/StackedTaskModals";
+import { startUpdate, pauseUpdate } from '@/utils/timerActions';
 
 import {
   ScrollStack,
@@ -51,6 +54,7 @@ import {
   EventManagementModal,
   EventData,
   UpcomingEventDisplay,
+  STACK_CARD_PALETTES,
 } from "@/components/ScrollStack";
 
 import { api } from "../../convex/_generated/api";
@@ -379,6 +383,45 @@ const Index = () => {
     setIsChecklistItemModalVisible(true);
   };
 
+  // Filtered and sorted tasks for the selected date for StackedTaskModals
+  const currentDayTasks = useMemo(() => {
+    return normalizedTodos
+      .filter(t => getEffectiveTaskDay(t, todayStart) === selectedDate)
+      .sort(byPriority);
+  }, [normalizedTodos, selectedDate, todayStart, sortActive]);
+
+  // Task Actions for StackedTaskModals
+  const handleRunTask = (task: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (task.timerDuration || task.timerDirection === 'up') {
+      setTimerRunState({ updates: [startUpdate(task)] });
+    } else {
+      updateStatus({ id: task._id, status: 'in_progress' });
+    }
+  };
+
+  const handlePauseTask = (task: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (task.timerDuration || task.timerDirection === 'up') {
+      const update = pauseUpdate(task);
+      if (update) {
+        setTimerRunState({ updates: [update] });
+        return;
+      }
+    }
+    updateStatus({ id: task._id, status: 'paused' });
+  };
+
+  const handleCompleteTask = (task: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    updateStatus({ id: task._id, status: 'done' });
+  };
+
+  const handleReopenTask = (task: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateStatus({ id: task._id, status: 'not_started' });
+  };
+
   // Smooth scroll down to the relocated Tasks section
   const handleScrollToTasksSection = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -562,18 +605,27 @@ const Index = () => {
               taskCounts={dayTaskCounts}
             />
 
-            {/* 2. Hero Section: Scroll Stack Component */}
+            {/* 2. Hero Section: Scroll Stack Component (Horizontal Rolodex Deck) */}
             <ScrollStack
+              axis="horizontal"
+              cardInset={38}
               isArabic={isArabic}
+              palettes={[
+                STACK_CARD_PALETTES.checklist,
+                STACK_CARD_PALETTES.monthly,
+                STACK_CARD_PALETTES.productivity,
+                STACK_CARD_PALETTES.insights,
+                STACK_CARD_PALETTES.upcoming,
+              ]}
               labels={[
                 t.todaysChecklist,
-                t.remindersAndEvents,
                 t.monthlyOverview,
                 t.productivityFocus,
                 t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'),
+                t.remindersAndEvents,
               ]}
             >
-              {/* Card 1: Today's Checklist (tasks + checklist items) */}
+              {/* Card 0: Today's Checklist (Electric Orange) */}
               <ChecklistCard
                 tasks={todayChecklistTasks}
                 doneCount={checklistDoneCount}
@@ -585,16 +637,11 @@ const Index = () => {
                 onAddNewTask={() => setIsTaskModalVisible(true)}
                 onAddChecklistItem={() => openChecklistItemModal(null)}
                 onOpenChecklistItem={(id) => openChecklistItemModal(id)}
+                streakScore="1,245"
+                notesCount="186"
               />
 
-              {/* Card 2: Upcoming Events */}
-              <UpcomingEventsCard
-                events={upcomingEvents}
-                onOpenEventModal={handleOpenEventModal}
-                onToggleDone={handleToggleEventDone}
-              />
-
-              {/* Card 3: Monthly Overview */}
+              {/* Card 1: Monthly Overview (Deep Purple) */}
               <MonthlyOverviewCard
                 monthName={currentMonthName}
                 year={currentYear}
@@ -604,68 +651,84 @@ const Index = () => {
                 onPress={() => router.push('/(tabs)/planner')}
               />
 
-              {/* Card 4: Productivity & Focus Tracker */}
+              {/* Card 2: Productivity & Focus Tracker (Neon Lime) */}
               <ProductivityCard
                 streakDays={streakCount}
                 weeklyRate={weeklyRatePercent}
                 onStartFocus={handleStartFocusTimer}
               />
 
-              {/* Card 5: AI Insights & Wellbeing Card */}
+              {/* Card 3: AI Insights & Wellbeing Card (Sky Blue) */}
               <InsightsCard
                 insights={dailyInsights}
                 onPress={() => router.push('/(tabs)/insights')}
               />
+
+              {/* Card 4: Upcoming Events (Emerald Green) */}
+              <UpcomingEventsCard
+                events={upcomingEvents}
+                onOpenEventModal={handleOpenEventModal}
+                onToggleDone={handleToggleEventDone}
+              />
             </ScrollStack>
 
-            {/* 3. Relocated Tasks Section (Kanban Board) */}
+            {/* 2b. Mini Stat Cards Section (Stitch design: Today's Tasks, Done, Not Done) */}
+            <HomeStatCards
+              totalTasks={todayAllForProgress}
+              doneTasks={todayDoneForProgress}
+              notDoneTasks={Math.max(0, todayAllForProgress - todayDoneForProgress)}
+              isArabic={isArabic}
+            />
+
+            {/* 3. Centered CTA Button (Stitch design: Neon Lime Add Task Button) */}
+            <View style={{ paddingHorizontal: 16, marginTop: 5, marginBottom: 6, alignItems: 'center' }}>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsTaskModalVisible(true);
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#d4ff32',
+                  borderRadius: 32,
+                  paddingVertical: 13,
+                  paddingHorizontal: 20,
+                  flexDirection: isArabic ? 'row-reverse' : 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  shadowColor: '#d4ff32',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 10,
+                  elevation: 4,
+                }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#000000', lineHeight: 20 }}>+</Text>
+                <Text style={{ fontSize: 14.5, fontWeight: '800', color: '#000000', letterSpacing: -0.2 }}>
+                  {isArabic ? 'إضافة مهمة' : 'Add Task'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 4. Overlaid Interactive Task Modals (Base Tasks Sheet + Overlaid Active Task Sheet) */}
             <View 
               onLayout={(e) => {
                 setTasksSectionY(e.nativeEvent.layout.y);
               }}
             >
-              {/* Board Header */}
-              <View style={[homeStyles.sectionTitleContainer, isArabic && { flexDirection: 'row-reverse' }]}>
-                <Text style={homeStyles.sectionTitleText}>
-                  {isViewingToday ? t.tasksForToday : selectedDayLabel}
-                </Text>
-                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 25 }}>
-                  <FloatingActionButton 
-                    onPress={() => setIsTaskModalVisible(true)} 
-                    style={homeStyles.fab}
-                  />
-                  <LivePress onPress={() => setGlobalActionModalVisible(true)}>
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
-                  </LivePress>
-                </View>
-              </View>
-
-              {boardIsEmpty ? (
-                <View style={homeStyles.emptyContainer}>
-                  <Ionicons name="clipboard-outline" size={42} color={colors.secondary} />
-                  <Text style={homeStyles.emptyTitle}>
-                    {isViewingToday ? (isArabic ? 'لا توجد مهام اليوم' : 'Nothing scheduled for today') : t.noTasksDay}
-                  </Text>
-                  <Text style={homeStyles.emptyText}>
-                    {isArabic ? 'أضف مهمتك الأولى للبدء وستظهر هنا.' : 'Add your first task to get started. Use the button below.'}
-                  </Text>
-                  <TouchableOpacity 
-                    style={homeStyles.emptyAction} 
-                    onPress={() => setIsTaskModalVisible(true)} 
-                    activeOpacity={0.9}
-                  >
-                    <Text style={homeStyles.emptyActionText}>{isArabic ? 'إضافة مهمة' : 'Add a task'}</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TaskKanban
-                  columns={kanbanColumns}
-                  homeStyles={homeStyles}
-                  isArabic={isArabic}
-                  now={now}
-                  onOpenDetail={handleEditTask}
-                />
-              )}
+              <StackedTaskModals
+                tasks={currentDayTasks}
+                isArabic={isArabic}
+                now={now}
+                onRunTask={handleRunTask}
+                onPauseTask={handlePauseTask}
+                onCompleteTask={handleCompleteTask}
+                onReopenTask={handleReopenTask}
+                onOpenDetail={handleEditTask}
+                onAddTask={() => setIsTaskModalVisible(true)}
+              />
             </View>
 
           </ScrollView>

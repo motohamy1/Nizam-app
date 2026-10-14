@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 // ─── Block System ─────────────────────────────────────────────────────────
 interface Block {
@@ -257,6 +258,7 @@ export default function YearDetailScreen() {
   const { userId, language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
 
   const [activeTab, setActiveTab] = useState<'goals' | 'achievements'>('goals');
 
@@ -540,8 +542,14 @@ export default function YearDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{
+          flex: 1,
+          // Android 15/16 edge-to-edge: OS resize for the keyboard is
+          // unreliable, so lift the screen (incl. the toolbar) via the
+          // useKeyboard() event-listener height, like TaskDetailModal.
+          marginBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+        }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
         <View style={{ flex: 1 }}>

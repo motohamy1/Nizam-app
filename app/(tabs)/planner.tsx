@@ -277,7 +277,7 @@ const Planner = () => {
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 6 }}
       >
         {/* ─── Deep Shadow Goals of the Year ─── */}
         <View style={styles.yearSectionHeader}>
@@ -316,7 +316,7 @@ const Planner = () => {
             elevation: 5,
           };
           return (
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 14, paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 18, paddingHorizontal: 16 }}>
               {/* Goals & To-dos — wears the focused year's palette */}
               <LivePress
                 style={[cardBase, { backgroundColor: py.bg, shadowColor: py.ink }]}
@@ -403,7 +403,7 @@ const Planner = () => {
           // day wheel does.
           autoReturnIndex={currentMonth}
           autoReturnDelay={5000}
-          style={{ marginBottom: 30 }}
+          style={{ marginTop: 22, marginBottom: 28 }}
         >
           {months.map((monthName, idx) => {
             const monthTasks = getTasksForMonth(idx);
@@ -475,7 +475,7 @@ const Planner = () => {
 
     return (
       <ScrollView 
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 4 }} 
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 10 }} 
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Redesigned Month Goals & Tasks Capsule Card ─── */}
@@ -845,7 +845,7 @@ const Planner = () => {
     return (
       <ScrollView 
         ref={scrollViewRef} 
-        contentContainerStyle={{ paddingBottom: 100, paddingTop: 4 }} 
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }} 
         showsVerticalScrollIndicator={false} 
         keyboardShouldPersistTaps="handled"
       >

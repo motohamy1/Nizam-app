@@ -40,20 +40,17 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg }]}>
-            <Ionicons name="flame" size={20} color={frame.badgeFg} />
+          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg, flexShrink: 0 }]}>
+            <Ionicons name="flame" size={18} color={frame.badgeFg} />
           </View>
-          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.cardTitle, { color: frame.text }]}>{t.productivityFocus}</Text>
-            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]}>
+          <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+            <Text style={[styles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
+              {t.productivityFocus}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
               {weeklyRate}% {t.weeklyRate}
             </Text>
           </View>
-        </View>
-
-        <View style={[styles.headerPill, { backgroundColor: frame.pillBg }]}>
-          <Ionicons name="flash" size={14} color={frame.pillFg} />
-          <Text style={[styles.headerPillText, { color: frame.pillFg }]}>{streakDays}d Streak</Text>
         </View>
       </View>
 

@@ -82,6 +82,7 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
+      marginTop: 10,
       marginBottom: 8,
     },
     yearSectionTitle: {
@@ -279,7 +280,7 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
     // Day grid & Calendar
     calendarContainer: {
       paddingHorizontal: 16,
-      marginBottom: 0,
+      marginBottom: 20,
     },
     weekdayRow: {
       flexDirection: 'row',
