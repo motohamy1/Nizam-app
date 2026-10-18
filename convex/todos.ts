@@ -681,9 +681,9 @@ export const updateTodo = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     const finalUpdates: Record<string, any> = { ...updates };
-    // Empty-string repeatPeriod is the explicit "clear repeat" signal from
+    // Empty-string or 'none' repeatPeriod is the explicit "clear repeat" signal from
     // the UI — null it out so the doc really stops repeating.
-    if (updates.repeatPeriod === '') {
+    if (updates.repeatPeriod === '' || updates.repeatPeriod === 'none') {
       finalUpdates.repeatPeriod = undefined;
       finalUpdates.repeatCount = undefined;
     }

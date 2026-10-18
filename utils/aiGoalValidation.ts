@@ -313,6 +313,16 @@ export function getDefaultTemplateRecommendations(
   // Default / Project / General
   return [
     {
+      templateId: 'checklist',
+      frameworkId: 'checklist',
+      visualStyleId: 'paper',
+      title: 'Postal Stamp Card (Paper Craft)',
+      titleAr: 'بطاقة بريدية ورقية (طابع مصدق)',
+      reason: 'Delightful paper postal layout with color-coded checklist milestones.',
+      reasonAr: 'تصميم بريدي ورقي بطابع مصدق مع ألوان مميزة لكل مهمة.',
+      fit: 'primary',
+    },
+    {
       templateId: 'roadmap',
       frameworkId: 'roadmap',
       visualStyleId: 'glass',
@@ -320,16 +330,6 @@ export function getDefaultTemplateRecommendations(
       titleAr: 'خارطة طريق مرحلية (زجاجي حديث)',
       reason: 'Best for multi-phase projects with clear chronological stages.',
       reasonAr: 'الأنسب للمشاريع متدرجة المراحل ومتابعة الإنجاز تصاعدياً.',
-      fit: 'primary',
-    },
-    {
-      templateId: 'checklist',
-      frameworkId: 'checklist',
-      visualStyleId: 'paper',
-      title: 'Action Checklist (Paper Craft)',
-      titleAr: 'قائمة مهام تنفيذية (ورقي كلاسيكي)',
-      reason: 'Crisp action checklist for focused execution.',
-      reasonAr: 'قائمة مباشرة لإنجاز المهام خطوة بخطوة بكل وضوح.',
       fit: 'alternative',
     },
     {

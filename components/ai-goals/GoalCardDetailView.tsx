@@ -559,27 +559,27 @@ function getCardTheme(
     case 'paper':
       return {
         card: {
-          backgroundColor: isDarkMode ? '#22201D' : '#FAF8F5',
-          borderColor: isDarkMode ? '#3D3833' : '#E4DFD7',
+          backgroundColor: '#FFFFFF',
+          borderColor: '#E2E8F0',
           borderWidth: 1.5,
           borderStyle: 'dashed',
           borderRadius: 16,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDarkMode ? 0.2 : 0.06,
-          shadowRadius: 6,
-          elevation: 2,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDarkMode ? 0.35 : 0.08,
+          shadowRadius: 10,
+          elevation: 4,
         },
-        textColor: isDarkMode ? '#EDE8E1' : '#1C1917',
-        textMuted: isDarkMode ? '#A8A29E' : '#78716C',
+        textColor: '#0F172A',
+        textMuted: '#64748B',
         titleText: {
-          fontWeight: '600',
-          color: isDarkMode ? '#EDE8E1' : '#1C1917',
+          fontWeight: '700',
+          color: '#0F172A',
         },
-        dividerColor: isDarkMode ? '#332E28' : '#ECE7DE',
-        nodeBg: isDarkMode ? '#2B2824' : '#FFFFFF',
+        dividerColor: '#F1F5F9',
+        nodeBg: '#FFFFFF',
         nodeText: accentColor,
-        railColor: isDarkMode ? '#443E37' : '#D6D0C5',
+        railColor: '#E2E8F0',
       };
 
     case 'notebook':

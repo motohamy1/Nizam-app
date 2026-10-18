@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  useWindowDimensions,
   Alert,
   PanResponder,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Id } from '@/convex/_generated/dataModel';
 import useTheme from '@/hooks/useTheme';
+import { useKeyboard } from '@/hooks/useKeyboard';
 import LivePress from '@/components/LivePress';
 import Reanimated, { FadeInDown, FadeIn, FadeOut } from 'react-native-reanimated';
 
@@ -111,6 +113,8 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
   onOpenTaskDetails,
 }) => {
   const { colors, isDarkMode } = useTheme();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const timelineScrollRef = useRef<ScrollView>(null);
 
   // Dynamic Prayer Times according to User Location (Egypt/Cairo and global)
@@ -1050,12 +1054,30 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
 
       {/* ─── Polished Add to Schedule Modal ─── */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalOverlay}
-        >
-          <View style={[styles.modalCard, { backgroundColor: isDarkMode ? '#1B1E28' : '#FFFFFF', borderColor: colors.border }]}>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
+          />
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: isDarkMode ? '#1B1E28' : '#FFFFFF',
+                borderColor: colors.border,
+                marginBottom: keyboardHeight > 0 ? Math.min(keyboardHeight, 180) : 0,
+                maxHeight: isKeyboardVisible
+                  ? Math.max(300, screenHeight - keyboardHeight - 40)
+                  : '85%',
+              },
+            ]}
+          >
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 60 : 10 }}
+            >
               {/* Header */}
               <View style={[styles.modalHeader, isArabic && { flexDirection: 'row-reverse' }]}>
                 <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
@@ -1339,7 +1361,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
               </View>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );

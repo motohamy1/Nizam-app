@@ -94,9 +94,20 @@ export async function scheduleRepeatingReminder(
     await ensureNotificationChannels().catch(() => {});
 
     let scheduled = 0;
-    for (let i = 0; i < count; i++) {
-      const occurrence = computeRepeatOccurrence(firstOccurrenceMs, repeatPeriod, i);
-      if (occurrence <= now) continue;
+    let idx = 0;
+    const maxScan = 500;
+    while (scheduled < count && idx < maxScan) {
+      let occurrence = computeRepeatOccurrence(firstOccurrenceMs, repeatPeriod, idx);
+      idx++;
+      if (occurrence <= now) {
+        // If the very first occurrence was set for now or within the last 60 seconds (just saved),
+        // trigger in 3 seconds so the user receives the initial alert on time.
+        if (scheduled === 0 && idx === 1 && occurrence >= now - 60000) {
+          occurrence = now + 3000;
+        } else {
+          continue;
+        }
+      }
       await Notifications.scheduleNotificationAsync({
         identifier: getReminderNotificationId(taskId, occurrence),
         content: {
@@ -323,7 +334,13 @@ export async function requestPermissionsAsync() {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
       finalStatus = status;
     }
 
@@ -438,8 +455,10 @@ export async function scheduleReminderNotification(
   try {
     const file = await resolveKindSound('reminder').catch(() => TYPE_SOUND.reminder);
     const now = Date.now();
-    // If the reminder time already passed, don't schedule
-    if (dueDateMs <= now) return '';
+    // If the reminder time passed more than 2 minutes ago without repeat, skip it.
+    // If it was set within the last 2 minutes (or right now), fire in 3 seconds so the alert isn't lost.
+    if (dueDateMs < now - 120000) return '';
+    const triggerDate = dueDateMs <= now ? new Date(now + 3000) : new Date(dueDateMs);
 
     await ensureNotificationChannels().catch(() => {});
 
@@ -456,7 +475,7 @@ export async function scheduleReminderNotification(
       } as any,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(dueDateMs),
+        date: triggerDate,
         channelId: CHANNEL_IDS.reminders,
       } as any,
     });

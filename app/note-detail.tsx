@@ -24,14 +24,16 @@ import {
   View,
   Alert,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useMutation, useAction, useQuery } from 'convex/react';
 import { AudioPlayerCard } from '@/components/AudioPlayerCard';
+import { DynamicVoiceCard } from '@/components/DynamicVoiceCard';
 import { VoiceWaveform } from '@/components/VoiceWaveform';
 import * as FileSystem from 'expo-file-system/legacy';
 import { FileSystemUploadType } from 'expo-file-system/legacy';
 import NoteAIChatSheet from '@/components/NoteAIChatSheet';
-import NoteAIResultModal, { AIResultData, ExtractedTaskItem } from '@/components/NoteAIResultModal';
+import NoteAIResultModal, { AIResultData, ExtractedTaskItem, cleanClientText } from '@/components/NoteAIResultModal';
 import NoteBodyEditor, {
   ActiveBlockInfo,
   NoteBodyEditorHandle,
@@ -426,24 +428,15 @@ export default function NoteDetailScreen() {
       const transcribeRes = await transcribeAudioAction({
         noteId: targetId ? (targetId as any) : undefined,
         storageId,
-        languageHint: isArabic ? 'ar' : 'en',
+        languageHint: 'mixed',
       });
 
       if (transcribeRes?.transcript) {
         const transText = transcribeRes.transcript.trim();
         setCurrentTranscript(transText);
-
-        const insertPos = cursorPosRef.current ?? body.length;
-        const before = body.slice(0, insertPos);
-        const after = body.slice(insertPos);
-        const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-        const inserted = (needsSpace ? ' ' : '') + transText;
-        const newBody = before + inserted + after;
-        setBody(newBody);
-
-        const newPos = insertPos + inserted.length;
-        cursorPosRef.current = newPos;
-        setSelection({ start: newPos, end: newPos });
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (_) {}
       }
     } catch (err) {
       console.warn('Failed to upload/transcribe audio:', err);
@@ -470,18 +463,14 @@ export default function NoteDetailScreen() {
       const transcribeRes = await transcribeAudioAction({
         noteId: id ? (id as any) : undefined,
         storageId: existingNote.audioStorageId,
-        languageHint: isArabic ? 'ar' : 'en',
+        languageHint: 'mixed',
       });
       if (transcribeRes?.transcript) {
         const transText = transcribeRes.transcript.trim();
         setCurrentTranscript(transText);
-        
-        const insertPos = cursorPosRef.current ?? body.length;
-        const before = body.slice(0, insertPos);
-        const after = body.slice(insertPos);
-        const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-        const inserted = (needsSpace ? ' ' : '') + transText;
-        setBody(before + inserted + after);
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (_) {}
       }
     } catch (err) {
       console.warn('Error retrying transcription:', err);
@@ -564,12 +553,16 @@ export default function NoteDetailScreen() {
   };
 
   const handleInsertSummaryToNote = (summaryContent: string) => {
-    const header = isArabic ? '\n\n📝 **الملخص التنفيذي:**\n' : '\n\n📝 **Executive Summary:**\n';
+    let cleaned = cleanClientText(summaryContent);
+    // Remove duplicate summary headers
+    cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Executive Summary|Executive overview|الملخص التنفيذي|الملخص|Summary)\*?\*?:?\s*/gim, '').trim();
+
+    const header = isArabic ? '📝 **الملخص التنفيذي:**\n' : '📝 **Executive Summary:**\n';
     const insertPos = cursorPosRef.current ?? body.length;
     const before = body.slice(0, insertPos);
     const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-    const inserted = (needsSpace ? '\n\n' : '') + header + summaryContent;
+    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const inserted = needsSpace + header + cleaned;
     setBody(before + inserted + after);
     scrollToBottom();
   };
@@ -684,26 +677,33 @@ export default function NoteDetailScreen() {
   };
 
   const handleInsertToNote = (content: string) => {
+    let cleaned = cleanClientText(content);
+    cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Question|User Question|Prompt|User Prompt|السؤال|سؤالك|استفسارك|المطلوب)\*?\*?:?\s*(?:".*?"|'.*?'|[^\n]+)?\n+/gim, '');
+    cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Answer|AI Response|Response|الإجابة|الرد|جواب)\*?\*?:?\s*/gim, '').trim();
+
     const insertPos = cursorPosRef.current ?? body.length;
     const before = body.slice(0, insertPos);
     const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-    const inserted = (needsSpace ? '\n\n' : '') + content;
+    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const inserted = needsSpace + cleaned;
     setBody(before + inserted + after);
     setAIChatVisible(false);
     scrollToBottom();
   };
 
-  const handleInsertTranscript = () => {
-    const trans = currentTranscript || existingNote?.transcript;
+  const handleInsertTranscript = (customText?: string) => {
+    const trans = (typeof customText === 'string' ? customText : (currentTranscript || existingNote?.transcript))?.trim();
     if (!trans) return;
     const insertPos = cursorPosRef.current ?? body.length;
     const before = body.slice(0, insertPos);
     const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-    const inserted = (needsSpace ? '\n\n' : '') + trans;
+    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const inserted = needsSpace + trans;
     setBody(before + inserted + after);
     scrollToBottom();
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_) {}
   };
 
   // Calendar Helpers
@@ -1006,6 +1006,46 @@ export default function NoteDetailScreen() {
                 </View>
               )}
             </View>
+          )}
+
+          {/* Audio Transcribing Loading Card */}
+          {isTranscribing && (
+            <View
+              style={{
+                marginHorizontal: 20,
+                marginBottom: 16,
+                padding: 16,
+                borderRadius: 18,
+                borderWidth: 1.5,
+                borderColor: (colors.primary || '#6366F1') + '50',
+                backgroundColor: 'transparent',
+                flexDirection: isArabic ? 'row-reverse' : 'row',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <ActivityIndicator size="small" color={colors.primary || '#6366F1'} />
+              <View style={{ flex: 1, alignItems: isArabic ? 'flex-end' : 'flex-start' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                  {isArabic ? 'جاري تفريغ وتنظيم الصوت بالذكاء الاصطناعي...' : 'Transcribing & organizing voice with AI...'}
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted, marginTop: 2 }}>
+                  {isArabic ? 'تنسيق الجمل وإزالة الحشو التلقائي' : 'Structuring sentences & filtering filler words'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Dynamic Voice Transcript Card */}
+          {Boolean(currentTranscript && currentTranscript.trim().length > 0) && (
+            <DynamicVoiceCard
+              transcript={currentTranscript}
+              onUpdateTranscript={(newText) => setCurrentTranscript(newText)}
+              onInsertToNote={handleInsertTranscript}
+              onClear={() => setCurrentTranscript('')}
+              onAskAI={() => setAIChatVisible(true)}
+              isArabic={isArabic}
+            />
           )}
 
           {/* Rendered Markdown Body Editor */}

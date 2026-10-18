@@ -122,7 +122,9 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
       setItemType('reminder');
       const baseDate = initialDate ? new Date(initialDate) : new Date();
       setSelectedDate(baseDate);
-      setSelectedTime(new Date());
+      const defaultTime = new Date(Date.now() + 15 * 60 * 1000);
+      defaultTime.setMinutes(Math.ceil(defaultTime.getMinutes() / 5) * 5, 0, 0);
+      setSelectedTime(defaultTime);
       setLocation('');
       setMeetingLink('');
       setNotes('');
@@ -156,6 +158,17 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
 
       const eventDateObj = new Date(selectedDate);
       eventDateObj.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+      const now = Date.now();
+      const isToday = new Date().toDateString() === new Date(selectedDate).toDateString();
+
+      // If user selected today's date and a time that has already passed today by more than 1 min:
+      // For a one-shot reminder, roll over to tomorrow so the user actually gets alerted at that time.
+      if (isToday && eventDateObj.getTime() < now - 60000 && repeatPeriod === 'none') {
+        eventDateObj.setDate(eventDateObj.getDate() + 1);
+      } else if (eventDateObj.getTime() <= now && eventDateObj.getTime() >= now - 60000) {
+        // If within 1 minute of now (user just clicked Save), schedule 5s in future so notification fires
+        eventDateObj.setTime(now + 5000);
+      }
 
       const savedData: EventData = {
         _id: eventToEdit?._id,
@@ -253,20 +266,14 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+            <View
               style={[
                 styles.modalContent,
                 {
                   maxHeight: isKeyboardVisible
                     ? Math.max(320, screenHeight - keyboardHeight - (Platform.OS === 'ios' ? 44 : 28))
                     : '90%',
-                  // Android: the Modal dialog window never resizes (no
-                  // adjustResize for dialog windows) and KAV behavior is
-                  // iOS-only — without this the keyboard pins the bottom
-                  // sheet down and buries the title/location inputs.
-                  marginBottom: Platform.OS === 'android' ? keyboardHeight : undefined,
+                  marginBottom: keyboardHeight,
                 },
               ]}
             >
@@ -563,7 +570,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                   </View>
                 </View>
               </ScrollView>
-            </KeyboardAvoidingView>
+            </View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>

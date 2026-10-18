@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
-import { isLightColor, modeColor, textOn } from '@/utils/colorUtils';
+import { modeColor, textOn } from '@/utils/colorUtils';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
 export const InlineTimerPicker = ({
   initialMs,
@@ -63,13 +63,13 @@ export const InlineTimerPicker = ({
     <View style={[{ marginTop: 4, padding: 16, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: accent + '40', gap: 16, shadowColor: accent, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 }, isArabic && { direction: 'rtl' }]}>
       {/* Direction Toggle */}
       <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', backgroundColor: colors.bg, borderRadius: 12, padding: 4, elevation: 1 }}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setDirection('down')}
           style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: direction === 'down' ? colors.surface : 'transparent', borderRadius: 8, shadowColor: colors.text, shadowOpacity: direction === 'down' ? 0.1 : 0, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}
         >
           <Text style={{ fontSize: 13, fontWeight: direction === 'down' ? '800' : '600', color: direction === 'down' ? colors.text : colors.textMuted }}>{t.countDown || "Count Down"}</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setDirection('up')}
           style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: direction === 'up' ? colors.surface : 'transparent', borderRadius: 8, shadowColor: colors.text, shadowOpacity: direction === 'up' ? 0.1 : 0, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}
         >

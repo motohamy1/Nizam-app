@@ -1,9 +1,10 @@
 import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { createPlannerStyles } from '@/assets/styles/planner.styles';
@@ -32,6 +33,7 @@ import DayTimelineSchedule from '@/components/DayTimelineSchedule';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
 import { getEffectiveTaskDay } from '@/utils/taskDateUtils';
+import PlannerDateBar from '@/components/PlannerDateBar';
 
 const months_en = [
   'January', 'February', 'March', 'April',
@@ -143,6 +145,18 @@ const Planner = () => {
   const [activeYear, setActiveYear] = useState(currentYear);
   const years = useMemo(() => [currentYear - 1, currentYear, currentYear + 1, currentYear + 2], [currentYear]);
   const currentMonth = new Date().getMonth();
+  const [deckMonth, setDeckMonth] = useState(currentMonth);
+  const [isYearModalVisible, setYearModalVisible] = useState(false);
+  const [openedFromMainWheel, setOpenedFromMainWheel] = useState(false);
+
+  // Available selectable years for the year picker menu (range around current year)
+  const selectableYears = useMemo(() => {
+    const list: number[] = [];
+    for (let y = currentYear - 3; y <= currentYear + 4; y++) {
+      list.push(y);
+    }
+    return list;
+  }, [currentYear]);
 
   // Year deck palettes: current year wears the live month palette; the others
   // get fixed Bauhaus-variety palettes so each card reads distinctly.
@@ -162,14 +176,21 @@ const Planner = () => {
     }, 200);
   };
 
-
-
+  const handleSelectDayFromWheel = (dayNum: number) => {
+    setOpenedFromMainWheel(true);
+    setSelectedMonth(deckMonth);
+    setSelectedDay(dayNum);
+  };
 
   const isFromHome = params.from === 'home';
 
   const handleGoBack = () => {
     if (isFromHome) {
       router.replace('/(tabs)');
+    } else if (openedFromMainWheel) {
+      setOpenedFromMainWheel(false);
+      setSelectedDay(null);
+      setSelectedMonth(null);
     } else if (selectedDay !== null) {
       setSelectedDay(null);
     } else if (selectedMonth !== null) {
@@ -252,6 +273,7 @@ const Planner = () => {
   };
 
   const resetAll = () => {
+    setOpenedFromMainWheel(false);
     setSelectedMonth(null);
     setSelectedDay(null);
   };
@@ -260,7 +282,7 @@ const Planner = () => {
     return todos.filter(todo => {
       const effectiveDayTs = getEffectiveTaskDay(todo);
       const todoDate = new Date(effectiveDayTs);
-      return todoDate.getMonth() === monthIndex && todoDate.getFullYear() === currentYear;
+      return todoDate.getMonth() === monthIndex && todoDate.getFullYear() === activeYear;
     });
   };
 
@@ -279,44 +301,179 @@ const Planner = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 6 }}
       >
-        {/* ─── Deep Shadow Goals of the Year ─── */}
-        <View style={styles.yearSectionHeader}>
-          <Text style={styles.yearSectionTitle}>{t.goalsOfTheYear}</Text>
-          <Text style={styles.yearSectionSubtitle}>{t.year} {activeYear}</Text>
-        </View>
+        {/* ─── Current Year Combo Card (Dynamic Background by Active/Current Month) ─── */}
+        {(() => {
+          const activeMonthIndex = selectedMonth !== null ? selectedMonth : deckMonth;
+          const activeMonthPalette = getMonthPalette(activeMonthIndex);
+          const activeMonthName = months[activeMonthIndex];
 
-        <WheelPicker
-          labels={years.map((y) => String(y))}
-          activeIndex={Math.max(0, years.indexOf(activeYear))}
-          onChange={(i) => setActiveYear(years[i])}
-          // Idle auto-return: after 5s without interaction the wheel snaps back
-          // to the current year, same as the home day wheel.
-          autoReturnIndex={years.indexOf(currentYear)}
-          autoReturnDelay={5000}
-          palettes={yearPalettes}
-          accentColor={yearPalettes[Math.max(0, years.indexOf(activeYear))]?.accent}
-          isArabic={isArabic}
-        />
+          return (
+            <View style={{ paddingHorizontal: 16, marginTop: 4, marginBottom: 12 }}>
+              <LivePress
+                pressScale={0.97}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setYearModalVisible(true);
+                }}
+                style={{
+                  flexDirection: isArabic ? 'row-reverse' : 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: activeMonthPalette.bg,
+                  borderRadius: 20,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderWidth: 1.5,
+                  borderColor: activeMonthPalette.ink + '20',
+                  shadowColor: activeMonthPalette.ink,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.18,
+                  shadowRadius: 12,
+                  elevation: 4,
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 12 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: activeMonthPalette.ink + '15',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: activeMonthPalette.ink + '22',
+                    }}
+                  >
+                    <Ionicons name="calendar" size={22} color={activeMonthPalette.accent} />
+                  </View>
+                  <View>
+                    <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 22,
+                          fontWeight: '900',
+                          color: activeMonthPalette.ink,
+                          letterSpacing: -0.4,
+                        }}
+                      >
+                        {activeYear}
+                      </Text>
+
+                      {/* Active Month Indicator Pill */}
+                      <View
+                        style={{
+                          flexDirection: isArabic ? 'row-reverse' : 'row',
+                          alignItems: 'center',
+                          gap: 4.5,
+                          paddingHorizontal: 8,
+                          paddingVertical: 2.5,
+                          borderRadius: 8,
+                          backgroundColor: activeMonthPalette.ink + '16',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor: activeMonthPalette.accent,
+                          }}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '800',
+                            color: activeMonthPalette.ink,
+                          }}
+                        >
+                          {activeMonthName}
+                        </Text>
+                      </View>
+
+                      {/* Current Year Badge */}
+                      {activeYear === currentYear && (
+                        <View
+                          style={{
+                            paddingHorizontal: 7,
+                            paddingVertical: 2.5,
+                            borderRadius: 8,
+                            backgroundColor: activeMonthPalette.ink + '14',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: '800',
+                              color: activeMonthPalette.ink,
+                              opacity: 0.9,
+                            }}
+                          >
+                            {isArabic ? 'السنة الحالية' : 'Current Year'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '600',
+                        color: activeMonthPalette.ink,
+                        opacity: 0.75,
+                        marginTop: 3,
+                      }}
+                    >
+                      {isArabic
+                        ? `شهر ${activeMonthName} • اضغط لاختيار أو تغيير السنة`
+                        : `${activeMonthName} • Tap to switch year`}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 11,
+                    backgroundColor: activeMonthPalette.ink + '14',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color={activeMonthPalette.ink}
+                    style={{ opacity: 0.85 }}
+                  />
+                </View>
+              </LivePress>
+            </View>
+          );
+        })()}
 
         {/* ─── Year focus capsules: Goals & To-dos (left) | Achievements (right) ─── */}
         {(() => {
           const py = yearPalettes[Math.max(0, years.indexOf(activeYear))] ?? getMonthPalette(0);
           const ach = isDarkMode
-            ? { bg: '#2A2113', ink: '#F5EAD6', accent: '#FBBF24' }
-            : { bg: '#FDF3DC', ink: '#451A03', accent: '#D97706' };
+            ? { bg: '#D97706', ink: '#FFFFFF', accent: '#FDE047', shadow: '#B45309' }
+            : { bg: '#F59E0B', ink: '#FFFFFF', accent: '#FEF08A', shadow: '#D97706' };
           const cardBase: any = {
             flex: 1,
             height: 140,
             borderRadius: 22,
             padding: 16,
             justifyContent: 'space-between',
-            shadowOpacity: 0.16,
+            shadowOpacity: 0.22,
             shadowRadius: 12,
-            shadowOffset: { width: 0, height: 8 },
+            shadowOffset: { width: 0, height: 6 },
             elevation: 5,
           };
           return (
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 18, paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 4, paddingHorizontal: 16 }}>
               {/* Goals & To-dos — wears the focused year's palette */}
               <LivePress
                 style={[cardBase, { backgroundColor: py.bg, shadowColor: py.ink }]}
@@ -327,11 +484,11 @@ const Planner = () => {
                 })}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: py.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: py.ink + '15', justifyContent: 'center', alignItems: 'center' }}>
                     <Ionicons name="flag-outline" size={20} color={py.accent} />
                   </View>
-                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: py.ink + '0D', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={py.ink} style={{ opacity: 0.55 }} />
+                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: py.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={py.ink} style={{ opacity: 0.8 }} />
                   </View>
                 </View>
                 <View>
@@ -339,21 +496,21 @@ const Planner = () => {
                     {isArabic ? 'الأهداف والمهام' : 'Goals & To-dos'}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: py.ink + '14' }}>
+                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: py.ink + '18' }}>
                       <Text style={{ fontSize: 9.5, fontWeight: '800', color: py.ink, letterSpacing: 0.3 }}>
                         {isArabic ? 'قريبًا' : 'SOON'}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: py.ink, opacity: 0.6 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: py.ink, opacity: 0.75 }} numberOfLines={1}>
                       {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
                     </Text>
                   </View>
                 </View>
               </LivePress>
 
-              {/* Achievements — fixed gold identity, always on the right */}
+              {/* Achievements — vibrant gold / orange palette */}
               <LivePress
-                style={[cardBase, { backgroundColor: ach.bg, shadowColor: ach.ink }]}
+                style={[cardBase, { backgroundColor: ach.bg, shadowColor: ach.shadow }]}
                 pressScale={0.96}
                 onPress={() => router.push({
                   pathname: '/year-section',
@@ -361,11 +518,11 @@ const Planner = () => {
                 })}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: ach.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="trophy-outline" size={20} color={ach.accent} />
+                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255, 255, 255, 0.22)', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="trophy" size={20} color={ach.accent} />
                   </View>
-                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: ach.ink + '0D', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={ach.ink} style={{ opacity: 0.55 }} />
+                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.18)', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={ach.ink} style={{ opacity: 0.9 }} />
                   </View>
                 </View>
                 <View>
@@ -373,12 +530,12 @@ const Planner = () => {
                     {isArabic ? 'الإنجازات' : 'Achievements'}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: ach.ink + '14' }}>
+                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255, 255, 255, 0.22)' }}>
                       <Text style={{ fontSize: 9.5, fontWeight: '800', color: ach.ink, letterSpacing: 0.3 }}>
                         {isArabic ? 'قريبًا' : 'SOON'}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: ach.ink, opacity: 0.6 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: ach.ink, opacity: 0.85 }} numberOfLines={1}>
                       {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
                     </Text>
                   </View>
@@ -388,22 +545,29 @@ const Planner = () => {
           );
         })()}
 
+        {/* ─── Day / Date Wheel (above the months card) ─── */}
+        <PlannerDateBar
+          month={deckMonth}
+          year={activeYear}
+          todos={todos}
+          onSelectDay={handleSelectDayFromWheel}
+          selectedDay={selectedDay}
+          isArabic={isArabic}
+        />
 
-        {/* ─── Horizontal Rolodex Deck + 3D Month Wheel ─── */}
+        {/* ─── Horizontal Rolodex Deck (Months Card) ─── */}
         <ScrollStack
           isArabic={isArabic}
           labels={months}
           initialIndex={currentMonth}
           palettes={MONTH_PALETTES}
           axis="horizontal"
-          showWheel
+          sideCardVariant="capsule"
           cardInset={screenWidth * 0.032 + 14.98}
-          // Idle auto-return: 5s after the last swipe/tap/wheel detent, the
-          // deck and its wheel re-center on the current month, like the home
-          // day wheel does.
           autoReturnIndex={currentMonth}
           autoReturnDelay={5000}
-          style={{ marginTop: 22, marginBottom: 28 }}
+          onCardChange={(idx) => setDeckMonth(idx)}
+          style={{ marginTop: 10, marginBottom: 28 }}
         >
           {months.map((monthName, idx) => {
             const monthTasks = getTasksForMonth(idx);
@@ -413,10 +577,10 @@ const Planner = () => {
                 key={monthName}
                 month={monthName}
                 monthIndex={idx}
-                year={currentYear}
+                year={activeYear}
                 taskCount={monthTasks.length}
                 completionRate={monthTasks.length > 0 ? Math.round((completedMonthTasks / monthTasks.length) * 100) : 0}
-                isCurrent={idx === currentMonth}
+                isCurrent={idx === currentMonth && activeYear === currentYear}
                 isArabic={isArabic}
                 palette={getMonthPalette(idx)}
                 currentLabel={t.current}
@@ -427,6 +591,139 @@ const Planner = () => {
             );
           })}
         </ScrollStack>
+
+        {/* ─── Year Selection Menu Modal ─── */}
+        <Modal
+          visible={isYearModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setYearModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.55)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 20,
+            }}
+            activeOpacity={1}
+            onPress={() => setYearModalVisible(false)}
+          >
+            <View
+              style={{
+                width: '100%',
+                maxWidth: 340,
+                backgroundColor: colors.surface,
+                borderRadius: 24,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3,
+                shadowRadius: 20,
+                elevation: 10,
+              }}
+              onStartShouldSetResponder={() => true}
+            >
+              {/* Modal Header */}
+              <View
+                style={{
+                  flexDirection: isArabic ? 'row-reverse' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                  paddingBottom: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                }}
+              >
+                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
+                    {isArabic ? 'اختر السنة' : 'Select Year'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setYearModalVisible(false)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons name="close" size={18} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Year list */}
+              <View style={{ gap: 8 }}>
+                {selectableYears.map((yearItem) => {
+                  const isSelected = yearItem === activeYear;
+                  const isCurYear = yearItem === currentYear;
+                  return (
+                    <LivePress
+                      key={yearItem}
+                      pressScale={0.96}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setActiveYear(yearItem);
+                        setYearModalVisible(false);
+                      }}
+                      style={{
+                        flexDirection: isArabic ? 'row-reverse' : 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        borderRadius: 14,
+                        backgroundColor: isSelected
+                          ? (isDarkMode ? 'rgba(255, 92, 22, 0.16)' : 'rgba(255, 92, 22, 0.10)')
+                          : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)'),
+                        borderWidth: isSelected ? 1.5 : 1,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      }}
+                    >
+                      <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
+                        <Text
+                          style={{
+                            fontSize: 17,
+                            fontWeight: isSelected ? '900' : '700',
+                            color: isSelected ? colors.primary : colors.text,
+                          }}
+                        >
+                          {yearItem}
+                        </Text>
+                        {isCurYear && (
+                          <View
+                            style={{
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                              backgroundColor: colors.primary + '18',
+                            }}
+                          >
+                            <Text style={{ fontSize: 10.5, fontWeight: '800', color: colors.primary }}>
+                              {isArabic ? 'الحالية' : 'Current'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                      )}
+                    </LivePress>
+                  );
+                })}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ScrollView>
     );
   };
@@ -436,384 +733,539 @@ const Planner = () => {
     const palette = getMonthPalette(monthIndex);
     const monthTasks = getTasksForMonth(monthIndex);
     const completedMonthTasks = monthTasks.filter(t => t.status === 'done');
-    const firstDayOfWeek = new Date(currentYear, monthIndex, 1).getDay();
+    const inProgressTasks = monthTasks.filter(t => t.status === 'in_progress');
+    const notDoneTasks = monthTasks.filter(t => t.status === 'not_done' || (t.status === 'not_started' && t.dueDate && new Date(t.dueDate).setHours(23, 59, 59, 999) < Date.now()));
+    const pendingTasks = monthTasks.filter(t => t.status !== 'done' && !notDoneTasks.includes(t));
 
-    const weekdays = isArabic ? weekdays_ar : weekdays_en;
+    const monthGoalDocs = allGoals.filter((g: any) => g.year === currentYear && g.month === monthIndex && g.day === undefined);
+    const completedGoals = monthGoalDocs.filter((g: any) => g.isCompleted);
+    const incompleteGoals = monthGoalDocs.filter((g: any) => !g.isCompleted);
 
-    // Build exact 7-column rows so every day column aligns with weekday headers
-    const totalSlots = Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7;
-    const calendarRows: Array<Array<{ day: number | null; isToday: boolean; isSolidEdge: boolean; tasks: any[] }>> = [];
+    let totalGoalMilestones = 0;
+    let completedGoalMilestones = 0;
+    monthGoalDocs.forEach((doc: any) => {
+      const stats = getChecklistStats(doc.description);
+      totalGoalMilestones += stats.total;
+      completedGoalMilestones += stats.completed;
+    });
 
-    let currentRow: Array<{ day: number | null; isToday: boolean; isSolidEdge: boolean; tasks: any[] }> = [];
+    const monthAchievementDocs = allAchievements.filter((a: any) => a.year === currentYear && a.month === monthIndex && a.day === undefined);
+    const completedAchievements = monthAchievementDocs.filter((a: any) => a.isCompleted);
+    const pendingAchievements = monthAchievementDocs.filter((a: any) => !a.isCompleted);
 
-    for (let slot = 0; slot < totalSlots; slot++) {
-      const dayNumber = slot >= firstDayOfWeek && slot < firstDayOfWeek + daysInMonth
-        ? slot - firstDayOfWeek + 1
-        : null;
-
-      const isToday = dayNumber !== null && 
-                      dayNumber === new Date().getDate() && 
-                      monthIndex === new Date().getMonth() && 
-                      currentYear === new Date().getFullYear();
-
-      const isLastRow = slot >= totalSlots - 7;
-      const isSolidEdgeDay = dayNumber !== null && (daysInMonth >= 30 ? (dayNumber >= 30 || isLastRow) : false);
-      const dayTasks = dayNumber ? getTasksForDay(dayNumber, monthIndex, currentYear) : [];
-
-      currentRow.push({
-        day: dayNumber,
-        isToday,
-        isSolidEdge: isSolidEdgeDay,
-        tasks: dayTasks,
-      });
-
-      if (currentRow.length === 7) {
-        calendarRows.push(currentRow);
-        currentRow = [];
+    // Track active days in this month
+    const activeDaysSet = new Set<number>();
+    monthTasks.forEach((t: any) => {
+      if (t.date) {
+        const d = new Date(t.date);
+        if (d.getMonth() === monthIndex && d.getFullYear() === currentYear) {
+          activeDaysSet.add(d.getDate());
+        }
       }
+    });
+    const activeDaysCount = activeDaysSet.size;
+
+    const totalTracked = monthTasks.length + monthGoalDocs.length + monthAchievementDocs.length;
+    const totalFinished = completedMonthTasks.length + completedGoals.length + completedAchievements.length;
+    const overallPct = totalTracked > 0 ? Math.round((totalFinished / totalTracked) * 100) : 0;
+
+    const highPriorityTasks = monthTasks.filter(t => t.priority === 'high' || t.priority === 'urgent');
+    const highPriorityDone = highPriorityTasks.filter(t => t.status === 'done');
+
+    let totalGoalsCount = 0;
+    let completedGoalsCount = 0;
+    monthGoalDocs.forEach((doc: any) => {
+      const stats = getChecklistStats(doc.description);
+      totalGoalsCount += stats.total;
+      completedGoalsCount += stats.completed;
+    });
+    if (totalGoalsCount === 0 && monthGoalDocs.length > 0) {
+      totalGoalsCount = monthGoalDocs.length;
+      completedGoalsCount = monthGoalDocs.filter((d: any) => d.isCompleted).length;
     }
+
+    const goalProgress = totalGoalsCount > 0 ? completedGoalsCount / totalGoalsCount : 0;
+    const achievementCount = monthAchievementDocs.length;
+    const totalTasksCount = monthTasks.length;
+    const completedTasksCount = completedMonthTasks.length;
+    const taskProgress = totalTasksCount > 0 ? completedTasksCount / totalTasksCount : 0;
 
     return (
       <ScrollView 
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 10 }} 
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Redesigned Month Goals & Tasks Capsule Card ─── */}
-        {(() => {
-          const monthGoalDocs = allGoals.filter((g: any) => g.year === currentYear && g.month === monthIndex && g.day === undefined);
-          const monthAchievementDocs = allAchievements.filter((a: any) => a.year === currentYear && a.month === monthIndex && a.day === undefined);
-
-          let totalGoals = 0;
-          let completedGoals = 0;
-          monthGoalDocs.forEach((doc: any) => {
-            const stats = getChecklistStats(doc.description);
-            totalGoals += stats.total;
-            completedGoals += stats.completed;
-          });
-          if (totalGoals === 0 && monthGoalDocs.length > 0) {
-            totalGoals = monthGoalDocs.length;
-            completedGoals = monthGoalDocs.filter((d: any) => d.isCompleted).length;
-          }
-
-          const goalProgress = totalGoals > 0 ? completedGoals / totalGoals : 0;
-          const achievementCount = monthAchievementDocs.length;
-          const totalTasksCount = monthTasks.length;
-          const completedTasksCount = completedMonthTasks.length;
-          const taskProgress = totalTasksCount > 0 ? completedTasksCount / totalTasksCount : 0;
-
-          return (
-            <LivePress
-              style={[
-                styles.monthGoalsCardNew,
-                {
-                  backgroundColor: palette.bg,
-                  borderColor: palette.ink + '20',
-                  shadowColor: palette.ink,
-                  shadowOpacity: 0.15,
-                  shadowRadius: 12,
-                  elevation: 5,
-                }
-              ]}
-              onPress={() => router.push({
-                pathname: '/goals-detail',
-                params: {
-                  year: currentYear.toString(),
-                  month: monthIndex.toString(),
-                  title: isArabic ? `أهداف ${months[monthIndex]}` : `${months[monthIndex]} Goals`,
-                }
-              })}
-              pressScale={0.96}
-            >
-              {/* Header row: Month & Year Pill + Edit icon button */}
-              <View style={[styles.monthGoalsHeaderRow, isArabic && { flexDirection: 'row-reverse' }]}>
-                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.monthGoalsTitleText, { color: palette.ink }]}>
-                    {months[monthIndex]} {currentYear}
-                  </Text>
-                  {monthIndex === currentMonth && (
-                    <View style={[styles.monthGoalsPill, { backgroundColor: palette.ink + '18' }]}>
-                      <Text style={[styles.monthGoalsPillText, { color: palette.ink }]}>{t.current}</Text>
-                    </View>
-                  )}
+        {/* ─── 1. Current Month Summary Card ─── */}
+        <LivePress
+          style={[
+            styles.monthGoalsCardNew,
+            {
+              backgroundColor: palette.bg,
+              borderColor: palette.ink + '20',
+              shadowColor: palette.ink,
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 5,
+              marginBottom: 14,
+            }
+          ]}
+          onPress={() => router.push({
+            pathname: '/goals-detail',
+            params: {
+              year: currentYear.toString(),
+              month: monthIndex.toString(),
+              title: isArabic ? `أهداف ${months[monthIndex]}` : `${months[monthIndex]} Goals`,
+            }
+          })}
+          pressScale={0.96}
+        >
+          {/* Header row: Month & Year Pill + Edit icon button */}
+          <View style={[styles.monthGoalsHeaderRow, isArabic && { flexDirection: 'row-reverse' }]}>
+            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={[styles.monthGoalsTitleText, { color: palette.ink }]}>
+                {months[monthIndex]} {currentYear}
+              </Text>
+              {monthIndex === currentMonth && (
+                <View style={[styles.monthGoalsPill, { backgroundColor: palette.ink + '18' }]}>
+                  <Text style={[styles.monthGoalsPillText, { color: palette.ink }]}>{t.current}</Text>
                 </View>
-                <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  backgroundColor: palette.ink + '14',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <Ionicons name="create-outline" size={16} color={palette.ink} />
-                </View>
-              </View>
-
-              {/* 3 Stats Capsules: Tasks, Goals, Achievements */}
-              <View style={[styles.monthStatsRow, isArabic && { flexDirection: 'row-reverse' }]}>
-                {/* Tasks Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="checkbox-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {totalTasksCount > 0 ? `${completedTasksCount}/${totalTasksCount}` : '0'}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'المهام' : 'Tasks'}
-                  </Text>
-                </View>
-
-                {/* Goals Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="flag-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {totalGoals > 0 ? `${completedGoals}/${totalGoals}` : '—'}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'الأهداف' : 'Goals'}
-                  </Text>
-                </View>
-
-                {/* Achievements Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="trophy-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {achievementCount}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'إنجازات' : 'Achievements'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Progress Bar & Completion Stat */}
-              {totalGoals > 0 || totalTasksCount > 0 ? (
-                <View style={[styles.monthProgressContainer, isArabic && { alignItems: 'flex-end' }]}>
-                  <View style={[styles.monthProgressBarTrack, { backgroundColor: palette.ink + '1A', width: '100%' }]}>
-                    <View style={[
-                      styles.monthProgressBarFill,
-                      {
-                        width: `${totalGoals > 0 ? goalProgress * 100 : taskProgress * 100}%`,
-                        backgroundColor: palette.accent,
-                      }
-                    ]} />
-                  </View>
-                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 2 }}>
-                    <Text style={[styles.monthProgressText, { color: palette.ink }]}>
-                      {totalGoals > 0 
-                        ? `${Math.round(goalProgress * 100)}% ${t.goalCompleted || 'complete'}` 
-                        : `${Math.round(taskProgress * 100)}% ${isArabic ? 'مهام مكتملة' : 'tasks done'}`}
-                    </Text>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: palette.ink + '99' }}>
-                      {isArabic ? 'اضغط للتفاصيل' : 'Tap for details'}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <Text style={{ textAlign: 'center', color: palette.ink + '99', fontSize: 12, fontWeight: '700', marginTop: 4 }}>
-                  {isArabic ? 'اضغط لتحديد أهداف الشهر' : 'Tap to set monthly goals'}
-                </Text>
               )}
-            </LivePress>
-          );
-        })()}
-
-        {/* ─── Calendar Section (Weekdays + Days Grid) ─── */}
-        <View style={styles.calendarContainer}>
-          {/* Weekday Header Row */}
-          <View style={[styles.weekdayRow, isArabic && { flexDirection: 'row-reverse' }]}>
-            {weekdays.map((dayName, idx) => (
-              <View key={idx} style={styles.weekdayCell}>
-                <Text style={styles.weekdayText}>{dayName}</Text>
-              </View>
-            ))}
+            </View>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: palette.ink + '14',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Ionicons name="create-outline" size={16} color={palette.ink} />
+            </View>
           </View>
 
-          {/* 7-Column Calendar Rows */}
-          {calendarRows.map((row, rowIdx) => (
-            <View key={`row-${rowIdx}`} style={[styles.calendarRow, isArabic && { flexDirection: 'row-reverse' }]}>
-              {row.map((cell, colIdx) => {
-                if (cell.day === null) {
-                  return (
-                    <View key={`empty-${rowIdx}-${colIdx}`} style={styles.calendarDaySlotEmpty} />
-                  );
-                }
-
-                return (
-                  <Reanimated.View 
-                    key={`day-${cell.day}`} 
-                    entering={FadeInDown.duration(280).delay(((rowIdx * 7 + colIdx) % 7) * 20)} 
-                    style={styles.calendarDayCell}
-                  >
-                    <LivePress 
-                      style={[
-                        styles.dayCard, 
-                        cell.isSolidEdge && styles.dayCardEdgeSolid,
-                        cell.tasks.length > 0 && styles.hasTaskCard,
-                        cell.isToday && styles.todayCard,
-                        cell.isToday && { backgroundColor: palette.accent, borderColor: palette.accent }
-                      ]}
-                      onPress={() => setSelectedDay(cell.day!)}
-                      pressScale={0.96}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Text style={[
-                        styles.dayText, 
-                        cell.isToday && styles.todayText
-                      ]}>{cell.day}</Text>
-                      {cell.tasks.length > 0 ? (
-                        <View style={[
-                          styles.dayTaskBadge, 
-                          cell.isToday && { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.28)' : colors.primary }
-                        ]}>
-                          <Text style={[
-                            styles.dayTaskBadgeText, 
-                            cell.isToday && { color: '#FFFFFF' }
-                          ]}>
-                            {cell.tasks.length}
-                          </Text>
-                        </View>
-                      ) : (
-                        <Text style={[
-                          styles.dayStats, 
-                          cell.isToday && styles.todayStats
-                        ]}>·</Text>
-                      )}
-                    </LivePress>
-                  </Reanimated.View>
-                );
-              })}
+          {/* 3 Stats Capsules: Tasks, Goals, Achievements */}
+          <View style={[styles.monthStatsRow, isArabic && { flexDirection: 'row-reverse' }]}>
+            {/* Tasks Capsule */}
+            <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
+              <Ionicons name="checkbox-outline" size={16} color={palette.ink} />
+              <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
+                {totalTasksCount > 0 ? `${completedTasksCount}/${totalTasksCount}` : '0'}
+              </Text>
+              <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
+                {isArabic ? 'المهام' : 'Tasks'}
+              </Text>
             </View>
-          ))}
-        </View>
 
-        {/* ─── Redesigned Month Bottom Summary ─── */}
-        {(() => {
-          const monthGoalDocs = allGoals.filter((g: any) => g.year === currentYear && g.month === monthIndex && g.day === undefined);
-          const monthAchievementDocs = allAchievements.filter((a: any) => a.year === currentYear && a.month === monthIndex && a.day === undefined);
-          
-          const notDoneTasks = monthTasks.filter(t => t.status === 'not_done' || (t.status === 'not_started' && t.dueDate && new Date(t.dueDate).setHours(23,59,59,999) < Date.now()));
-          const completedTasks = monthTasks.filter(t => t.status === 'done');
-          const incompleteGoals = monthGoalDocs.filter((g: any) => !g.isCompleted);
-          const completedGoals = monthGoalDocs.filter((g: any) => g.isCompleted);
-          const completedAchievements = monthAchievementDocs.filter((a: any) => a.isCompleted);
-          const incompleteAchievements = monthAchievementDocs.filter((a: any) => !a.isCompleted);
-          
-          return (
-            <View style={styles.monthSummaryCardNew}>
-              <View style={[styles.monthSummaryHeaderRow, isArabic && { flexDirection: 'row-reverse' }]}>
-                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="analytics-outline" size={18} color={colors.primary} />
-                  <Text style={styles.monthSummaryTitle}>
-                    {isArabic ? 'ملخص الشهر' : 'Month Summary'}
-                  </Text>
-                </View>
+            {/* Goals Capsule */}
+            <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
+              <Ionicons name="flag-outline" size={16} color={palette.ink} />
+              <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
+                {totalGoalsCount > 0 ? `${completedGoalsCount}/${totalGoalsCount}` : '—'}
+              </Text>
+              <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
+                {isArabic ? 'الأهداف' : 'Goals'}
+              </Text>
+            </View>
+
+            {/* Achievements Capsule */}
+            <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
+              <Ionicons name="trophy-outline" size={16} color={palette.ink} />
+              <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
+                {achievementCount}
+              </Text>
+              <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
+                {isArabic ? 'إنجازات' : 'Achievements'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Progress Bar & Completion Stat */}
+          {totalGoalsCount > 0 || totalTasksCount > 0 ? (
+            <View style={[styles.monthProgressContainer, isArabic && { alignItems: 'flex-end' }]}>
+              <View style={[styles.monthProgressBarTrack, { backgroundColor: palette.ink + '1A', width: '100%' }]}>
+                <View style={[
+                  styles.monthProgressBarFill,
+                  {
+                    width: `${totalGoalsCount > 0 ? goalProgress * 100 : taskProgress * 100}%`,
+                    backgroundColor: palette.accent,
+                  }
+                ]} />
               </View>
-              
-              {completedTasks.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: colors.success + '12', borderColor: colors.success + '25' },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                  <Text style={[styles.monthSummaryItemText, { color: colors.success }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'مهام مكتملة' : 'Tasks Completed'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: colors.success }]}>
-                    {completedTasks.length}
-                  </Text>
-                </View>
-              )}
-
-              {notDoneTasks.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: colors.danger + '12', borderColor: colors.danger + '25' },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="alert-circle" size={16} color={colors.danger} />
-                  <Text style={[styles.monthSummaryItemText, { color: colors.danger }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'مهام لم تنجز' : 'Tasks Pending / Overdue'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: colors.danger }]}>
-                    {notDoneTasks.length}
-                  </Text>
-                </View>
-              )}
-              
-              {completedGoals.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: colors.primary + '12', borderColor: colors.primary + '25' },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="flag" size={16} color={colors.primary} />
-                  <Text style={[styles.monthSummaryItemText, { color: colors.primary }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'أهداف محققة' : 'Goals Achieved'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: colors.primary }]}>
-                    {completedGoals.length}
-                  </Text>
-                </View>
-              )}
-
-              {completedAchievements.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: '#FBBF2415', borderColor: '#FBBF2430' },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="trophy" size={16} color="#FBBF24" />
-                  <Text style={[styles.monthSummaryItemText, { color: '#FBBF24' }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'إنجازات محققة' : 'Achievements Reached'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: '#FBBF24' }]}>
-                    {completedAchievements.length}
-                  </Text>
-                </View>
-              )}
-
-              {incompleteGoals.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
-                  <Text style={[styles.monthSummaryItemText, { color: colors.textMuted }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'أهداف متبقية' : 'Goals Incomplete'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: colors.textMuted }]}>
-                    {incompleteGoals.length}
-                  </Text>
-                </View>
-              )}
-
-              {incompleteAchievements.length > 0 && (
-                <View style={[
-                  styles.monthSummaryItem, 
-                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
-                  isArabic && { flexDirection: 'row-reverse' }
-                ]}>
-                  <Ionicons name="trophy-outline" size={16} color={colors.textMuted} />
-                  <Text style={[styles.monthSummaryItemText, { color: colors.textMuted }, isArabic && { textAlign: 'right' }]}>
-                    {isArabic ? 'إنجازات قيد العمل' : 'Achievements In Progress'}
-                  </Text>
-                  <Text style={[styles.monthSummaryItemCount, { color: colors.textMuted }]}>
-                    {incompleteAchievements.length}
-                  </Text>
-                </View>
-              )}
-
-              {completedTasks.length === 0 && notDoneTasks.length === 0 && completedGoals.length === 0 && completedAchievements.length === 0 && incompleteGoals.length === 0 && incompleteAchievements.length === 0 && (
-                <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '600' }}>
-                    {isArabic ? 'لا توجد بيانات مسجلة لهذا الشهر بعد' : 'No recorded activity for this month yet'}
-                  </Text>
-                </View>
-              )}
+              <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 2 }}>
+                <Text style={[styles.monthProgressText, { color: palette.ink }]}>
+                  {totalGoalsCount > 0 
+                    ? `${Math.round(goalProgress * 100)}% ${t.goalCompleted || 'complete'}` 
+                    : `${Math.round(taskProgress * 100)}% ${isArabic ? 'مهام مكتملة' : 'tasks done'}`}
+                </Text>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: palette.ink + '99' }}>
+                  {isArabic ? 'اضغط للتفاصيل' : 'Tap for details'}
+                </Text>
+              </View>
             </View>
-          );
-        })()}
+          ) : (
+            <Text style={{ textAlign: 'center', color: palette.ink + '99', fontSize: 12, fontWeight: '700', marginTop: 4 }}>
+              {isArabic ? 'اضغط لتحديد أهداف الشهر' : 'Tap to set monthly goals'}
+            </Text>
+          )}
+        </LivePress>
+
+        {/* ─── 2. AI UI Card: Generate Goals & Achievements ─── */}
+        <LivePress
+          style={[
+            styles.aiMonthCard,
+            {
+              backgroundColor: isDarkMode ? '#1B182B' : '#FAF5FF',
+              borderColor: isDarkMode ? '#8B5CF645' : '#7C3AED30',
+              shadowColor: '#8B5CF6',
+            }
+          ]}
+          onPress={() => router.push({
+            pathname: '/goals-detail',
+            params: {
+              year: currentYear.toString(),
+              month: monthIndex.toString(),
+              autoAI: 'true',
+              title: isArabic ? `أهداف ${months[monthIndex]} ${currentYear}` : `${months[monthIndex]} ${currentYear} Goals`,
+            }
+          })}
+          pressScale={0.97}
+        >
+          <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, isArabic && { flexDirection: 'row-reverse' }]}>
+            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 10 }, isArabic && { flexDirection: 'row-reverse' }]}>
+              <View style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                backgroundColor: isDarkMode ? '#8B5CF630' : '#8B5CF618',
+                borderWidth: 1,
+                borderColor: '#8B5CF650',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <Ionicons name="sparkles" size={20} color="#8B5CF6" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.text }}>
+                  {isArabic ? 'توليد الأهداف والإنجازات' : 'AI Goal & Win Generator'}
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted }}>
+                  {isArabic ? 'مساعد التخطيط الذكي لشهر ' + months[monthIndex] : `Smart Blueprint Studio for ${months[monthIndex]}`}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 8,
+              backgroundColor: '#8B5CF620',
+              borderWidth: 1,
+              borderColor: '#8B5CF640',
+            }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#8B5CF6' }}>
+                AI PRO
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[{
+            fontSize: 12,
+            color: colors.textMuted,
+            lineHeight: 18,
+            marginBottom: 12,
+            textAlign: isArabic ? 'right' : 'left'
+          }]}>
+            {isArabic
+              ? 'أنشئ خطة شهرية متكاملة تشمل الأهداف، المحطات، والمهام بنقرة واحدة باستخدام الذكاء الاصطناعي.'
+              : 'Build an end-to-end monthly roadmap with actionable milestones, checklists, and achievements in seconds.'}
+          </Text>
+
+          <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, isArabic && { flexDirection: 'row-reverse' }]}>
+            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6 }, isArabic && { flexDirection: 'row-reverse' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                <Ionicons name="flash-outline" size={11} color="#8B5CF6" />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted }}>
+                  {isArabic ? 'توليد فوري' : 'Instant Plan'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                <Ionicons name="trophy-outline" size={11} color="#F59E0B" />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted }}>
+                  {isArabic ? 'إنجازات تلقائية' : 'Auto Wins'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: '#8B5CF6',
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 10,
+            }, isArabic && { flexDirection: 'row-reverse' }]}>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>
+                {isArabic ? 'ابدأ الآن' : 'Generate'}
+              </Text>
+              <Ionicons name={isArabic ? "arrow-back" : "arrow-forward"} size={13} color="#FFFFFF" />
+            </View>
+          </View>
+        </LivePress>
+
+        {/* ─── 3. Detailed Month Summary Card ─── */}
+        <View style={styles.monthSummaryCardDetailed}>
+          {/* Header with Title & Overall Completion Badge */}
+          <View style={[styles.monthSummaryHeaderRow, isArabic && { flexDirection: 'row-reverse' }]}>
+            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '18', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="pie-chart" size={18} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.monthSummaryTitle}>
+                  {isArabic ? 'التحليلات التفصيلية للشهر' : 'Detailed Month Performance'}
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted }}>
+                  {isArabic ? `إحصائيات شاملة لشهر ${months[monthIndex]}` : `Comprehensive analytics for ${months[monthIndex]}`}
+                </Text>
+              </View>
+            </View>
+
+            {totalTracked > 0 && (
+              <View style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 10,
+                backgroundColor: overallPct >= 80 ? '#10B98120' : colors.primary + '18',
+                borderWidth: 1,
+                borderColor: overallPct >= 80 ? '#10B98150' : colors.primary + '40',
+              }}>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: overallPct >= 80 ? '#10B981' : colors.primary,
+                }}>
+                  {overallPct}% {isArabic ? 'مكتمل' : 'Done'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Overall Progress Gauge */}
+          {totalTracked > 0 && (
+            <View style={{ marginVertical: 8 }}>
+              <View style={{ height: 7, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                <View style={{
+                  width: `${overallPct}%`,
+                  height: '100%',
+                  backgroundColor: overallPct >= 80 ? '#10B981' : colors.primary,
+                  borderRadius: 4,
+                }} />
+              </View>
+              <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>
+                  {isArabic ? `${totalFinished} من ${totalTracked} نشاط مسجل منجز` : `${totalFinished} of ${totalTracked} tracked activities done`}
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: colors.text }}>
+                  {totalTracked - totalFinished > 0 
+                    ? (isArabic ? `${totalTracked - totalFinished} متبقي` : `${totalTracked - totalFinished} remaining`) 
+                    : (isArabic ? 'مكتمل بالكامل 🎉' : 'All Complete! 🎉')}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* 4 Detailed Metric Tiles (2x2 Grid) */}
+          <View style={styles.monthDetailedMetricsGrid}>
+            {/* Tile 1: Tasks Completion */}
+            <View style={styles.monthDetailedMetricBox}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="checkbox" size={18} color="#10B981" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#10B981' }}>
+                  {monthTasks.length > 0 ? `${Math.round((completedMonthTasks.length / monthTasks.length) * 100)}%` : '0%'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: colors.text }}>
+                {completedMonthTasks.length} / {monthTasks.length}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted, marginTop: 1 }}>
+                {isArabic ? 'المهام المنجزة' : 'Tasks Finished'}
+              </Text>
+            </View>
+
+            {/* Tile 2: Goals & Milestones */}
+            <View style={styles.monthDetailedMetricBox}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="flag" size={18} color={colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
+                  {monthGoalDocs.length > 0 ? `${Math.round((completedGoals.length / monthGoalDocs.length) * 100)}%` : '0%'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: colors.text }}>
+                {completedGoals.length} / {monthGoalDocs.length}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted, marginTop: 1 }}>
+                {isArabic ? 'الأهداف المحققة' : 'Goals Met'}
+              </Text>
+            </View>
+
+            {/* Tile 3: Achievements & Wins */}
+            <View style={styles.monthDetailedMetricBox}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="trophy" size={18} color="#F59E0B" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>
+                  {completedAchievements.length > 0 ? `+${completedAchievements.length}` : '—'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: colors.text }}>
+                {completedAchievements.length}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted, marginTop: 1 }}>
+                {isArabic ? 'إنجازات مكتسبة' : 'Wins Reached'}
+              </Text>
+            </View>
+
+            {/* Tile 4: Productive Days */}
+            <View style={styles.monthDetailedMetricBox}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="calendar-outline" size={18} color="#6366F1" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: "#6366F1" }}>
+                  {Math.round((activeDaysCount / daysInMonth) * 100)}%
+                </Text>
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: colors.text }}>
+                {activeDaysCount} / {daysInMonth}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted, marginTop: 1 }}>
+                {isArabic ? 'أيام النشاط' : 'Active Days'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Status Breakdown List */}
+          <View style={{ gap: 6, marginTop: 4 }}>
+            {completedMonthTasks.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: '#10B98112', borderColor: '#10B98130' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={[styles.monthSummaryItemText, { color: '#10B981' }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'مهام مكتملة بنجاح' : 'Tasks Completed'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: '#10B981' }]}>
+                  {completedMonthTasks.length}
+                </Text>
+              </View>
+            )}
+
+            {inProgressTasks.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: '#3B82F612', borderColor: '#3B82F630' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="time" size={16} color="#3B82F6" />
+                <Text style={[styles.monthSummaryItemText, { color: '#3B82F6' }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'مهام قيد التنفيذ' : 'Tasks In Progress'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: '#3B82F6' }]}>
+                  {inProgressTasks.length}
+                </Text>
+              </View>
+            )}
+
+            {notDoneTasks.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: '#EF444412', borderColor: '#EF444430' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text style={[styles.monthSummaryItemText, { color: '#EF4444' }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'مهام متأخرة أو لم تُنجز' : 'Tasks Pending / Overdue'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: '#EF4444' }]}>
+                  {notDoneTasks.length}
+                </Text>
+              </View>
+            )}
+
+            {completedGoals.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: colors.primary + '12', borderColor: colors.primary + '25' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="flag" size={16} color={colors.primary} />
+                <Text style={[styles.monthSummaryItemText, { color: colors.primary }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'أهداف محققة' : 'Goals Achieved'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: colors.primary }]}>
+                  {completedGoals.length}
+                </Text>
+              </View>
+            )}
+
+            {incompleteGoals.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
+                <Text style={[styles.monthSummaryItemText, { color: colors.textMuted }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'أهداف متبقية في الخطة' : 'Goals In Progress'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: colors.textMuted }]}>
+                  {incompleteGoals.length}
+                </Text>
+              </View>
+            )}
+
+            {completedAchievements.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: '#F59E0B15', borderColor: '#F59E0B30' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="trophy" size={16} color="#F59E0B" />
+                <Text style={[styles.monthSummaryItemText, { color: '#F59E0B' }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'إنجازات محققة' : 'Achievements Reached'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: '#F59E0B' }]}>
+                  {completedAchievements.length}
+                </Text>
+              </View>
+            )}
+
+            {highPriorityTasks.length > 0 && (
+              <View style={[
+                styles.monthSummaryItem, 
+                { backgroundColor: '#EC489912', borderColor: '#EC489930' },
+                isArabic && { flexDirection: 'row-reverse' }
+              ]}>
+                <Ionicons name="flame" size={16} color="#EC4899" />
+                <Text style={[styles.monthSummaryItemText, { color: '#EC4899' }, isArabic && { textAlign: 'right' }]}>
+                  {isArabic ? 'المهام عالية الأهمية المنجزة' : 'High Priority Completed'}
+                </Text>
+                <Text style={[styles.monthSummaryItemCount, { color: '#EC4899' }]}>
+                  {highPriorityDone.length}/{highPriorityTasks.length}
+                </Text>
+              </View>
+            )}
+
+            {totalTracked === 0 && (
+              <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                <Ionicons name="sparkles-outline" size={24} color={colors.textMuted} style={{ marginBottom: 6 }} />
+                <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '600', textAlign: 'center' }}>
+                  {isArabic ? 'لا توجد بيانات مسجلة لهذا الشهر بعد.\nاستخدم الاستوديو الذكي بالأعلى لبدء التخطيط!' : 'No recorded activity for this month yet.\nUse the AI Studio above to start planning!'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
       </ScrollView>
     );
   };
@@ -895,14 +1347,14 @@ const Planner = () => {
           return (
             <LivePress
               style={[
-                styles.monthGoalsCardNew,
+                styles.dayGoalsCompactCard,
                 {
                   backgroundColor: palette.bg,
                   borderColor: palette.ink + '20',
                   shadowColor: palette.ink,
-                  shadowOpacity: 0.15,
-                  shadowRadius: 12,
-                  elevation: 5,
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
+                  elevation: 3,
                 }
               ]}
               onPress={() => router.push({
@@ -914,88 +1366,129 @@ const Planner = () => {
                   title: isArabic ? `أهداف ${day} ${months[month]}` : `${months[month]} ${day} Goals`,
                 }
               })}
-              pressScale={0.96}
+              pressScale={0.97}
             >
-              <View style={[styles.monthGoalsHeaderRow, isArabic && { flexDirection: 'row-reverse' }]}>
-                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.monthGoalsTitleText, { color: palette.ink }]}>
-                    {isArabic ? `أهداف ${day} ${months[month]}` : `Day ${day} Goals`}
-                  </Text>
-                </View>
-                <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  backgroundColor: palette.ink + '14',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <Ionicons name="create-outline" size={16} color={palette.ink} />
-                </View>
-              </View>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                {/* Left Section: 3 Inline Stats + Mini Progress Bar */}
+                <View style={{ flex: 1, gap: 6 }}>
+                  {/* Row of 3 compact stat pills */}
+                  <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                    {/* Tasks Capsule */}
+                    <View style={[{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: palette.ink + '10',
+                      paddingHorizontal: 7,
+                      paddingVertical: 3,
+                      borderRadius: 8,
+                    }, isArabic && { flexDirection: 'row-reverse' }]}>
+                      <Ionicons name="checkbox-outline" size={13} color={palette.ink} />
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: palette.ink }}>
+                        {totalDayTasks > 0 ? `${completedDayTasksCount}/${totalDayTasks}` : '0'}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: palette.ink + 'B3' }}>
+                        {isArabic ? 'مهام' : 'Tasks'}
+                      </Text>
+                    </View>
 
-              <View style={[styles.monthStatsRow, isArabic && { flexDirection: 'row-reverse' }]}>
-                {/* Tasks Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="checkbox-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {totalDayTasks > 0 ? `${completedDayTasksCount}/${totalDayTasks}` : '0'}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'المهام' : 'Tasks'}
-                  </Text>
+                    {/* Goals Capsule */}
+                    <View style={[{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: palette.ink + '10',
+                      paddingHorizontal: 7,
+                      paddingVertical: 3,
+                      borderRadius: 8,
+                    }, isArabic && { flexDirection: 'row-reverse' }]}>
+                      <Ionicons name="flag-outline" size={13} color={palette.ink} />
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: palette.ink }}>
+                        {totalGoals > 0 ? `${completedGoals}/${totalGoals}` : '—'}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: palette.ink + 'B3' }}>
+                        {isArabic ? 'أهداف' : 'Goals'}
+                      </Text>
+                    </View>
+
+                    {/* Achievements Capsule */}
+                    <View style={[{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: palette.ink + '10',
+                      paddingHorizontal: 7,
+                      paddingVertical: 3,
+                      borderRadius: 8,
+                    }, isArabic && { flexDirection: 'row-reverse' }]}>
+                      <Ionicons name="trophy-outline" size={13} color={palette.ink} />
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: palette.ink }}>
+                        {achievementCount}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: palette.ink + 'B3' }}>
+                        {isArabic ? 'إنجازات' : 'Wins'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Slim Progress Bar */}
+                  <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6 }, isArabic && { flexDirection: 'row-reverse' }]}>
+                    <View style={{ flex: 1, height: 4, backgroundColor: palette.ink + '18', borderRadius: 2, overflow: 'hidden' }}>
+                      <View style={[
+                        {
+                          width: `${totalGoals > 0 ? goalProgress * 100 : taskProgress * 100}%`,
+                          height: '100%',
+                          backgroundColor: palette.accent,
+                          borderRadius: 2,
+                        }
+                      ]} />
+                    </View>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: palette.ink + 'CC' }}>
+                      {totalGoals > 0
+                        ? `${Math.round(goalProgress * 100)}%`
+                        : `${Math.round(taskProgress * 100)}%`}
+                    </Text>
+                  </View>
                 </View>
 
-                {/* Goals Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="flag-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {totalGoals > 0 ? `${completedGoals}/${totalGoals}` : '—'}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'الأهداف' : 'Goals'}
-                  </Text>
-                </View>
-
-                {/* Achievements Capsule */}
-                <View style={[styles.monthStatCapsule, { backgroundColor: palette.ink + '0E', borderColor: palette.ink + '18' }]}>
-                  <Ionicons name="trophy-outline" size={16} color={palette.ink} />
-                  <Text style={[styles.monthStatValueText, { color: palette.ink }]}>
-                    {achievementCount}
-                  </Text>
-                  <Text style={[styles.monthStatLabelText, { color: palette.ink + 'B3' }]} numberOfLines={1}>
-                    {isArabic ? 'إنجازات' : 'Achievements'}
-                  </Text>
-                </View>
-              </View>
-
-              {totalGoals > 0 || totalDayTasks > 0 ? (
-                <View style={[styles.monthProgressContainer, isArabic && { alignItems: 'flex-end' }]}>
-                  <View style={[styles.monthProgressBarTrack, { backgroundColor: palette.ink + '1A', width: '100%' }]}>
-                    <View style={[
-                      styles.monthProgressBarFill,
-                      {
-                        width: `${totalGoals > 0 ? goalProgress * 100 : taskProgress * 100}%`,
-                        backgroundColor: palette.accent,
+                {/* Right Section: Small AI Goal Generation Button */}
+                <LivePress
+                  style={{
+                    flexDirection: isArabic ? 'row-reverse' : 'row',
+                    alignItems: 'center',
+                    gap: 5,
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 10,
+                    backgroundColor: palette.ink,
+                    shadowColor: palette.ink,
+                    shadowOpacity: 0.22,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    router.push({
+                      pathname: '/goals-detail',
+                      params: {
+                        year: year.toString(),
+                        month: month.toString(),
+                        day: day.toString(),
+                        autoAI: 'true',
+                        title: isArabic ? `أهداف ${day} ${months[month]}` : `${months[month]} ${day} Goals`,
                       }
-                    ]} />
-                  </View>
-                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 2 }}>
-                    <Text style={[styles.monthProgressText, { color: palette.ink }]}>
-                      {totalGoals > 0 
-                        ? `${Math.round(goalProgress * 100)}% ${t.goalCompleted || 'complete'}` 
-                        : `${Math.round(taskProgress * 100)}% ${isArabic ? 'مهام مكتملة' : 'tasks done'}`}
-                    </Text>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: palette.ink + '99' }}>
-                      {isArabic ? 'اضغط للتفاصيل' : 'Tap for details'}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <Text style={{ textAlign: 'center', color: palette.ink + '99', fontSize: 12, fontWeight: '700', marginTop: 4 }}>
-                  {isArabic ? 'اضغط لتحديد أهداف اليوم' : 'Tap to set daily goals'}
-                </Text>
-              )}
+                    });
+                  }}
+                  pressScale={0.94}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="sparkles" size={13} color="#FFFFFF" />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>
+                    {isArabic ? 'هدف ذكي' : 'AI Goal'}
+                  </Text>
+                </LivePress>
+              </View>
             </LivePress>
           );
         })()}
@@ -1414,10 +1907,9 @@ const Planner = () => {
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           <View style={[styles.header, { paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
             {selectedMonth === null ? (
-              <>
+              <View style={[{ flex: 1, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center' }]}>
                 <Text style={styles.headerTitle}>{t.planner}</Text>
-                <View style={{ width: 44 }} />
-              </>
+              </View>
             ) : selectedDay === null ? (
               <>
                 <LivePress
@@ -1437,7 +1929,7 @@ const Planner = () => {
                   borderWidth: 1,
                   borderColor: colors.border,
                 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>{currentYear}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>{activeYear}</Text>
                 </View>
               </>
             ) : (
@@ -1480,7 +1972,7 @@ const Planner = () => {
             </View>
         ) : (
             <View style={{ flex: 1 }} {...dayViewPanResponder.panHandlers}>
-              {renderSpecificDayView(selectedDay, selectedMonth, currentYear)}
+              {renderSpecificDayView(selectedDay, selectedMonth, activeYear)}
             </View>
         )}
       </SafeAreaView>

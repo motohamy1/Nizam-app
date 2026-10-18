@@ -66,6 +66,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
 
   const displayTasks = tasks.length > 0 ? tasks : [];
   const primaryTask = displayTasks[0];
+  const pendingCount = Math.max(0, totalCount - doneCount);
 
   const handleToggle = (task: ChecklistTaskItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -86,11 +87,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       style={[styles.card, { borderColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' }]}
     >
       {/* 1. Header Row */}
-      <TouchableOpacity 
-        style={styles.cardHeader}
-        onPress={onScrollToTasksSection}
-        activeOpacity={0.8}
-      >
+      <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           {/* Rounded square checkmark badge */}
           <View
@@ -133,119 +130,176 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               ellipsizeMode="tail"
             >
               {totalCount === 0
-                ? (isArabic ? '0/1 مهام مكتملة' : '0/1 tasks completed')
-                : `${doneCount}/${totalCount} ${t.tasksCompleted || 'tasks completed'}`}
+                ? (isArabic ? 'لا توجد عناصر بعد' : 'No items yet')
+                : `${doneCount}/${totalCount} ${isArabic ? 'عناصر مكتملة' : 'items completed'}`}
             </Text>
           </View>
         </View>
-      </TouchableOpacity>
 
-      {/* 2. Checklist Task Row */}
-      {primaryTask ? (
-        <View
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.15)',
-            borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.08)',
-            borderRadius: 16,
-            paddingVertical: 9,
-            paddingHorizontal: 12,
-            flexDirection: isArabic ? 'row-reverse' : 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 6,
-          }}
-        >
-          <View
+        {/* Quick Manage / List Options button on header */}
+        {onQuickManage && (
+          <TouchableOpacity
             style={{
               flexDirection: isArabic ? 'row-reverse' : 'row',
               alignItems: 'center',
-              gap: 10,
-              flex: 1,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => handleToggle(primaryTask)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 6,
-                borderWidth: 2,
-                borderColor: 'rgba(0,0,0,0.60)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: primaryTask.status === 'done' ? '#000000' : 'transparent',
-              }}
-            >
-              {primaryTask.status === 'done' && (
-                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleTaskPress(primaryTask)}
-              style={{ flex: 1 }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={{
-                  fontSize: 13.5,
-                  fontWeight: '800',
-                  color: '#000000',
-                  letterSpacing: 0.2,
-                  textDecorationLine:
-                    primaryTask.status === 'done' ? 'line-through' : 'none',
-                  opacity: primaryTask.status === 'done' ? 0.5 : 1,
-                }}
-                numberOfLines={1}
-              >
-                {primaryTask.text}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Priority pill */}
-          <View
-            style={{
-              backgroundColor: '#000000',
-              borderRadius: 8,
+              gap: 4,
+              backgroundColor: 'rgba(0,0,0,0.14)',
               paddingHorizontal: 9,
-              paddingVertical: 3.5,
-              marginLeft: 8,
+              paddingVertical: 5,
+              borderRadius: 10,
             }}
+            onPress={onQuickManage}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
+            <Ionicons name="create-outline" size={13} color="#000000" />
             <Text
               style={{
-                color: '#FFFFFF',
-                fontSize: 10.5,
-                fontWeight: '900',
-                letterSpacing: 0.6,
+                fontSize: 11,
+                fontWeight: '800',
+                color: 'rgba(0,0,0,0.85)',
               }}
             >
-              {(primaryTask.priority || 'MEDIUM').toUpperCase()}
+              {isArabic ? 'خيارات' : 'Options'}
             </Text>
-          </View>
-        </View>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* 2. Checklist Items List / Rows (Checklist items ONLY) */}
+      {displayTasks.length > 0 ? (
+        <ScrollView
+          style={{ maxHeight: 96, marginTop: 4 }}
+          contentContainerStyle={{ gap: 6 }}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
+          {displayTasks.map((item) => (
+            <View
+              key={item._id}
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.15)',
+                borderWidth: 1,
+                borderColor: 'rgba(0,0,0,0.08)',
+                borderRadius: 14,
+                paddingVertical: 7,
+                paddingHorizontal: 11,
+                flexDirection: isArabic ? 'row-reverse' : 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: isArabic ? 'row-reverse' : 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  flex: 1,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => handleToggle(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: 'rgba(0,0,0,0.60)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: item.status === 'done' ? '#000000' : 'transparent',
+                  }}
+                >
+                  {item.status === 'done' && (
+                    <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleTaskPress(item)}
+                  style={{ flex: 1 }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '800',
+                      color: '#000000',
+                      letterSpacing: 0.2,
+                      textDecorationLine:
+                        item.status === 'done' ? 'line-through' : 'none',
+                      opacity: item.status === 'done' ? 0.5 : 1,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {item.text}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Linked count badge or Priority pill */}
+              {item.linkedCount && item.linkedCount > 0 ? (
+                <View
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.22)',
+                    borderRadius: 7,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2.5,
+                    flexDirection: isArabic ? 'row-reverse' : 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    marginLeft: 6,
+                  }}
+                >
+                  <Ionicons name="link" size={10} color="#000000" />
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#000000' }}>
+                    {item.linkedCount}
+                  </Text>
+                </View>
+              ) : item.priority ? (
+                <View
+                  style={{
+                    backgroundColor: '#000000',
+                    borderRadius: 7,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2.5,
+                    marginLeft: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 9.5,
+                      fontWeight: '900',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {item.priority.toUpperCase()}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </ScrollView>
       ) : (
-        /* Default placeholder row matching Stitch design when no tasks */
+        /* Default placeholder row when no checklist items */
         <TouchableOpacity
           onPress={() => {
             if (onAddChecklistItem) onAddChecklistItem();
-            else if (onAddNewTask) onAddNewTask();
           }}
           activeOpacity={0.85}
           style={{
             backgroundColor: 'rgba(0,0,0,0.15)',
             borderWidth: 1,
             borderColor: 'rgba(0,0,0,0.08)',
-            borderRadius: 16,
-            paddingVertical: 9,
-            paddingHorizontal: 12,
+            borderRadius: 14,
+            paddingVertical: 8,
+            paddingHorizontal: 11,
             flexDirection: isArabic ? 'row-reverse' : 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginTop: 6,
+            marginTop: 4,
           }}
         >
           <View
@@ -258,8 +312,8 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           >
             <View
               style={{
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 borderRadius: 6,
                 borderWidth: 2,
                 borderColor: 'rgba(0,0,0,0.60)',
@@ -269,35 +323,35 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             />
             <Text
               style={{
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: '800',
-                color: '#000000',
+                color: 'rgba(0,0,0,0.65)',
                 letterSpacing: 0.2,
               }}
               numberOfLines={1}
             >
-              {isArabic ? 'المهمة الأولى' : 'first task'}
+              {isArabic ? 'أضف أول عنصر في قائمتك...' : 'Add your first checklist item...'}
             </Text>
           </View>
 
           <View
             style={{
               backgroundColor: '#000000',
-              borderRadius: 8,
-              paddingHorizontal: 9,
-              paddingVertical: 3.5,
-              marginLeft: 8,
+              borderRadius: 7,
+              paddingHorizontal: 8,
+              paddingVertical: 2.5,
+              marginLeft: 6,
             }}
           >
             <Text
               style={{
                 color: '#FFFFFF',
-                fontSize: 10.5,
+                fontSize: 9.5,
                 fontWeight: '900',
-                letterSpacing: 0.6,
+                letterSpacing: 0.5,
               }}
             >
-              MEDIUM
+              {isArabic ? 'جديد' : 'NEW'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -321,7 +375,6 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           if (onAddChecklistItem) onAddChecklistItem();
-          else if (onAddNewTask) onAddNewTask();
         }}
         activeOpacity={0.75}
       >
@@ -331,7 +384,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* 4. Action Links Row */}
+      {/* 4. Bottom Checklist Stats: Done (at beginning) & Not Done Yet (at end) */}
       <View
         style={{
           borderTopWidth: 1,
@@ -339,97 +392,104 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           flexDirection: isArabic ? 'row-reverse' : 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginTop: 7,
-          paddingTop: 6,
+          marginTop: 6,
+          paddingTop: 8,
         }}
       >
-        <TouchableOpacity
+        {/* Beginning Number: Total checklist items checked as done each day */}
+        <View
           style={{
             flexDirection: isArabic ? 'row-reverse' : 'row',
             alignItems: 'center',
-            gap: 5,
-          }}
-          onPress={onQuickManage}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="create-outline" size={14} color="#000000" />
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '800',
-              color: 'rgba(0,0,0,0.85)',
-            }}
-          >
-            {t.manageTask || 'Manage Task'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onScrollToTasksSection}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '800',
-              color: 'rgba(0,0,0,0.85)',
-            }}
-          >
-            {isArabic ? 'اضغط لعرض لوحة المهام' : 'Tap to view task board'}{' '}
-            <Text style={{ color: '#000000', fontWeight: '900' }}>↓</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 5. Big Stats Counters Row */}
-      <View
-        style={{
-          flexDirection: isArabic ? 'row-reverse' : 'row',
-          alignItems: 'baseline',
-          gap: 22,
-          marginTop: 5,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: isArabic ? 'row-reverse' : 'row',
-            alignItems: 'baseline',
-            gap: 4,
+            gap: 8,
           }}
         >
-          <Text
+          <View
             style={{
-              fontSize: 34,
-              fontWeight: '900',
-              color: '#000000',
-              letterSpacing: -0.6,
-              lineHeight: 38,
+              width: 34,
+              height: 34,
+              borderRadius: 11,
+              backgroundColor: 'rgba(0,0,0,0.18)',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            {streakScore}
-          </Text>
-          <Text style={{ fontSize: 18 }}>🔥</Text>
+            <Ionicons name="checkmark-done" size={18} color="#000000" />
+          </View>
+          <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: '900',
+                color: '#000000',
+                letterSpacing: -0.6,
+                lineHeight: 28,
+              }}
+            >
+              {doneCount}
+            </Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '800',
+                color: 'rgba(0,0,0,0.72)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.3,
+              }}
+            >
+              {isArabic ? 'المكتملة اليوم' : 'Done Today'}
+            </Text>
+          </View>
         </View>
 
+        {/* End Number: Checklist items that aren't done yet */}
         <View
           style={{
             flexDirection: isArabic ? 'row-reverse' : 'row',
-            alignItems: 'baseline',
-            gap: 4,
+            alignItems: 'center',
+            gap: 8,
           }}
         >
-          <Text
+          <View style={isArabic ? { alignItems: 'flex-start' } : { alignItems: 'flex-end' }}>
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: '900',
+                color: '#000000',
+                letterSpacing: -0.6,
+                lineHeight: 28,
+              }}
+            >
+              {pendingCount}
+            </Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '800',
+                color: 'rgba(0,0,0,0.72)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.3,
+              }}
+            >
+              {isArabic ? 'غير المكتملة' : 'Not Done'}
+            </Text>
+          </View>
+          <View
             style={{
-              fontSize: 28,
-              fontWeight: '900',
-              color: '#000000',
-              letterSpacing: -0.5,
-              lineHeight: 32,
+              width: 34,
+              height: 34,
+              borderRadius: 11,
+              backgroundColor: 'rgba(0,0,0,0.18)',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            {notesCount}
-          </Text>
-          <Text style={{ fontSize: 16 }}>💬</Text>
+            <Ionicons name="time-outline" size={18} color="#000000" />
+          </View>
         </View>
       </View>
     </LinearGradient>

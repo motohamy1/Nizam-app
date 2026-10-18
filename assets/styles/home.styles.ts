@@ -54,7 +54,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       ...colors.shadows.sm,
     },
     scrollContent: {
-      paddingVertical: 8,
+      paddingTop: 4,
       paddingBottom: 110,
     },
 
@@ -100,9 +100,10 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      paddingVertical: 4,
     },
     dateBarMonth: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '700',
       color: colors.text,
       letterSpacing: -0.3,

@@ -276,9 +276,9 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             styles.modalSheet, 
             { 
               backgroundColor: colors.surface,
-              marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+              marginBottom: keyboardHeight,
               maxHeight: isKeyboardVisible 
-                ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
+                ? Math.max(300, screenHeight - keyboardHeight - 44) 
                 : '90%',
             }
           ]}
@@ -311,7 +311,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: isKeyboardVisible ? 120 : 30 }]}
             keyboardShouldPersistTaps="handled"
           >
             {/* Type Selector Toggle (Goal vs Achievement) */}

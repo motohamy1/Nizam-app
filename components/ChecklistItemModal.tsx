@@ -245,10 +245,10 @@ const ChecklistItemForm: React.FC<{
       style={[
         styles.modalContent,
         {
-          marginBottom: Platform.OS === 'ios' ? keyboardHeight : 0,
-            maxHeight: isKeyboardVisible 
-              ? (Platform.OS === 'ios' ? Math.max(300, screenHeight - keyboardHeight - 44) : '96%') 
-              : '90%',
+          marginBottom: keyboardHeight,
+          maxHeight: isKeyboardVisible 
+            ? Math.max(300, screenHeight - keyboardHeight - 44) 
+            : '90%',
         }
       ]}
     >
@@ -266,7 +266,12 @@ const ChecklistItemForm: React.FC<{
         </TouchableOpacity>
       </View>
 
-      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        ref={scrollViewRef} 
+        showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 120 : 30 }}
+      >
         <View style={styles.modalForm}>
           {/* Title */}
           <View style={styles.modalInputGroup}>

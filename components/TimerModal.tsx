@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  StyleSheet,
+  TextInput,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import useTheme from '@/hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 interface TimerModalProps {
   visible: boolean;
@@ -13,6 +25,8 @@ interface TimerModalProps {
 
 const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initialDate }) => {
   const { colors, isDarkMode } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const [hours, setHours] = useState('0');
   const [minutes, setMinutes] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
@@ -42,87 +56,104 @@ const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initi
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.overlay, { backgroundColor: colors.text + '80' }]}>
+        <View style={[styles.overlay, { backgroundColor: colors.text + '80' }]}>
           <TouchableWithoutFeedback>
-            <View style={[styles.modalContainer, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-              <Text style={[styles.title, { color: colors.text }]}>Set timer & deadline</Text>
-              
-              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Duration</Text>
-              <View style={styles.inputRow}>
-                <View style={styles.inputGroup}>
-                  <TextInput
-                    style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-                    keyboardType="numeric"
-                    value={hours}
-                    onChangeText={setHours}
-                    maxLength={2}
-                    selectTextOnFocus
-                  />
-                  <Text style={[styles.label, { color: colors.textMuted }]}>Hours</Text>
-                </View>
-                <Text style={[styles.colon, { color: colors.text }]}>:</Text>
-                <View style={styles.inputGroup}>
-                  <TextInput
-                    style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-                    keyboardType="numeric"
-                    value={minutes}
-                    onChangeText={setMinutes}
-                    maxLength={2}
-                    selectTextOnFocus
-                  />
-                  <Text style={[styles.label, { color: colors.textMuted }]}>Mins</Text>
-                </View>
-              </View>
-
-              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Deadline</Text>
-              <TouchableOpacity 
-                style={[styles.dateButton, { borderColor: colors.border }]} 
-                onPress={() => { setDatePickerMode('dueDate'); setShowDatePicker(true); }}
+            <View
+              style={[
+                styles.modalContainer,
+                {
+                  backgroundColor: colors.surface,
+                  shadowColor: colors.text,
+                  marginBottom: keyboardHeight > 0 ? Math.min(keyboardHeight, 180) : 0,
+                  maxHeight: isKeyboardVisible ? Math.max(300, screenHeight - keyboardHeight - 40) : '85%',
+                },
+              ]}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ alignItems: 'center', paddingBottom: isKeyboardVisible ? 20 : 0 }}
+                style={{ width: '100%' }}
               >
-                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                <Text style={[styles.dateButtonText, { color: dueDate ? colors.text : colors.textMuted }]}>
-                  {dueDate ? dueDate.toLocaleDateString() : 'No deadline'}
-                </Text>
-                {dueDate && (
-                  <TouchableOpacity onPress={() => setDueDate(null)}>
-                    <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-                  </TouchableOpacity>
+                <Text style={[styles.title, { color: colors.text }]}>Set timer & deadline</Text>
+                
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Duration</Text>
+                <View style={styles.inputRow}>
+                  <View style={styles.inputGroup}>
+                    <TextInput
+                      style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                      keyboardType="numeric"
+                      value={hours}
+                      onChangeText={setHours}
+                      maxLength={2}
+                      selectTextOnFocus
+                    />
+                    <Text style={[styles.label, { color: colors.textMuted }]}>Hours</Text>
+                  </View>
+                  <Text style={[styles.colon, { color: colors.text }]}>:</Text>
+                  <View style={styles.inputGroup}>
+                    <TextInput
+                      style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                      keyboardType="numeric"
+                      value={minutes}
+                      onChangeText={setMinutes}
+                      maxLength={2}
+                      selectTextOnFocus
+                    />
+                    <Text style={[styles.label, { color: colors.textMuted }]}>Mins</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Deadline</Text>
+                <TouchableOpacity 
+                  style={[styles.dateButton, { borderColor: colors.border }]} 
+                  onPress={() => { setDatePickerMode('dueDate'); setShowDatePicker(true); }}
+                >
+                  <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.dateButtonText, { color: dueDate ? colors.text : colors.textMuted }]}>
+                    {dueDate ? dueDate.toLocaleDateString() : 'No deadline'}
+                  </Text>
+                  {dueDate && (
+                    <TouchableOpacity onPress={() => setDueDate(null)}>
+                      <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Plan for</Text>
+                <TouchableOpacity 
+                  style={[styles.dateButton, { borderColor: colors.border }]} 
+                  onPress={() => { setDatePickerMode('plannerDate'); setShowDatePicker(true); }}
+                >
+                  <Ionicons name="calendar-clear-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.dateButtonText, { color: colors.text }]}>
+                    {plannerDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={(datePickerMode === 'dueDate' ? dueDate : plannerDate) || new Date()}
+                    mode="date"
+                    display="default"
+                    themeVariant={isDarkMode ? 'dark' : 'light'}
+                    onChange={onDateChange}
+                    minimumDate={datePickerMode === 'dueDate' ? new Date() : undefined}
+                  />
                 )}
-              </TouchableOpacity>
 
-              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Plan for</Text>
-              <TouchableOpacity 
-                style={[styles.dateButton, { borderColor: colors.border }]} 
-                onPress={() => { setDatePickerMode('plannerDate'); setShowDatePicker(true); }}
-              >
-                <Ionicons name="calendar-clear-outline" size={20} color={colors.primary} />
-                <Text style={[styles.dateButtonText, { color: colors.text }]}>
-                  {plannerDate.toLocaleDateString()}
-                </Text>
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={(datePickerMode === 'dueDate' ? dueDate : plannerDate) || new Date()}
-                  mode="date"
-                  display="default"
-                  themeVariant={isDarkMode ? 'dark' : 'light'}
-                  onChange={onDateChange}
-                  minimumDate={datePickerMode === 'dueDate' ? new Date() : undefined}
-                />
-              )}
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
-                  <Text style={[styles.buttonText, { color: colors.textMuted }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.saveButton, { backgroundColor: colors.primary, shadowColor: colors.text }]} onPress={handleSave} accessibilityRole="button" accessibilityLabel="Save timer settings">
-                  <Text style={[styles.buttonText, { color: colors.primaryText }]}>Save settings</Text>
-                </TouchableOpacity>
-              </View>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
+                    <Text style={[styles.buttonText, { color: colors.textMuted }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.button, styles.saveButton, { backgroundColor: colors.primary, shadowColor: colors.text }]} onPress={handleSave} accessibilityRole="button" accessibilityLabel="Save timer settings">
+                    <Text style={[styles.buttonText, { color: colors.primaryText }]}>Save settings</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+        </View>
       </TouchableWithoutFeedback>
     </Modal>
   );

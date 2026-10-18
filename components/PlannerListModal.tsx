@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
@@ -17,6 +18,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
 import { LIST_TYPE_COLORS } from '@/utils/magicColors';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 const LIST_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   checklist: { label: 'Checklist', icon: 'checkbox-outline', color: LIST_TYPE_COLORS.checklist },
@@ -65,6 +67,8 @@ export default function PlannerListModal({
   const deleteItem = useOfflineMutation(api.projects.deletePlannerItem, 'projects:deletePlannerItem');
 
   // Local state
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const [newText, setNewText] = useState('');
   const [newContent, setNewContent] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -127,10 +131,18 @@ export default function PlannerListModal({
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
         </TouchableWithoutFeedback>
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ flex: 1, justifyContent: 'flex-end', marginBottom: keyboardHeight }}>
             <ScrollView
-              style={{ maxHeight: '90%' }}
-              contentContainerStyle={{ justifyContent: 'flex-end', flexGrow: 1 }}
+              style={{
+                maxHeight: isKeyboardVisible 
+                  ? Math.max(280, screenHeight - keyboardHeight - 40)
+                  : '90%',
+              }}
+              contentContainerStyle={{ 
+                justifyContent: 'flex-end', 
+                flexGrow: 1,
+                paddingBottom: isKeyboardVisible ? 100 : 20,
+              }}
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.listModalSheet}>
@@ -291,7 +303,7 @@ export default function PlannerListModal({
                 )}
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </View>
     </Modal>

@@ -143,7 +143,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
                   language
                 );
                 if (n > 0) scheduled.current.set(tempId, tempSig);
-              } else if (todo.dueDate > now) {
+              } else if (todo.dueDate > now || todo.dueDate >= now - 120000) {
                 const nid = await scheduleReminderNotification(todo.text || 'Task', todo.dueDate, language, tempId);
                 if (nid) scheduled.current.set(tempId, tempSig);
               }
@@ -197,7 +197,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
                 language
               );
               if (n > 0) scheduled.current.set(id, scheduleSignature);
-            } else if (todo.dueDate > now) {
+            } else if (todo.dueDate > now || todo.dueDate >= now - 120000) {
               const nid = await scheduleReminderNotification(todo.text || 'Task', todo.dueDate, language, id);
               if (nid) scheduled.current.set(id, scheduleSignature);
             } else {

@@ -67,55 +67,30 @@ export const STACK_CARD_PALETTE_LIST: MonthPalette[] = [
  * palette.accent — no separate color system.
  */
 export const createMonthCardFrame = (
-  palette: MonthPalette,
-  isDarkMode: boolean = false,
+  _palette?: MonthPalette,
+  _isDarkMode: boolean = false,
   _colors?: ColorScheme
 ) => {
-  const { bg, ink, accent } = palette;
-  if (isDarkMode) {
-    // Deep-field variant: the card face is a gradient from the palette's
-    // saturated accent down to its own darkest degree (its ink). Everything
-    // painted on it flips to light inks + white-glass chips, mirroring the
-    // checklist card's contrast treatment.
-    return {
-      cardBg: ink,
-      gradTop: accent,
-      gradBottom: ink,
-      cardBorder: 'rgba(255,255,255,0.16)',
-      text: '#FFFFFF',
-      textMuted: 'rgba(255,255,255,0.72)',
-      badgeBg: 'rgba(255,255,255,0.92)',
-      badgeFg: ink,
-      pillBg: 'rgba(255,255,255,0.18)',
-      pillFg: '#FFFFFF',
-      rowBg: 'rgba(255,255,255,0.10)',
-      rowBorder: 'rgba(255,255,255,0.16)',
-      // Pastel of the hue glows against the deep field (icons, progress fills).
-      accent: bg,
-      footerBorder: 'rgba(255,255,255,0.16)',
-      footerText: 'rgba(255,255,255,0.85)',
-      ctaBg: '#FFFFFF',
-      ctaFg: ink,
-    };
-  }
+  // All homepage non-checklist cards share the sleek dark obsidian background (#0c0c0e)
+  // and peach frame ('rgba(255, 157, 132, 0.45)') matching the Today's Tasks card model.
   return {
-    cardBg: bg,
-    gradTop: bg,
-    gradBottom: bg,
-    cardBorder: `${ink}20`,
-    text: ink,
-    textMuted: `${ink}A6`,
-    badgeBg: `${ink}18`,
-    badgeFg: ink,
-    pillBg: `${ink}18`,
-    pillFg: ink,
-    rowBg: `${ink}0E`,
-    rowBorder: `${ink}18`,
-    accent: accent,
-    footerBorder: `${ink}18`,
-    footerText: `${ink}CC`,
-    ctaBg: ink,
-    ctaFg: '#FFFFFF',
+    cardBg: '#0c0c0e',
+    gradTop: '#141418',
+    gradBottom: '#0c0c0e',
+    cardBorder: 'rgba(255, 157, 132, 0.45)',
+    text: '#FFFFFF',
+    textMuted: 'rgba(255, 255, 255, 0.65)',
+    badgeBg: 'rgba(255, 176, 156, 0.16)',
+    badgeFg: '#ffb09c',
+    pillBg: 'rgba(255, 176, 156, 0.12)',
+    pillFg: '#ffb09c',
+    rowBg: 'rgba(255, 255, 255, 0.05)',
+    rowBorder: 'rgba(255, 157, 132, 0.20)',
+    accent: '#ff9d84',
+    footerBorder: 'rgba(255, 157, 132, 0.20)',
+    footerText: 'rgba(255, 255, 255, 0.85)',
+    ctaBg: '#ffb09c',
+    ctaFg: '#000000',
   };
 };
 

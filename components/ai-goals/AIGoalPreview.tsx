@@ -31,6 +31,7 @@ interface AIGoalPreviewProps {
   onSelectPresentation: (presentation: AIGoalPresentation) => void;
   onToggleMilestone: (id: string) => void;
   onDeleteMilestone: (id: string) => void;
+  onAddMilestone?: (text: string) => void;
   existingCategories?: string[];
   isArabic?: boolean;
 }
@@ -45,6 +46,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
   onSelectPresentation,
   onToggleMilestone,
   onDeleteMilestone,
+  onAddMilestone,
   existingCategories = [],
   isArabic = false,
 }) => {
@@ -143,6 +145,7 @@ export const AIGoalPreview: React.FC<AIGoalPreviewProps> = ({
         isArabic={isArabic}
         onToggleMilestone={onToggleMilestone}
         onDeleteMilestone={onDeleteMilestone}
+        onAddMilestone={onAddMilestone}
         onEditGoalPress={handleOpenEdit}
         onEditCategoryPress={() => setIsCatModalOpen(true)}
       />

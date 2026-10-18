@@ -20,8 +20,9 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
       paddingBottom: 16,
     },
     headerTitle: {
-      fontSize: 24,
-      fontWeight: "700",
+      fontSize: 28,
+      fontWeight: "900",
+      letterSpacing: -0.6,
       color: colors.text,
     },
     headerActions: {
@@ -522,6 +523,50 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
       fontSize: 13,
       fontWeight: '800',
     },
+    aiMonthCard: {
+      borderRadius: 20,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      borderWidth: 1.5,
+      ...colors.shadows.sm,
+    },
+    dayGoalsCompactCard: {
+      borderRadius: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      ...colors.shadows.sm,
+    },
+    monthSummaryCardDetailed: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 18,
+      marginHorizontal: 16,
+      marginTop: 0,
+      marginBottom: 28,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...colors.shadows.sm,
+    },
+    monthDetailedMetricsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginTop: 10,
+      marginBottom: 14,
+    },
+    monthDetailedMetricBox: {
+      flexBasis: '48%',
+      flexGrow: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
 
     // Day detail & Daily View Redesign
     specificDayHeaderNew: {
@@ -529,8 +574,8 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingTop: 4,
-      marginBottom: 16,
+      paddingTop: 2,
+      marginBottom: 10,
     },
     specificDayDateGroup: {
       flex: 1,

@@ -43,7 +43,7 @@ interface NoteAIResultModalProps {
 /**
  * Clean any lingering reasoning or thinking tags from text.
  */
-const cleanClientText = (text?: string): string => {
+export const cleanClientText = (text?: string): string => {
   if (!text) return '';
   return text
     .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
@@ -56,6 +56,8 @@ const cleanClientText = (text?: string): string => {
     .replace(/\[(?:Thinking Process|Thought Process|Reasoning)[\s\S]*?(?:\]|$)/gi, '')
     .replace(/^(?:#{1,6}\s*)?\*?\*?(?:Thought|Thinking Process|Thought Process|Reasoning Process|Internal Thoughts|Chain of Thought)\*?\*?:?[\s\S]*?(?=\n\n|\n[#*A-Z\u0600-\u06FF]|$)/gim, '')
     .replace(/^(?:Here's a thinking process|Let's analyze this step-by-step):?[\s\S]*?(?=\n\n|\n[#*A-Z\u0600-\u06FF]|$)/gim, '')
+    .replace(/^(?:#{1,6}\s*)?\*?\*?(?:Question|User Question|Prompt|User Prompt|السؤال|سؤالك|استفسارك|المطلوب)\*?\*?:?\s*(?:".*?"|'.*?'|[^\n]+)?\n+/gim, '')
+    .replace(/^(?:#{1,6}\s*)?\*?\*?(?:Answer|AI Response|Response|الإجابة|الرد|جواب)\*?\*?:?\s*/gim, '')
     .replace(/^(?:#{1,6}\s*)?\*?\*?(?:Executive Summary|Executive overview|الملخص التنفيذي|الملخص|Summary)\*?\*?:?\s*/gim, '')
     .trim();
 };

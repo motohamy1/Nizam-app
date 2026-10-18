@@ -26,6 +26,7 @@ import LivePress from '@/components/LivePress';
 import { AIGoalGeneratorModal } from '@/components/AIGoalGeneratorModal';
 import { GoalFormModal, GoalFormData } from '@/components/GoalFormModal';
 import { GoalLinkedTasks } from '@/components/GoalLinkedTasks';
+import { PostalStampGoalCard } from '@/components/ai-goals/PostalStampGoalCard';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import { SEED_TEMPLATES } from '@/constants/goalTemplates';
 
@@ -47,11 +48,12 @@ interface SectionGroup {
 }
 
 export default function GoalsDetailScreen() {
-  const { year: y, month: m, day: d, title: tParam } = useLocalSearchParams<{
+  const { year: y, month: m, day: d, title: tParam, autoAI } = useLocalSearchParams<{
     year: string;
     month?: string;
     day?: string;
     title?: string;
+    autoAI?: string;
   }>();
 
   const year = parseInt(y || new Date().getFullYear().toString());
@@ -137,6 +139,14 @@ export default function GoalsDetailScreen() {
   const [formInitialCategory, setFormInitialCategory] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [selectedTaskDetailId, setSelectedTaskDetailId] = useState<any | null>(null);
+  const [hasAutoOpenedAI, setHasAutoOpenedAI] = useState(false);
+
+  React.useEffect(() => {
+    if (autoAI === 'true' && !hasAutoOpenedAI) {
+      setAiModalVisible(true);
+      setHasAutoOpenedAI(true);
+    }
+  }, [autoAI, hasAutoOpenedAI]);
 
   // Handle hardware back press on Android to dismiss open modals first
   useFocusEffect(
@@ -318,6 +328,25 @@ export default function GoalsDetailScreen() {
     updateGoal({ id: goalItem._id, milestones: updated });
     setNewMilestoneText((prev) => ({ ...prev, [goalItem._id]: '' }));
     setExpandedGoalIds((prev) => ({ ...prev, [goalItem._id]: true }));
+  };
+
+  const handleDeleteMilestone = (goalItem: any, milestoneId: string) => {
+    const currentMilestones = goalItem.milestones || [];
+    const updated = currentMilestones.filter((ms: any) => ms.id !== milestoneId);
+    updateGoal({ id: goalItem._id, milestones: updated });
+  };
+
+  const handleAddSubMilestoneDirect = (goalItem: any, text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const currentMilestones = goalItem.milestones || [];
+    const updated = [
+      ...currentMilestones,
+      { id: `ms_${Date.now()}`, text: trimmed, isCompleted: false },
+    ];
+
+    updateGoal({ id: goalItem._id, milestones: updated });
   };
 
   const toggleSectionExpansion = (catName: string) => {
@@ -820,245 +849,32 @@ export default function GoalsDetailScreen() {
                           const isPillar = goal.templateId === 'pillar';
 
                           return (
-                            <View
-                              key={goal._id}
-                              style={[
-                                styles.nestedGoalCard,
-                                {
-                                  backgroundColor: isDarkMode ? '#1E1E28' : '#F9FAFB',
-                                  borderColor: goal.isCompleted
-                                    ? colors.success + '40'
-                                    : goal.templateId === 'sprint'
-                                    ? '#EF444450'
-                                    : goal.templateId === 'metric'
-                                    ? '#F59E0B40'
-                                    : goal.templateId === 'roadmap'
-                                    ? '#3B82F640'
-                                    : isDarkMode ? '#2D2D3E' : '#EEF2F6',
-                                  borderLeftWidth: isPillar ? (isArabic ? 1 : 4) : 1,
-                                  borderRightWidth: isPillar ? (isArabic ? 4 : 1) : 1,
-                                  borderLeftColor: isPillar ? (isArabic ? (isDarkMode ? '#2D2D3E' : '#EEF2F6') : '#8B5CF6') : undefined,
-                                  borderRightColor: isPillar ? (isArabic ? '#8B5CF6' : (isDarkMode ? '#2D2D3E' : '#EEF2F6')) : undefined,
-                                },
-                              ]}
-                            >
-                              {/* Main Goal Row */}
-                              <View style={[styles.goalMainRow, isArabic && styles.rowReverse]}>
-                                <TouchableOpacity
-                                  onPress={() => handleToggleGoal(goal)}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                  style={styles.goalCheckboxTouch}
-                                >
-                                  <Ionicons
-                                    name={goal.isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                                    size={22}
-                                    color={goal.isCompleted ? colors.success : colors.border}
-                                  />
-                                </TouchableOpacity>
-
-                                {/* Center: Goal Title, Description, & Sub-Milestones Toggle Pill */}
-                                <View style={styles.goalContentCol}>
-                                  <Text
-                                    style={[
-                                      styles.goalTitleText,
-                                      {
-                                        color: goal.isCompleted ? colors.textMuted : colors.text,
-                                        textDecorationLine: goal.isCompleted ? 'line-through' : 'none',
-                                        opacity: goal.isCompleted ? 0.6 : 1,
-                                        textAlign: isArabic ? 'right' : 'left',
-                                      },
-                                    ]}
-                                  >
-                                    {goal.text}
-                                  </Text>
-
-                                  {goal.description ? (
-                                    <Text
-                                      style={[
-                                        styles.goalDescText,
-                                        {
-                                          color: colors.textMuted,
-                                          textAlign: isArabic ? 'right' : 'left',
-                                        },
-                                      ]}
-                                      numberOfLines={2}
-                                    >
-                                      {goal.description}
-                                    </Text>
-                                  ) : null}
-
-                                  {/* Metric Template Progress Bar */}
-                                  {goal.templateId === 'metric' && milestones.length > 0 && (
-                                    <View style={{ height: 4, borderRadius: 2, backgroundColor: isDarkMode ? '#2D2D3E' : '#E2E8F0', marginTop: 6, overflow: 'hidden' }}>
-                                      <View
-                                        style={{
-                                          width: `${Math.max((completedMilestones / milestones.length) * 100, 4)}%`,
-                                          height: '100%',
-                                          backgroundColor: '#F59E0B',
-                                          borderRadius: 2,
-                                        }}
-                                      />
-                                    </View>
-                                  )}
-
-                                  {/* Sub-Milestones Toggle Pill or Completed Trophy Badge */}
-                                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
-                                    {goal.isCompleted && (
-                                      <View style={[styles.achievedBadge, isArabic && styles.rowReverse]}>
-                                        <Ionicons name="trophy" size={11} color="#059669" />
-                                        <Text style={styles.achievedBadgeText}>
-                                          {isArabic ? 'إنجاز محقق' : 'Completed Win'}
-                                        </Text>
-                                      </View>
-                                    )}
-
-                                    {/* Template Specific Badges */}
-                                    {goal.templateId === 'roadmap' && (
-                                      <View style={[styles.templateTagBadge, { backgroundColor: '#3B82F618' }, isArabic && styles.rowReverse]}>
-                                        <Ionicons name="git-commit-outline" size={11} color="#3B82F6" />
-                                        <Text style={[styles.templateTagText, { color: '#3B82F6' }]}>
-                                          {isArabic ? 'خارطة طريق' : 'Roadmap'}
-                                        </Text>
-                                      </View>
-                                    )}
-                                    {goal.templateId === 'metric' && (
-                                      <View style={[styles.templateTagBadge, { backgroundColor: '#F59E0B18' }, isArabic && styles.rowReverse]}>
-                                        <Ionicons name="analytics-outline" size={11} color="#F59E0B" />
-                                        <Text style={[styles.templateTagText, { color: '#F59E0B' }]}>
-                                          {Math.round(milestones.length > 0 ? (completedMilestones / milestones.length) * 100 : (goal.isCompleted ? 100 : 0))}%
-                                        </Text>
-                                      </View>
-                                    )}
-                                    {goal.templateId === 'sprint' && (
-                                      <View style={[styles.templateTagBadge, { backgroundColor: '#EF444418' }, isArabic && styles.rowReverse]}>
-                                        <Ionicons name="flash" size={11} color="#EF4444" />
-                                        <Text style={[styles.templateTagText, { color: '#EF4444' }]}>
-                                          {isArabic ? 'سبرنت' : 'Sprint'}
-                                        </Text>
-                                      </View>
-                                    )}
-                                    {goal.templateId === 'pillar' && (
-                                      <View style={[styles.templateTagBadge, { backgroundColor: '#8B5CF618' }, isArabic && styles.rowReverse]}>
-                                        <Ionicons name="shield-checkmark" size={11} color="#8B5CF6" />
-                                        <Text style={[styles.templateTagText, { color: '#8B5CF6' }]}>
-                                          {isArabic ? 'ركيزة' : 'Pillar'}
-                                        </Text>
-                                      </View>
-                                    )}
-
-                                    {milestones.length > 0 && (
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.milestonesTogglePill,
-                                          { backgroundColor: (goal.color || '#EA580C') + '14', marginTop: 0 },
-                                          isArabic && styles.rowReverse,
-                                        ]}
-                                        onPress={() => toggleGoalExpansion(goal._id)}
-                                        activeOpacity={0.7}
-                                      >
-                                        <Ionicons name="checkbox-outline" size={13} color={goal.color || '#EA580C'} />
-                                        <Text style={[styles.milestonesToggleText, { color: goal.color || '#EA580C' }]}>
-                                          {completedMilestones}/{milestones.length} {isArabic ? 'مهام فرعية' : 'sub-tasks'}
-                                        </Text>
-                                        <Ionicons
-                                          name={isGoalExpanded ? 'chevron-up' : 'chevron-down'}
-                                          size={13}
-                                          color={goal.color || '#EA580C'}
-                                        />
-                                      </TouchableOpacity>
-                                    )}
-                                  </View>
-                                </View>
-
-                                {/* Action Buttons: Edit (Pencil) & Delete */}
-                                <View style={[styles.goalActionsCol, isArabic && styles.rowReverse]}>
-                                  <TouchableOpacity
-                                    onPress={() => handleOpenEdit(goal)}
-                                    style={styles.cardActionIconBtn}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                  >
-                                    <Ionicons name="pencil" size={16} color={colors.textMuted} />
-                                  </TouchableOpacity>
-
-                                  <TouchableOpacity
-                                    onPress={() => handleDeleteItem(goal._id, 'goal')}
-                                    style={styles.cardActionIconBtn}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                  >
-                                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-
-                              {/* ─── Level 3: Nested Sub-Milestones Checklist (Collapsible) ─── */}
-                              {isGoalExpanded && (
-                                <View
-                                  style={[
-                                    styles.milestonesListContainer,
-                                    { borderTopColor: isDarkMode ? '#2D2D3E' : '#E5E7EB' },
-                                  ]}
-                                >
-                                  {milestones.map((ms, idx) => (
-                                    <TouchableOpacity
-                                      key={ms.id}
-                                      style={[styles.milestoneCheckRow, isArabic && styles.rowReverse]}
-                                      onPress={() => handleToggleMilestone(goal, ms.id)}
-                                      activeOpacity={0.7}
-                                    >
-                                      <Ionicons
-                                        name={ms.isCompleted ? 'checkbox' : 'square-outline'}
-                                        size={17}
-                                        color={ms.isCompleted ? colors.success : colors.textMuted}
-                                      />
-                                      {goal.templateId === 'roadmap' && (
-                                        <View style={[styles.roadmapStepIndexBadge, { backgroundColor: (goal.color || '#3B82F6') + '20' }]}>
-                                          <Text style={[styles.roadmapStepIndexText, { color: goal.color || '#3B82F6' }]}>
-                                            {idx + 1}
-                                          </Text>
-                                        </View>
-                                      )}
-                                      <Text
-                                        style={[
-                                          styles.milestoneCheckText,
-                                          {
-                                            color: ms.isCompleted ? colors.textMuted : colors.text,
-                                            textDecorationLine: ms.isCompleted ? 'line-through' : 'none',
-                                            opacity: ms.isCompleted ? 0.6 : 1,
-                                            textAlign: isArabic ? 'right' : 'left',
-                                          },
-                                        ]}
-                                      >
-                                        {ms.text}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-
-                                  {/* Quick Add Sub-Milestone Inline */}
-                                  <View style={[styles.inlineAddMsRow, isArabic && styles.rowReverse]}>
-                                    <TextInput
-                                      style={[
-                                        styles.inlineAddMsInput,
-                                        { color: colors.text, textAlign: isArabic ? 'right' : 'left' },
-                                      ]}
-                                      placeholder={isArabic ? '+ مهمة فرعية جديدة...' : '+ Add sub-milestone...'}
-                                      placeholderTextColor={colors.textMuted}
-                                      value={newMilestoneText[goal._id] || ''}
-                                      onChangeText={(txt) =>
-                                        setNewMilestoneText((prev) => ({ ...prev, [goal._id]: txt }))
-                                      }
-                                      onSubmitEditing={() => handleAddSubMilestone(goal)}
-                                    />
-                                    {(newMilestoneText[goal._id] || '').trim().length > 0 && (
-                                      <TouchableOpacity
-                                        onPress={() => handleAddSubMilestone(goal)}
-                                        style={[styles.inlineAddMsBtn, { backgroundColor: goal.color || colors.primary }]}
-                                      >
-                                        <Ionicons name="add" size={16} color={goal.color ? '#FFFFFF' : colors.primaryText} />
-                                      </TouchableOpacity>
-                                    )}
-                                  </View>
-                                </View>
-                              )}
+                            <View key={goal._id} style={{ marginBottom: 14 }}>
+                              <PostalStampGoalCard
+                                title={goal.text}
+                                description={goal.description}
+                                category={goal.category || group.category}
+                                milestones={milestones.map((ms: any) => ({
+                                  id: ms.id,
+                                  text: ms.text,
+                                  isCompleted: !!ms.isCompleted,
+                                }))}
+                                isCompleted={goal.isCompleted}
+                                color={goal.color || group.color || '#EA580C'}
+                                icon={goal.icon || group.icon || 'flag-outline'}
+                                timeframe={goal.timeframe}
+                                year={goal.year || year}
+                                month={goal.month || month}
+                                day={goal.day || day}
+                                isArabic={isArabic}
+                                backdropColor={colors.surface}
+                                onToggleGoal={() => handleToggleGoal(goal)}
+                                onToggleMilestone={(msId) => handleToggleMilestone(goal, msId)}
+                                onDeleteMilestone={(msId) => handleDeleteMilestone(goal, msId)}
+                                onAddMilestone={(text) => handleAddSubMilestoneDirect(goal, text)}
+                                onEditPress={() => handleOpenEdit(goal)}
+                                onDeletePress={() => handleDeleteItem(goal._id, 'goal')}
+                              />
 
                               {/* ─── Level 4: Linked Tasks (Cross-connected from Todos) ─── */}
                               <GoalLinkedTasks

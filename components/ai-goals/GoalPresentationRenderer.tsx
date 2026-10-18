@@ -16,6 +16,7 @@ import {
   AIGoalVisualStyleId,
   MilestoneItem,
 } from '@/types/aiGoals';
+import { PostalStampGoalCard } from './PostalStampGoalCard';
 
 interface GoalPresentationRendererProps {
   title: string;
@@ -28,6 +29,7 @@ interface GoalPresentationRendererProps {
   isArabic?: boolean;
   onToggleMilestone?: (id: string) => void;
   onDeleteMilestone?: (id: string) => void;
+  onAddMilestone?: (text: string) => void;
   onEditGoalPress?: () => void;
   onEditCategoryPress?: () => void;
 }
@@ -43,6 +45,7 @@ export const GoalPresentationRenderer: React.FC<GoalPresentationRendererProps> =
   isArabic = false,
   onToggleMilestone,
   onDeleteMilestone,
+  onAddMilestone,
   onEditGoalPress,
   onEditCategoryPress,
 }) => {
@@ -51,6 +54,31 @@ export const GoalPresentationRenderer: React.FC<GoalPresentationRendererProps> =
   const styles = createStyles(T);
   const { frameworkId, visualStyleId } = presentation;
   const styleTheme = getStyleTheme(visualStyleId, color);
+
+  // If visual style is paper or default, render the paper-like postcard/stamp design matching the image
+  if (visualStyleId === 'paper' || visualStyleId === 'default' || !visualStyleId) {
+    return (
+      <PostalStampGoalCard
+        title={title}
+        description={description}
+        category={category}
+        milestones={milestones.map((m) => ({
+          id: m.id,
+          text: m.text,
+          isCompleted: !!m.isCompleted,
+        }))}
+        color={color}
+        icon={icon}
+        isArabic={isArabic}
+        backdropColor={colors.bg}
+        onToggleMilestone={onToggleMilestone}
+        onDeleteMilestone={onDeleteMilestone}
+        onAddMilestone={onAddMilestone}
+        onEditPress={onEditGoalPress}
+        onEditCategoryPress={onEditCategoryPress}
+      />
+    );
+  }
 
   // Framework content renderer
   const renderFrameworkContent = () => {
@@ -411,27 +439,27 @@ function getStyleTheme(visualStyleId: AIGoalVisualStyleId, accentColor: string):
     case 'paper':
       return {
         card: {
-          backgroundColor: '#FDFBF7',
-          borderColor: '#E7E5E4',
+          backgroundColor: '#FFFFFF',
+          borderColor: '#E2E8F0',
           borderWidth: 1,
           borderRadius: 14,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 6,
-          elevation: 2,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 3,
         },
-        textColor: '#1C1917',
-        textMuted: '#78716C',
-        categoryBg: '#F5F5F4',
-        categoryText: '#292524',
-        titleText: { fontWeight: '600' },
-        dividerColor: '#F0EFEB',
-        nodeBg: '#FFF',
+        textColor: '#0F172A',
+        textMuted: '#64748B',
+        categoryBg: '#F1F5F9',
+        categoryText: '#0F172A',
+        titleText: { fontWeight: '700', color: '#0F172A' },
+        dividerColor: '#F1F5F9',
+        nodeBg: '#FFFFFF',
         nodeText: accentColor,
-        railColor: '#E7E5E4',
-        subtleBg: '#F5F5F4',
-        barTrackBg: '#E7E5E4',
+        railColor: '#E2E8F0',
+        subtleBg: '#F8FAFC',
+        barTrackBg: '#E2E8F0',
       };
 
     case 'glass':

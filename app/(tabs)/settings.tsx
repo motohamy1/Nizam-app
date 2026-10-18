@@ -20,6 +20,7 @@ import type { GuideTip } from '@/components/ScreenGuide';
 import { getNotificationSound, setNotificationSound, SOUND_META, NotificationSound } from '@/utils/soundPreferences';
 import { updateNotificationSoundPreference } from '@/utils/notifications';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 const Settings = () => {
   const { colors, isDarkMode, toggleDarkMode } = useTheme();
@@ -27,6 +28,7 @@ const Settings = () => {
   const { t, isArabic } = useTranslation(language);
   const styles = createSettingsStyles(colors, isArabic);
   const router = useRouter();
+  const { keyboardHeight } = useKeyboard();
   const { showGuide, dismissGuide } = useScreenGuide('settings');
 
   const settingsTips: GuideTip[] = isArabic ? [
@@ -239,8 +241,14 @@ const Settings = () => {
           {/* Profile Edit Modal */}
           <Modal visible={isEditModalVisible} transparent animationType="slide" onRequestClose={() => setIsEditModalVisible(false)}>
             <TouchableWithoutFeedback onPress={() => setIsEditModalVisible(false)}>
-              <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+              <View style={styles.modalOverlay}>
+                <View 
+                  style={[
+                    styles.modalContent,
+                    keyboardHeight > 0 && { marginBottom: Math.min(keyboardHeight, 140) }
+                  ]} 
+                  onStartShouldSetResponder={() => true}
+                >
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Edit Profile</Text>
                   <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
@@ -277,7 +285,7 @@ const Settings = () => {
                   </TouchableOpacity>
                 </View>
                 </View>
-              </KeyboardAvoidingView>
+              </View>
             </TouchableWithoutFeedback>
           </Modal>
 

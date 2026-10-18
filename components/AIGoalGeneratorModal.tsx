@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
+import { useKeyboard } from '@/hooks/useKeyboard';
 import { getAiTheme } from '@/utils/aiGoalTheme';
 import { useAIGoalSession } from '@/hooks/useAIGoalSession';
 import { AIGoalPreview } from '@/components/ai-goals/AIGoalPreview';
@@ -80,6 +81,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   onPlanApplied,
 }) => {
   const { colors, isDarkMode } = useTheme();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const T = getAiTheme(colors, isDarkMode);
   const styles = createStyles(T);
 
@@ -245,7 +247,10 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
         {/* Modal Body */}
         <ScrollView
           style={styles.scrollBody}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isKeyboardVisible && { paddingBottom: Math.max(120, keyboardHeight + 20) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -375,6 +380,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
                 onSelectPresentation={session.selectPresentation}
                 onToggleMilestone={session.toggleMilestone}
                 onDeleteMilestone={session.deleteMilestone}
+                onAddMilestone={session.addMilestone}
                 existingCategories={existingCategories}
                 isArabic={isArabic}
               />

@@ -3,10 +3,15 @@ import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Platform, Text, View } from 'react-native';
+import { FlatList, LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import LivePress from './LivePress';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface DateBarProps {
   selectedDate: number;
@@ -16,6 +21,7 @@ interface DateBarProps {
   homeStyles: any;
   isArabic?: boolean;
   taskCounts?: Map<number, number>;
+  defaultCollapsed?: boolean;
 }
 
 const ITEM_WIDTH = 48;
@@ -36,12 +42,14 @@ const DateBar: React.FC<DateBarProps> = ({
   homeStyles,
   isArabic = false,
   taskCounts,
+  defaultCollapsed = true,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const { language } = useAuth();
   const { t } = useTranslation(language);
   const flatListRef = useRef<FlatList>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   const selectedDateObj = useMemo(() => new Date(selectedDate), [selectedDate]);
   const selectedYear = selectedDateObj.getFullYear();
@@ -74,7 +82,7 @@ const DateBar: React.FC<DateBarProps> = ({
   const scheduleAutoReturn = () => {
     clearAutoReturnTimer();
     autoReturnTimer.current = setTimeout(() => {
-      if (selectedIndex >= 0 && flatListRef.current) {
+      if (!isCollapsed && selectedIndex >= 0 && flatListRef.current) {
         flatListRef.current.scrollToIndex({
           index: selectedIndex,
           animated: true,
@@ -90,9 +98,9 @@ const DateBar: React.FC<DateBarProps> = ({
     };
   }, []);
 
-  // Center on the selected day when day, month, or year changes
+  // Center on the selected day when day, month, year changes or when expanded
   useEffect(() => {
-    if (selectedIndex >= 0 && flatListRef.current) {
+    if (!isCollapsed && selectedIndex >= 0 && flatListRef.current) {
       const timer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({
           index: selectedIndex,
@@ -103,22 +111,29 @@ const DateBar: React.FC<DateBarProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [selectedIndex, selectedMonth, selectedYear]);
+  }, [isCollapsed, selectedIndex, selectedMonth, selectedYear]);
 
   const isSelectedToday = startOfDay(selectedDate) === startOfDay(todayStart);
 
-  const monthLabel = useMemo(() => {
-    return new Date(selectedDate).toLocaleDateString(
-      isArabic ? 'ar-SA' : 'en-US',
-      { month: 'long', year: 'numeric' }
-    );
+  const dateLabel = useMemo(() => {
+    const d = new Date(selectedDate);
+    const day = d.getDate();
+    const month = d.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
   }, [selectedDate, isArabic]);
+
+  const handleToggleCollapse = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsCollapsed(prev => !prev);
+  };
 
   const renderDay = ({ item: dayStart, index }: { item: number; index: number }) => {
     const d = new Date(dayStart);
     const isActive = dayStart === startOfDay(selectedDate);
     const hasTasks = (taskCounts?.get(dayStart) || 0) > 0;
-    const weekdayStr = d.toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { weekday: 'short' });
+    const weekdayStr = d.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', { weekday: 'short' });
     const dayNum = d.getDate();
 
     return (
@@ -172,15 +187,33 @@ const DateBar: React.FC<DateBarProps> = ({
       entering={FadeInDown.duration(400).easing(Easing.out(Easing.cubic))}
       style={homeStyles.dateBarContainer}
     >
-      {/* Header: Month Year with Dropdown Chevron & Today Reset Button / Planner Detail */}
-      <View style={[homeStyles.dateBarHeader, isArabic && { flexDirection: 'row-reverse' }]}>
+      {/* Header: Day Month Year with Dropdown/Collapse Chevron & Today Reset Button / Planner Detail */}
+      <View
+        style={[
+          homeStyles.dateBarHeader,
+          isCollapsed && { marginBottom: 6 },
+          isArabic && { flexDirection: 'row-reverse' },
+        ]}
+      >
         <LivePress
           style={[homeStyles.dateBarMonthWrapper, isArabic && { flexDirection: 'row-reverse' }]}
-          onPress={() => setShowDatePicker(true)}
+          onPress={handleToggleCollapse}
+          onLongPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setShowDatePicker(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCollapsed
+              ? (isArabic ? 'فتح شريط الأيام' : 'Expand day bar')
+              : (isArabic ? 'طي شريط الأيام' : 'Collapse day bar')
+          }
         >
-          <Text style={homeStyles.dateBarMonth}>{monthLabel}</Text>
+          <Text style={homeStyles.dateBarMonth} numberOfLines={1}>
+            {dateLabel}
+          </Text>
           <Ionicons
-            name="chevron-down"
+            name={isCollapsed ? 'chevron-down' : 'chevron-up'}
             size={16}
             color={colors.textMuted}
             style={homeStyles.dateBarChevron}
@@ -215,45 +248,47 @@ const DateBar: React.FC<DateBarProps> = ({
       </View>
 
       {/* Horizontally Scrollable Month Days Carousel */}
-      <FlatList
-        ref={flatListRef}
-        data={daysList}
-        renderItem={renderDay}
-        keyExtractor={item => item.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={selectedIndex >= 0 ? selectedIndex : undefined}
-        getItemLayout={(_data, index) => ({
-          length: ITEM_TOTAL_SIZE,
-          offset: ITEM_TOTAL_SIZE * index,
-          index,
-        })}
-        onScrollBeginDrag={() => {
-          clearAutoReturnTimer();
-        }}
-        onScrollEndDrag={() => {
-          scheduleAutoReturn();
-        }}
-        onMomentumScrollBegin={() => {
-          clearAutoReturnTimer();
-        }}
-        onMomentumScrollEnd={() => {
-          scheduleAutoReturn();
-        }}
-        onScrollToIndexFailed={info => {
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: info.index,
-              animated: false,
-              viewPosition: 0.5,
-            });
-          }, 100);
-        }}
-        contentContainerStyle={[
-          homeStyles.dateBarStrip,
-          isArabic && { flexDirection: 'row-reverse' },
-        ]}
-      />
+      {!isCollapsed && (
+        <FlatList
+          ref={flatListRef}
+          data={daysList}
+          renderItem={renderDay}
+          keyExtractor={item => item.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={selectedIndex >= 0 ? selectedIndex : undefined}
+          getItemLayout={(_data, index) => ({
+            length: ITEM_TOTAL_SIZE,
+            offset: ITEM_TOTAL_SIZE * index,
+            index,
+          })}
+          onScrollBeginDrag={() => {
+            clearAutoReturnTimer();
+          }}
+          onScrollEndDrag={() => {
+            scheduleAutoReturn();
+          }}
+          onMomentumScrollBegin={() => {
+            clearAutoReturnTimer();
+          }}
+          onMomentumScrollEnd={() => {
+            scheduleAutoReturn();
+          }}
+          onScrollToIndexFailed={info => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: false,
+                viewPosition: 0.5,
+              });
+            }, 100);
+          }}
+          contentContainerStyle={[
+            homeStyles.dateBarStrip,
+            isArabic && { flexDirection: 'row-reverse' },
+          ]}
+        />
+      )}
 
       {/* Date Picker Dialog */}
       {showDatePicker && (

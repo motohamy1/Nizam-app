@@ -1,12 +1,16 @@
-import React, { ReactNode, useEffect } from 'react';
-import { StyleProp, ViewStyle, TouchableOpacity, Text, View } from 'react-native';
+import React, { ReactNode, useEffect, useRef } from 'react';
+import { StyleProp, ViewStyle, TouchableOpacity, Text, View, Platform, StyleSheet } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
   withSpring,
+  withTiming,
+  interpolate,
+  Easing,
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import type { MonthPalette } from '@/components/MonthCreditCard';
 
@@ -35,6 +39,8 @@ interface ScrollStackItemProps {
   axis?: 'vertical' | 'horizontal';
   /** Horizontal inset of the focused card from the container edges. */
   cardInset?: number;
+  /** 'wireframe' = homepage outline cards with normal orange border, 'capsule' = planner solid color capsules */
+  sideCardVariant?: 'wireframe' | 'capsule';
 }
 
 export const ScrollStackItem: React.FC<ScrollStackItemProps> = ({
@@ -49,6 +55,7 @@ export const ScrollStackItem: React.FC<ScrollStackItemProps> = ({
   isArabic = false,
   axis = 'vertical',
   cardInset = 16,
+  sideCardVariant = 'wireframe',
 }) => {
   const { isDarkMode } = useTheme();
   // Ring position: 0 = focused (center), +1/+2 = upcoming above, -1/-2 = past below.
@@ -60,67 +67,301 @@ export const ScrollStackItem: React.FC<ScrollStackItemProps> = ({
   const isFocused = diff === 0;
   const isUpcoming = diff > 0;
 
-  // ─── Horizontal Rolodex Mode (Stitch design) ───
-  // Non-current cards appear ONLY as solid rounded color capsules on left and right.
+  // Shared value for horizontal card focus transition (0 = inactive/wireframe, 1 = active/color)
+  const focusProgress = useSharedValue(isFocused ? 1 : 0);
+  const lastNonZeroDiffRef = useRef(diff !== 0 ? diff : 1);
+  if (diff !== 0) {
+    lastNonZeroDiffRef.current = diff;
+  }
+  const effectiveDiff = diff !== 0 ? diff : lastNonZeroDiffRef.current;
+  const isLeft = isArabic ? effectiveDiff > 0 : effectiveDiff < 0;
+
+  useEffect(() => {
+    if (axis === 'horizontal') {
+      focusProgress.value = withTiming(isFocused ? 1 : 0, {
+        duration: 360,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      });
+    }
+  }, [isFocused, axis, focusProgress]);
+
+  const animatedActiveCardStyle = useAnimatedStyle(() => {
+    const slideOffset = isLeft ? -28 : 28;
+    return {
+      opacity: focusProgress.value,
+      transform: [
+        { scale: interpolate(focusProgress.value, [0, 1], [0.93, 1]) },
+        { translateX: interpolate(focusProgress.value, [0, 1], [slideOffset, 0]) },
+      ],
+    };
+  });
+
+  const animatedWireframeStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(focusProgress.value, [0, 0.55, 1], [1, 0.2, 0]),
+      transform: [
+        { scale: interpolate(focusProgress.value, [0, 1], [1, 0.92]) },
+      ],
+    };
+  });
+
+  const animatedColorWashStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(focusProgress.value, [0, 0.2, 0.85, 1], [0, 0.3, 0.85, 1]),
+    };
+  });
+
+  // ─── Horizontal Rolodex Mode ───
+  // Non-current cards appear as wireframe cards with dashed borders.
+  // When scrolled to, the card smoothly transitions to its full vibrant original color.
   if (axis === 'horizontal') {
     if (Math.abs(diff) > 1) return null;
 
-    if (!isFocused) {
-      const isLeft = isArabic ? diff > 0 : diff < 0;
-      const capsuleWidth = 30;
-      const capsuleInset = Math.max(4, cardInset - capsuleWidth - 4);
-      const capsuleBg = palette?.bg ?? '#10b981';
+    // ─── Planner Mode: Solid color capsules on left and right (no wireframe) ───
+    if (sideCardVariant === 'capsule') {
+      if (!isFocused) {
+        const isLeft = isArabic ? diff > 0 : diff < 0;
+        const peekWidth = Math.max(20, Math.min(26, cardInset - 10));
+        const peekHeight = 224;
+        const peekTop = STATIC_TOP + (CARD_H - peekHeight) / 2;
+        const capsuleBg = palette?.bg ?? '#10b981';
+
+        const borderRadii = {
+          borderTopLeftRadius: isLeft ? 0 : 28,
+          borderBottomLeftRadius: isLeft ? 0 : 28,
+          borderTopRightRadius: isLeft ? 28 : 0,
+          borderBottomRightRadius: isLeft ? 28 : 0,
+        };
+
+        return (
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={{
+              position: 'absolute',
+              ...(isLeft ? { left: 0 } : { right: 0 }),
+              top: peekTop,
+              width: peekWidth,
+              height: peekHeight,
+              ...borderRadii,
+              backgroundColor: capsuleBg,
+              zIndex: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: isLeft ? 2 : -2, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 4,
+              opacity: 0.95,
+              overflow: 'hidden',
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                onSelect();
+              }}
+              activeOpacity={0.85}
+              style={{
+                width: '100%',
+                height: '100%',
+                ...borderRadii,
+              }}
+              accessibilityLabel={label}
+              accessibilityRole="button"
+            />
+          </Animated.View>
+        );
+      }
 
       return (
         <Animated.View
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(150)}
-          style={{
-            position: 'absolute',
-            ...(isLeft ? { left: capsuleInset } : { right: capsuleInset }),
-            top: STATIC_TOP + (CARD_H - 165) / 2,
-            width: capsuleWidth,
-            height: 165,
-            borderRadius: 20,
-            backgroundColor: capsuleBg,
-            zIndex: 10,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 8,
-            elevation: 4,
-            opacity: 0.95,
-          }}
+          entering={FadeIn.duration(220)}
+          pointerEvents="box-none"
+          style={[
+            {
+              position: 'absolute',
+              left: cardInset,
+              right: cardInset,
+              top: STATIC_TOP,
+              height: CARD_H,
+              zIndex: 50,
+            },
+            style,
+          ]}
         >
-          <TouchableOpacity
-            onPress={onSelect}
-            activeOpacity={0.85}
-            style={{ width: '100%', height: '100%', borderRadius: 20 }}
-            accessibilityLabel={label}
-            accessibilityRole="button"
-          />
+          {children}
         </Animated.View>
       );
     }
 
+    // ─── Homepage Mode: Wireframe cards with normal orange border & smooth color bloom ───
+    const peekWidth = Math.max(22, Math.min(30, cardInset - 8));
+    const peekHeight = 236;
+    const peekTop = STATIC_TOP + (CARD_H - peekHeight) / 2;
+
+    const borderRadii = {
+      borderTopLeftRadius: isLeft ? 0 : 22,
+      borderBottomLeftRadius: isLeft ? 0 : 22,
+      borderTopRightRadius: isLeft ? 22 : 0,
+      borderBottomRightRadius: isLeft ? 22 : 0,
+    };
+
+    // Electric Orange matching the main accent color of the Checklist Card (#ff5c16)
+    const CHECKLIST_ACCENT_ORANGE = '#ff5c16';
+    const wireframeBorder = CHECKLIST_ACCENT_ORANGE;
+    const wireframeBg = isDarkMode
+      ? 'rgba(255, 92, 22, 0.04)'
+      : 'rgba(255, 92, 22, 0.025)';
+
     return (
-      <Animated.View
-        entering={FadeIn.duration(220)}
-        pointerEvents="box-none"
-        style={[
-          {
-            position: 'absolute',
-            left: cardInset,
-            right: cardInset,
-            top: STATIC_TOP,
-            height: CARD_H,
-            zIndex: 50,
-          },
-          style,
-        ]}
-      >
-        {children}
-      </Animated.View>
+      <>
+        {/* Inactive Wireframe Card with Normal Orange Border (peeking on left/right) */}
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          pointerEvents={isFocused ? 'none' : 'auto'}
+          style={[
+            {
+              position: 'absolute',
+              ...(isLeft ? { left: 0 } : { right: 0 }),
+              top: peekTop,
+              width: peekWidth,
+              height: peekHeight,
+              ...borderRadii,
+              borderWidth: 1.5,
+              borderStyle: 'solid',
+              borderColor: wireframeBorder,
+              backgroundColor: wireframeBg,
+              zIndex: isFocused ? 15 : 40,
+              shadowColor: CHECKLIST_ACCENT_ORANGE,
+              shadowOffset: { width: isLeft ? 2 : -2, height: 2 },
+              shadowOpacity: isDarkMode ? 0.35 : 0.12,
+              shadowRadius: 6,
+              elevation: 3,
+              overflow: 'hidden',
+            },
+            animatedWireframeStyle,
+          ]}
+        >
+          {/* Smooth blooming color wash layer that appears as the card focuses */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: palette?.bg ?? '#10b981',
+                ...borderRadii,
+              },
+              animatedColorWashStyle,
+            ]}
+          />
+
+          <TouchableOpacity
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              onSelect();
+            }}
+            activeOpacity={0.75}
+            style={{
+              width: '100%',
+              height: '100%',
+              ...borderRadii,
+            }}
+            accessibilityLabel={label}
+            accessibilityRole="button"
+          >
+            {/* Wireframe skeleton elements inside the side tab */}
+            <View
+              style={{
+                flex: 1,
+                paddingVertical: 18,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              {/* Top wireframe icon placeholder */}
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: 5,
+                  borderWidth: 1.2,
+                  borderStyle: 'solid',
+                  borderColor: wireframeBorder,
+                  backgroundColor: isDarkMode ? 'rgba(255, 92, 22, 0.08)' : 'rgba(255, 92, 22, 0.05)',
+                }}
+              />
+
+              {/* Middle wireframe skeleton dashes */}
+              <View style={{ alignItems: 'center', gap: 6 }}>
+                <View
+                  style={{
+                    width: 12,
+                    height: 2.5,
+                    borderRadius: 1.5,
+                    backgroundColor: wireframeBorder,
+                    opacity: 0.5,
+                  }}
+                />
+                <View
+                  style={{
+                    width: 9,
+                    height: 2.5,
+                    borderRadius: 1.5,
+                    backgroundColor: wireframeBorder,
+                    opacity: 0.35,
+                  }}
+                />
+                <View
+                  style={{
+                    width: 12,
+                    height: 2.5,
+                    borderRadius: 1.5,
+                    backgroundColor: wireframeBorder,
+                    opacity: 0.5,
+                  }}
+                />
+              </View>
+
+              {/* Bottom wireframe metric indicator */}
+              <View
+                style={{
+                  width: 14,
+                  height: 7,
+                  borderRadius: 3,
+                  borderWidth: 1,
+                  borderStyle: 'solid',
+                  borderColor: wireframeBorder,
+                  opacity: 0.6,
+                }}
+              />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Active Focused Card with Full Color & Children */}
+        <Animated.View
+          pointerEvents={isFocused ? 'box-none' : 'none'}
+          style={[
+            {
+              position: 'absolute',
+              left: cardInset,
+              right: cardInset,
+              top: STATIC_TOP,
+              height: CARD_H,
+              zIndex: isFocused ? 50 : 20,
+            },
+            animatedActiveCardStyle,
+            style,
+          ]}
+        >
+          {children}
+        </Animated.View>
+      </>
     );
   }
 

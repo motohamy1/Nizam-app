@@ -28,6 +28,7 @@ import { useDailyReminders } from "@/hooks/useDailyReminders";
 import { useDeadlineReminders } from "@/hooks/useDeadlineReminders";
 import { useScreenGuide } from "@/hooks/useScreenGuide";
 import { useTaskTimers } from "@/hooks/useTaskTimers";
+import { computeRepeatOccurrence, RepeatPeriod } from "@/utils/notifications";
 
 import ScreenBackground from "@/components/ScreenBackground";
 import Header from "@/components/Header";
@@ -166,22 +167,35 @@ const Index = () => {
         Boolean(t.location) ||
         (t.dueDate && t.dueDate >= todayStart && t.type !== 'task'))
       )
-      .sort((a, b) => (a.dueDate || a.date || 0) - (b.dueDate || b.date || 0))
-      .map(t => ({
-        _id: t._id,
-        title: t.text,
-        date: t.dueDate || t.date || nowTs,
-        startTime: t.timerStartTime || t.dueDate || t.date,
-        endTime: t.dueDate,
-        location: t.location,
-        meetingLink: t.meetingLink,
-        priority: t.priority,
-        type: t.type,
-        description: t.description,
-        repeatPeriod: t.repeatPeriod,
-        repeatCount: t.repeatCount,
-        status: t.status || (t.isCompleted ? 'done' : 'not_started'),
-      }));
+      .map(t => {
+        let displayTime = t.dueDate || t.date || nowTs;
+        if (t.repeatPeriod && t.repeatPeriod !== 'none' && t.dueDate) {
+          const count = Math.max(1, t.repeatCount || 1);
+          for (let i = 0; i < count; i++) {
+            const occ = computeRepeatOccurrence(t.dueDate, t.repeatPeriod as RepeatPeriod, i);
+            if (occ >= nowTs - 60000) {
+              displayTime = occ;
+              break;
+            }
+          }
+        }
+        return {
+          _id: t._id,
+          title: t.text,
+          date: displayTime,
+          startTime: displayTime,
+          endTime: t.dueDate,
+          location: t.location,
+          meetingLink: t.meetingLink,
+          priority: t.priority,
+          type: t.type,
+          description: t.description,
+          repeatPeriod: t.repeatPeriod,
+          repeatCount: t.repeatCount,
+          status: t.status || (t.isCompleted ? 'done' : 'not_started'),
+        };
+      })
+      .sort((a, b) => (a.startTime || a.date || 0) - (b.startTime || b.date || 0));
   }, [todos, todayStart]);
 
   const isViewingToday = selectedDate === todayStart;
@@ -323,7 +337,7 @@ const Index = () => {
 
     const empty = todoCol.length + inProgressCol.length + doneCol.length + notDoneCol.length === 0;
 
-    // Daily checklist rows for Card 1: today's tasks + checklist items
+    // Daily checklist rows for Card 0: checklist items ONLY (never regular tasks)
     const linkedCountByParent = new Map<string, number>();
     (linkedChildren || []).forEach((c: any) => {
       if (c.parentId) linkedCountByParent.set(c.parentId, (linkedCountByParent.get(c.parentId) || 0) + 1);
@@ -332,16 +346,16 @@ const Index = () => {
     const dayChecklistRaw = (todos || []).filter(t => {
       if (t.parentId) return false; // subtasks/linked children never render standalone
       const a = anchorOf(t);
-      return a === selectedDate && (t.type === 'task' || t.type === 'checklist' || !t.type);
+      return a === selectedDate && t.type === 'checklist';
     });
 
-    const checklistTasks = (dayChecklistRaw.length > 0 ? dayChecklistRaw : [...inProgressCol, ...todoCol, ...doneCol]).map(task => ({
+    const checklistTasks = dayChecklistRaw.map(task => ({
       _id: task._id,
       text: task.text,
       status: task.status || ((task as any).isCompleted ? 'done' : 'not_started'),
       priority: task.priority,
       dueDate: task.dueDate,
-      kind: task.type === 'checklist' ? ('checklist' as const) : ('task' as const),
+      kind: 'checklist' as const,
       linkedCount: linkedCountByParent.get(task._id) || 0,
     }));
 
@@ -474,13 +488,22 @@ const Index = () => {
       : evt._id && hadRepeat
         ? { repeatPeriod: '' }
         : {};
+    // Ensure notification permissions and channels
+    try {
+      const { requestPermissionsAsync, ensureNotificationChannels } = await import('@/utils/notifications');
+      await ensureNotificationChannels();
+      await requestPermissionsAsync();
+    } catch {}
+
     // Cancel the previous series before writing the new one so shrinking the
     // count or turning repeat off can't leave orphaned future notifications.
-    if (evt._id && eventToEdit?.repeatPeriod && eventToEdit.repeatPeriod !== 'none') {
+    if (evt._id) {
       import('@/utils/notifications').then(n =>
         n.cancelReminderSeries(String(evt._id))
       ).catch(() => {});
     }
+
+    let savedId = evt._id;
     if (evt._id) {
       await updateTodoMutation({
         id: evt._id,
@@ -496,7 +519,7 @@ const Index = () => {
       });
     } else {
       if (!userId) return;
-      await addTodoMutation({
+      const res = await addTodoMutation({
         userId,
         text: evt.title,
         type: itemType,
@@ -509,10 +532,41 @@ const Index = () => {
         status: 'not_started',
         ...repeatFields,
       });
+      savedId = typeof res === 'string' ? res : (res as any)?._id;
+    }
+
+    // Schedule notification immediately so alerts never miss
+    if (savedId) {
+      try {
+        const { scheduleRepeatingReminder, scheduleReminderNotification } = await import('@/utils/notifications');
+        if (repeatOn && evt.repeatPeriod) {
+          await scheduleRepeatingReminder(
+            String(savedId),
+            evt.title,
+            evt.startTime || evt.date,
+            evt.repeatPeriod as any,
+            evt.repeatCount || 1,
+            language
+          );
+        } else {
+          await scheduleReminderNotification(
+            evt.title,
+            evt.startTime || evt.date,
+            language,
+            String(savedId)
+          );
+        }
+      } catch (e) {
+        console.warn('Failed to schedule reminder notification immediately:', e);
+      }
     }
   };
 
   const handleDeleteEvent = async (id: Id<"todos">) => {
+    try {
+      const { cancelReminderSeries } = await import('@/utils/notifications');
+      await cancelReminderSeries(String(id));
+    } catch {}
     await deleteTodo({ id });
   };
 
@@ -521,7 +575,14 @@ const Index = () => {
   // Guarded: status is an absolute value, so an unguarded double-tap flips it
   // twice (done → not_started) and the item silently stays incomplete.
   const handleToggleEventDone = useGuardedSubmit(async (id: Id<"todos">, currentStatus?: string) => {
-    await updateStatus({ id, status: currentStatus === 'done' ? 'not_started' : 'done' });
+    const nextStatus = currentStatus === 'done' ? 'not_started' : 'done';
+    if (nextStatus === 'done') {
+      try {
+        const { cancelReminderSeries } = await import('@/utils/notifications');
+        await cancelReminderSeries(String(id));
+      } catch {}
+    }
+    await updateStatus({ id, status: nextStatus });
   });
 
   const handleStartFocusTimer = () => {
@@ -579,11 +640,12 @@ const Index = () => {
     >
       <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
       <SafeAreaView style={homeStyles.safeArea} edges={['top']}>
-        <Header />
-        
         {todos === undefined ? (
-          <View style={homeStyles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.secondary} />
+          <View style={{ flex: 1 }}>
+            <Header />
+            <View style={homeStyles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.secondary} />
+            </View>
           </View>
         ) : (
           <ScrollView 
@@ -594,6 +656,8 @@ const Index = () => {
             nestedScrollEnabled={true}
             scrollEventThrottle={16}
           >
+            <Header />
+
             {/* 1. Dynamic Date Bar */}
             <DateBar
               selectedDate={selectedDate}
@@ -606,23 +670,27 @@ const Index = () => {
             />
 
             {/* 2. Hero Section: Scroll Stack Component (Horizontal Rolodex Deck) */}
+            {/* 2. Hero Section: Scroll Stack Component (Horizontal Rolodex Deck) */}
             <ScrollStack
               axis="horizontal"
+              sideCardVariant="wireframe"
               cardInset={38}
               isArabic={isArabic}
+              primaryCardIndices={[0, 1]}
+              secondaryRelocateDelay={12000}
               palettes={[
                 STACK_CARD_PALETTES.checklist,
+                STACK_CARD_PALETTES.upcoming,
                 STACK_CARD_PALETTES.monthly,
                 STACK_CARD_PALETTES.productivity,
                 STACK_CARD_PALETTES.insights,
-                STACK_CARD_PALETTES.upcoming,
               ]}
               labels={[
                 t.todaysChecklist,
+                t.remindersAndEvents,
                 t.monthlyOverview,
                 t.productivityFocus,
                 t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'),
-                t.remindersAndEvents,
               ]}
             >
               {/* Card 0: Today's Checklist (Electric Orange) */}
@@ -637,11 +705,18 @@ const Index = () => {
                 onAddNewTask={() => setIsTaskModalVisible(true)}
                 onAddChecklistItem={() => openChecklistItemModal(null)}
                 onOpenChecklistItem={(id) => openChecklistItemModal(id)}
-                streakScore="1,245"
+                streakScore={streakCount}
                 notesCount="186"
               />
 
-              {/* Card 1: Monthly Overview (Deep Purple) */}
+              {/* Card 1: Upcoming Events & Reminders (Second most important card) */}
+              <UpcomingEventsCard
+                events={upcomingEvents}
+                onOpenEventModal={handleOpenEventModal}
+                onToggleDone={handleToggleEventDone}
+              />
+
+              {/* Card 2: Monthly Overview */}
               <MonthlyOverviewCard
                 monthName={currentMonthName}
                 year={currentYear}
@@ -651,24 +726,17 @@ const Index = () => {
                 onPress={() => router.push('/(tabs)/planner')}
               />
 
-              {/* Card 2: Productivity & Focus Tracker (Neon Lime) */}
+              {/* Card 3: Productivity & Focus Tracker */}
               <ProductivityCard
                 streakDays={streakCount}
                 weeklyRate={weeklyRatePercent}
                 onStartFocus={handleStartFocusTimer}
               />
 
-              {/* Card 3: AI Insights & Wellbeing Card (Sky Blue) */}
+              {/* Card 4: AI Insights & Wellbeing Card */}
               <InsightsCard
                 insights={dailyInsights}
                 onPress={() => router.push('/(tabs)/insights')}
-              />
-
-              {/* Card 4: Upcoming Events (Emerald Green) */}
-              <UpcomingEventsCard
-                events={upcomingEvents}
-                onOpenEventModal={handleOpenEventModal}
-                onToggleDone={handleToggleEventDone}
               />
             </ScrollStack>
 

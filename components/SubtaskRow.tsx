@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Id } from '../convex/_generated/dataModel';
 import { useAuth } from '@/hooks/useAuth';
+import { useOfflineMutation } from '@/hooks/useOfflineMutation';
+import { useOfflineQuery } from '@/hooks/useOfflineQuery';
+import useTheme from '@/hooks/useTheme';
+import { modeColor } from '@/utils/colorUtils';
 import { useTranslation } from '@/utils/i18n';
 import { getServerNow } from '@/utils/offlineStorage';
-import useTheme from '@/hooks/useTheme';
-import { modeColor, textOn } from '@/utils/colorUtils';
-import { useOfflineQuery } from '@/hooks/useOfflineQuery';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../convex/_generated/api';
+import { Id } from '../convex/_generated/dataModel';
 import CircularProgress from './CircularProgress';
 import { InlineTimerPicker } from './InlineTimerPicker';
-import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import UniversalLinkPickerModal, { UniversalLinkSelection } from './UniversalLinkPickerModal';
 
 // Helper to format ms to HH:MM:SS or MM:SS
@@ -38,8 +38,8 @@ const getLuminance = (hex: string) => {
   const c = hex.substring(hex.startsWith('#') ? 1 : 0);
   const rgb = parseInt(c, 16);
   const r = (rgb >> 16) & 0xff;
-  const g = (rgb >>  8) & 0xff;
-  const b = (rgb >>  0) & 0xff;
+  const g = (rgb >> 8) & 0xff;
+  const b = (rgb >> 0) & 0xff;
   return 0.299 * r + 0.587 * g + 0.114 * b;
 };
 
@@ -215,7 +215,7 @@ export const SubtaskRow = ({
       setSubTimeLeft(sub.timerDirection === 'up' ? 0 : (sub.timerDuration || 0));
     }
     return () => { if (interval) clearInterval(interval); };
-    }, [sub.status, sub.timerStartTime, sub.timerDuration, sub.timeLeftAtPause, sub.timerDirection, sub._id, onUpdateStatus]);
+  }, [sub.status, sub.timerStartTime, sub.timerDuration, sub.timeLeftAtPause, sub.timerDirection, sub._id, onUpdateStatus]);
 
 
   const handleSaveEdit = () => {
@@ -290,7 +290,7 @@ export const SubtaskRow = ({
         )}
 
         <View style={[{ flexDirection: 'row', gap: 10 }]}>
-           <TouchableOpacity
+          <TouchableOpacity
             style={{ flex: 1, backgroundColor: sub.status === 'in_progress' ? colors.warning : modeColor('#e5f19d', isDarkMode), paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}
             onPress={handleSaveEdit}
           >

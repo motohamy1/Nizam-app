@@ -17,11 +17,13 @@ import {
   Share,
   TouchableWithoutFeedback,
   StyleSheet,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useTheme from '@/hooks/useTheme';
+import { useKeyboard } from '@/hooks/useKeyboard';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
 import { createProjectsStyles } from '@/assets/styles/projects.styles';
@@ -115,6 +117,8 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
   onAdd: (name: string, icon: string, color: string) => void;
   initialData?: { name: string; icon: string; color: string; id: Id<'projectSubCategories'> };
 }) => {
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(SUB_CATEGORY_ICONS[0]);
   const [color, setColor] = useState(() => projectColorsFor(isDarkScheme(colors))[2]);
@@ -139,8 +143,20 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
         </TouchableWithoutFeedback>
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior="padding">
-            <ScrollView style={{ maxHeight: '90%' }} contentContainerStyle={{ justifyContent: 'flex-end', flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <View style={{ flex: 1, justifyContent: 'flex-end', marginBottom: keyboardHeight }}>
+            <ScrollView
+              style={{
+                maxHeight: isKeyboardVisible 
+                  ? Math.max(280, screenHeight - keyboardHeight - 40)
+                  : '90%',
+              }}
+              contentContainerStyle={{
+                justifyContent: 'flex-end',
+                flexGrow: 1,
+                paddingBottom: isKeyboardVisible ? 100 : 20,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{initialData ? 'Edit Sub-Category' : 'New Sub-Category'}</Text>
@@ -164,7 +180,7 @@ const AddSubCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialD
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onClose}><Text style={styles.modalSecondaryBtnText}>Cancel</Text></TouchableOpacity>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </View>
     </Modal>
@@ -176,6 +192,8 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
   onAdd: (name: string, icon: string, color: string, tag: string) => void;
   initialData?: { name: string; icon: string; color: string; tag?: string; id: Id<'projectCategories'> };
 }) => {
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(CATEGORY_ICONS[0]);
   const [color, setColor] = useState(() => projectColorsFor(isDarkScheme(colors))[0]);
@@ -203,8 +221,20 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
         </TouchableWithoutFeedback>
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior="padding">
-            <ScrollView style={{ maxHeight: '90%' }} contentContainerStyle={{ justifyContent: 'flex-end', flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <View style={{ flex: 1, justifyContent: 'flex-end', marginBottom: keyboardHeight }}>
+            <ScrollView
+              style={{
+                maxHeight: isKeyboardVisible 
+                  ? Math.max(280, screenHeight - keyboardHeight - 40)
+                  : '90%',
+              }}
+              contentContainerStyle={{
+                justifyContent: 'flex-end',
+                flexGrow: 1,
+                paddingBottom: isKeyboardVisible ? 100 : 20,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{initialData ? 'Edit Category' : 'New Category'}</Text>
@@ -230,7 +260,7 @@ const AddCategoryModal = ({ visible, onClose, colors, styles, onAdd, initialData
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onClose}><Text style={styles.modalSecondaryBtnText}>Cancel</Text></TouchableOpacity>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </View>
     </Modal>
@@ -242,6 +272,8 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
   onAdd: (name: string, desc: string, icon: string, color: string) => void;
   initialData?: { name: string; description?: string; icon: string; color: string; id: Id<'projects'> };
 }) => {
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [icon, setIcon] = useState(PROJECT_ICONS[0]);
@@ -269,8 +301,20 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
         </TouchableWithoutFeedback>
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <ScrollView style={{ maxHeight: '90%' }} contentContainerStyle={{ justifyContent: 'flex-end', flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <View style={{ flex: 1, justifyContent: 'flex-end', marginBottom: keyboardHeight }}>
+            <ScrollView
+              style={{
+                maxHeight: isKeyboardVisible 
+                  ? Math.max(280, screenHeight - keyboardHeight - 40)
+                  : '90%',
+              }}
+              contentContainerStyle={{
+                justifyContent: 'flex-end',
+                flexGrow: 1,
+                paddingBottom: isKeyboardVisible ? 100 : 20,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{initialData ? 'Edit Project' : 'New Project'}</Text>
@@ -288,7 +332,7 @@ const AddProjectModal = ({ visible, onClose, colors, styles, onAdd, initialData 
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onClose}><Text style={styles.modalSecondaryBtnText}>Cancel</Text></TouchableOpacity>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </View>
     </Modal>
@@ -299,6 +343,8 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
   visible: boolean; onClose: () => void; colors: any; styles: any;
   onAdd: (type: string, title: string, url?: string, note?: string) => void;
 }) => {
+  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
+  const { height: screenHeight } = useWindowDimensions();
   const [resType, setResType] = useState('file');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -385,8 +431,20 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
         </TouchableWithoutFeedback>
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <ScrollView style={{ maxHeight: '90%' }} contentContainerStyle={{ justifyContent: 'flex-end', flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <View style={{ flex: 1, justifyContent: 'flex-end', marginBottom: keyboardHeight }}>
+            <ScrollView
+              style={{
+                maxHeight: isKeyboardVisible 
+                  ? Math.max(280, screenHeight - keyboardHeight - 40)
+                  : '90%',
+              }}
+              contentContainerStyle={{
+                justifyContent: 'flex-end',
+                flexGrow: 1,
+                paddingBottom: isKeyboardVisible ? 100 : 20,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.modalSheet}>
                 <View style={styles.modalHandle} />
                 <Text style={styles.modalTitle}>Add Resource</Text>
@@ -532,7 +590,7 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </View>
     </Modal>
