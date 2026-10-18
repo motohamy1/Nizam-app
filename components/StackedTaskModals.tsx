@@ -17,9 +17,12 @@ import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
+import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { api } from '@/convex/_generated/api';
 import { getServerNow } from '@/utils/offlineStorage';
+import { LinearGradient } from 'expo-linear-gradient';
 import CircularProgress from './CircularProgress';
+import TaskWaveEffect from './TaskWaveEffect';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -157,6 +160,36 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
     activeTask ? { parentId: activeTask._id } : 'skip'
   );
 
+  // Subtasks toggle in active card (closed as default)
+  const [showSubtasksInCard, setShowSubtasksInCard] = useState(false);
+  const updateTodo = useOfflineMutation(api.todos.updateTodo, 'todos:updateTodo');
+
+  const handleToggleSubtaskInCard = async (sub: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newStatus = sub.status === 'done' ? 'not_started' : 'done';
+    await updateTodo({
+      id: sub._id,
+      status: newStatus,
+    });
+  };
+
+  // Linked Goal and Project/Category for active task
+  const linkedGoal = useOfflineQuery<any>(
+    'yearlyGoals.getGoal',
+    api.yearlyGoals.getGoal,
+    activeTask?.goalId ? { id: activeTask.goalId } : 'skip'
+  );
+  const linkedProject = useOfflineQuery<any>(
+    'projects.getProjectMetadata',
+    api.projects.getProjectMetadata,
+    activeTask?.projectId ? { id: activeTask.projectId } : 'skip'
+  );
+  const linkedCategory = useOfflineQuery<any>(
+    'projects.getCategory',
+    api.projects.getCategory,
+    activeTask?.categoryId ? { id: activeTask.categoryId } : 'skip'
+  );
+
   // Live Timer for active task
   const [timeLeft, setTimeLeft] = useState(activeTask?.timerDuration || 0);
 
@@ -292,7 +325,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
           </View>
         </TouchableOpacity>
 
-        {/* CARD 2: ACTIVE TASK MODAL CARD (Overlapping Foreground Card) */}
+        {/* CARD 2: ACTIVE TASK MODAL CARD (Overlapping Foreground Card with Live Wavy Sea Effect) */}
         <TouchableOpacity
           activeOpacity={0.94}
           onPress={() => {
@@ -301,143 +334,279 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
           }}
           style={[styles.frontCard, styles.frontCardActive]}
         >
-          {/* Drag Handle */}
-          <View style={styles.activeDragHandle} />
+          {/* Base gradient background matching the electric orange theme */}
+          <LinearGradient
+            colors={['#ff6720', '#ff4200']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
 
-          {/* Header Row */}
-          <View style={[styles.activeHeaderRow, isArabic && styles.rowRtl]}>
-            <View style={styles.activeTaskBadge}>
-              <Text style={styles.activeTaskBadgeText}>
-                {isArabic ? 'المهمة النشطة' : 'Active Task'}
-              </Text>
-            </View>
-            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
-              <View style={styles.activeStatusPill}>
-                <Text style={styles.activeStatusPillText}>
-                  {activeTask
-                    ? activeTask.status === 'in_progress'
-                      ? `${isArabic ? 'قيد التشغيل' : 'Running'} • ${activeTaskProgress}%`
-                      : activeTask.status === 'paused'
-                      ? isArabic
-                        ? 'متوقف مؤقتاً'
-                        : 'Paused'
-                      : isArabic
-                      ? 'جاهز'
-                      : 'Ready'
-                    : isArabic
-                    ? 'لا يوجد مهام'
-                    : 'Idle'}
+          {/* Live Wavy Sea Effect: angled flow when running, waiting pulse when paused */}
+          <TaskWaveEffect status={activeTask ? activeTask.status : 'idle'} />
+
+          {/* Interactive Card Content Container */}
+          <View style={{ zIndex: 2 }}>
+            {/* Drag Handle */}
+            <View style={styles.activeDragHandle} />
+
+            {/* Header Row: Active Task Badge + Status Pill + Expand Mini Button */}
+            <View style={[styles.activeHeaderRow, isArabic && styles.rowRtl]}>
+              <View style={styles.activeTaskBadge}>
+                <Text style={styles.activeTaskBadgeText}>
+                  {isArabic ? 'المهمة النشطة' : 'Active Task'}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsActiveTaskModalOpen(true);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.expandMiniBtnActive}
-              >
-                <Ionicons name="expand-outline" size={13} color="#000000" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+                <View style={styles.activeStatusPill}>
+                  <Text style={styles.activeStatusPillText}>
+                    {activeTask
+                      ? activeTask.status === 'in_progress'
+                        ? `${isArabic ? 'قيد التشغيل' : 'Running'} • ${activeTaskProgress}%`
+                        : activeTask.status === 'paused'
+                        ? isArabic
+                          ? 'متوقف مؤقتاً'
+                          : 'Paused'
+                        : isArabic
+                        ? 'جاهز'
+                        : 'Ready'
+                      : isArabic
+                      ? 'لا يوجد مهام'
+                      : 'Idle'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsActiveTaskModalOpen(true);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.expandMiniBtnActive}
+                >
+                  <Ionicons name="expand-outline" size={13} color="#000000" />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {/* Task Title & Description */}
-          <View style={styles.activeBody}>
-            <Text
-              numberOfLines={2}
-              style={[styles.activeTaskTitle, isArabic && { textAlign: 'right' }]}
-            >
-              {activeTask
-                ? activeTask.text
-                : isArabic
-                ? 'لا توجد مهمة نشطة حالياً'
-                : 'No active task selected'}
-            </Text>
-            <Text
-              numberOfLines={2}
-              style={[styles.activeTaskDesc, isArabic && { textAlign: 'right' }]}
-            >
-              {activeTask?.description
-                ? activeTask.description
-                : activeTask
-                ? isArabic
-                  ? 'اضغط لإدارة وتتبع تقدم المهمة ومؤقت التركيز'
-                  : 'Tap to view live progress, subtasks and focus timer'
-                : isArabic
-                ? 'اضغط على مهام اليوم بالأعلى لبدء العمل على مهمة'
-                : "Tap \"Today's Tasks\" above to select and run a task"}
-            </Text>
-          </View>
-
-          {/* Progress Bar */}
-          <View style={styles.activeProgressBarContainer}>
-            <View
-              style={[
-                styles.activeProgressBarFill,
-                { width: `${Math.max(5, activeTaskProgress)}%` },
-              ]}
-            />
-          </View>
-
-          {/* Actions & Remaining Time Row */}
-          <View style={[styles.activeFooterRow, isArabic && styles.rowRtl]}>
-            <View style={[styles.activeActionsGroup, isArabic && styles.rowRtl]}>
-              {/* Complete Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (!activeTask) return;
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  handleCompleteTaskAction(activeTask);
-                }}
-                style={styles.activeCompleteBtn}
-              >
-                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                <Text style={styles.activeCompleteBtnText}>
-                  {isArabic ? 'إكمال' : 'Complete'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Pause / Resume Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (!activeTask) return;
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  if (activeTask.status === 'in_progress') {
-                    handlePauseTaskAction(activeTask);
-                  } else {
-                    handleRunTaskAction(activeTask);
-                  }
-                }}
-                style={styles.activePauseBtn}
-              >
-                <Text style={styles.activePauseBtnText}>
-                  {activeTask?.status === 'in_progress'
-                    ? isArabic
-                      ? 'إيقاف'
-                      : 'Pause'
+            {/* Task Title, Description, Goal/Project Labels, & Circular Progress Timer Row */}
+            <View style={[styles.activeBodyRow, isArabic && styles.rowRtl]}>
+              <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { paddingLeft: 10 } : { paddingRight: 10 }]}>
+                <Text
+                  numberOfLines={2}
+                  style={[styles.activeTaskTitle, isArabic && { textAlign: 'right' }]}
+                >
+                  {activeTask
+                    ? activeTask.text
                     : isArabic
-                    ? 'تشغيل'
-                    : 'Resume'}
+                    ? 'لا توجد مهمة نشطة حالياً'
+                    : 'No active task selected'}
                 </Text>
-              </TouchableOpacity>
+
+                {/* Only display description if user provided one — useless placeholder removed */}
+                {activeTask?.description ? (
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.activeTaskDesc, isArabic && { textAlign: 'right' }]}
+                  >
+                    {activeTask.description}
+                  </Text>
+                ) : null}
+
+                {/* Linked Goal or Project/Space Labels */}
+                {(linkedGoal || linkedProject || linkedCategory) && (
+                  <View style={[styles.activeLabelsRow, isArabic && styles.rowRtl]}>
+                    {linkedGoal && (
+                      <View style={[styles.activeLabelPill, isArabic && styles.rowRtl]}>
+                        <Ionicons name="flag" size={10} color="#000000" />
+                        <Text numberOfLines={1} style={styles.activeLabelText}>
+                          {linkedGoal.title || linkedGoal.text}
+                        </Text>
+                      </View>
+                    )}
+                    {(linkedProject || linkedCategory) && (
+                      <View style={[styles.activeLabelPill, isArabic && styles.rowRtl]}>
+                        <Ionicons name="folder-outline" size={10} color="#000000" />
+                        <Text numberOfLines={1} style={styles.activeLabelText}>
+                          {linkedProject?.name || linkedCategory?.name}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Rounded Progress Timer (Interactive Tap to Run/Pause) */}
+              {activeTask && (
+                <TouchableOpacity
+                  activeOpacity={0.82}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (activeTask.status === 'in_progress') {
+                      handlePauseTaskAction(activeTask);
+                    } else {
+                      handleRunTaskAction(activeTask);
+                    }
+                  }}
+                  style={styles.activeCircularTimerWrapper}
+                >
+                  <CircularProgress
+                    size={52}
+                    strokeWidth={4.5}
+                    progress={activeTaskProgress}
+                    color="#000000"
+                    unfilledColor="rgba(0, 0, 0, 0.16)"
+                  >
+                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={styles.circularTimeNumber} numberOfLines={1}>
+                        {activeTask.timerDuration
+                          ? formatDuration(timeLeft)
+                          : `${activeTaskProgress}%`}
+                      </Text>
+                      <Ionicons
+                        name={activeTask.status === 'in_progress' ? 'pause' : 'play'}
+                        size={9}
+                        color="rgba(0, 0, 0, 0.85)"
+                        style={{ marginTop: 1 }}
+                      />
+                    </View>
+                  </CircularProgress>
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Time Estimate / Countdown */}
-            <Text style={styles.activeTimeRemainingText}>
-              {activeTask?.timerDuration
-                ? formatDuration(timeLeft)
-                : activeTask
-                ? isArabic
-                  ? 'المهمة جارية'
-                  : 'In Progress'
-                : ''}
-            </Text>
+            {/* Current Horizontal Progression Bar */}
+            <View style={styles.activeProgressBarContainer}>
+              <View
+                style={[
+                  styles.activeProgressBarFill,
+                  { width: `${Math.max(5, activeTaskProgress)}%` },
+                ]}
+              />
+            </View>
+
+            {/* Subtasks Toggle Button (Shown if task has subtasks) */}
+            {activeSubtasks && activeSubtasks.length > 0 && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowSubtasksInCard((prev) => !prev);
+                }}
+                style={[styles.activeSubtasksToggleBtn, isArabic && styles.rowRtl]}
+              >
+                <View style={[styles.activeSubtasksToggleLeft, isArabic && styles.rowRtl]}>
+                  <Ionicons name="list-outline" size={13} color="#000000" />
+                  <Text style={styles.activeSubtasksToggleText}>
+                    {isArabic ? 'المهام الفرعية' : 'Subtasks'}{' '}
+                    ({activeSubtasks.filter((s: any) => s.status === 'done').length}/{activeSubtasks.length})
+                  </Text>
+                </View>
+                <Ionicons
+                  name={showSubtasksInCard ? 'chevron-up' : 'chevron-down'}
+                  size={13}
+                  color="#000000"
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Expandable Subtasks Checklist (Closed as default) */}
+            {showSubtasksInCard && activeSubtasks && activeSubtasks.length > 0 && (
+              <View style={styles.activeSubtasksList}>
+                {activeSubtasks.map((sub: any) => {
+                  const isDone = sub.status === 'done';
+                  return (
+                    <TouchableOpacity
+                      key={sub._id}
+                      activeOpacity={0.75}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleToggleSubtaskInCard(sub);
+                      }}
+                      style={[styles.activeSubtaskItem, isArabic && styles.rowRtl]}
+                    >
+                      <Ionicons
+                        name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={17}
+                        color="#000000"
+                      />
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.activeSubtaskItemText,
+                          isDone && styles.activeSubtaskItemTextDone,
+                          isArabic && { textAlign: 'right' },
+                        ]}
+                      >
+                        {sub.text}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Actions & Remaining Time Row */}
+            <View style={[styles.activeFooterRow, isArabic && styles.rowRtl]}>
+              <View style={[styles.activeActionsGroup, isArabic && styles.rowRtl]}>
+                {/* Complete Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (!activeTask) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    handleCompleteTaskAction(activeTask);
+                  }}
+                  style={styles.activeCompleteBtn}
+                >
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  <Text style={styles.activeCompleteBtnText}>
+                    {isArabic ? 'إكمال' : 'Complete'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Pause / Resume Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (!activeTask) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (activeTask.status === 'in_progress') {
+                      handlePauseTaskAction(activeTask);
+                    } else {
+                      handleRunTaskAction(activeTask);
+                    }
+                  }}
+                  style={styles.activePauseBtn}
+                >
+                  <Text style={styles.activePauseBtnText}>
+                    {activeTask?.status === 'in_progress'
+                      ? isArabic
+                        ? 'إيقاف'
+                        : 'Pause'
+                      : isArabic
+                      ? 'تشغيل'
+                      : 'Resume'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Time Estimate / Countdown */}
+              <Text style={styles.activeTimeRemainingText}>
+                {activeTask?.timerDuration
+                  ? formatDuration(timeLeft)
+                  : activeTask
+                  ? isArabic
+                    ? 'المهمة جارية'
+                    : 'In Progress'
+                  : ''}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -905,7 +1074,7 @@ const styles = StyleSheet.create({
   },
   backCardTasks: {
     backgroundColor: '#0c0c0e',
-    borderColor: 'rgba(255, 157, 132, 0.45)',
+    borderColor: '#ff5c16',
     borderWidth: 1.5,
   },
   backCardActive: {
@@ -1028,10 +1197,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff5c16',
     borderColor: 'rgba(0, 0, 0, 0.12)',
     borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
   },
   frontCardTasks: {
     backgroundColor: '#0c0c0e',
-    borderColor: 'rgba(255, 157, 132, 0.6)',
+    borderColor: '#ff5c16',
     borderWidth: 1.5,
   },
 
@@ -1296,6 +1467,93 @@ const styles = StyleSheet.create({
   },
   activeBody: {
     marginBottom: 10,
+  },
+  activeBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
+  activeCircularTimerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+  },
+  circularTimeNumber: {
+    fontSize: 9.5,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: -0.3,
+  },
+  activeLabelsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 5,
+  },
+  activeLabelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 10,
+    maxWidth: 140,
+  },
+  activeLabelText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  activeSubtasksToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0, 0, 0, 0.10)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  activeSubtasksToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activeSubtasksToggleText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  activeSubtasksList: {
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 14,
+    padding: 8,
+    gap: 5,
+    marginBottom: 8,
+  },
+  activeSubtaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.30)',
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  activeSubtaskItemText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#000000',
+    flex: 1,
+  },
+  activeSubtaskItemTextDone: {
+    textDecorationLine: 'line-through',
+    opacity: 0.55,
   },
   activeTaskTitle: {
     fontSize: 17,

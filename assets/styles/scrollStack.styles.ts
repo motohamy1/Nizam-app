@@ -72,24 +72,24 @@ export const createMonthCardFrame = (
   _colors?: ColorScheme
 ) => {
   // All homepage non-checklist cards share the sleek dark obsidian background (#0c0c0e)
-  // and peach frame ('rgba(255, 157, 132, 0.45)') matching the Today's Tasks card model.
+  // and vibrant electric orange border (#ff5c16) matching the main accent color.
   return {
     cardBg: '#0c0c0e',
     gradTop: '#141418',
     gradBottom: '#0c0c0e',
-    cardBorder: 'rgba(255, 157, 132, 0.45)',
+    cardBorder: '#ff5c16',
     text: '#FFFFFF',
     textMuted: 'rgba(255, 255, 255, 0.65)',
-    badgeBg: 'rgba(255, 176, 156, 0.16)',
-    badgeFg: '#ffb09c',
-    pillBg: 'rgba(255, 176, 156, 0.12)',
-    pillFg: '#ffb09c',
+    badgeBg: 'rgba(255, 92, 22, 0.16)',
+    badgeFg: '#ff5c16',
+    pillBg: 'rgba(255, 92, 22, 0.12)',
+    pillFg: '#ff5c16',
     rowBg: 'rgba(255, 255, 255, 0.05)',
-    rowBorder: 'rgba(255, 157, 132, 0.20)',
-    accent: '#ff9d84',
-    footerBorder: 'rgba(255, 157, 132, 0.20)',
+    rowBorder: 'rgba(255, 92, 22, 0.22)',
+    accent: '#ff5c16',
+    footerBorder: 'rgba(255, 92, 22, 0.22)',
     footerText: 'rgba(255, 255, 255, 0.85)',
-    ctaBg: '#ffb09c',
+    ctaBg: '#ff5c16',
     ctaFg: '#000000',
   };
 };
