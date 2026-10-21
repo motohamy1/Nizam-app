@@ -26,7 +26,7 @@ const YearSection = () => {
   const isGoals = params.kind !== 'achievements';
   const year = parseInt(params.year ?? String(new Date().getFullYear()), 10);
   const monthIdx = new Date().getMonth();
-  const palette = isGoals ? getMonthPalette(monthIdx) : { ...getMonthPalette(monthIdx), accent: '#D97706', bg: isDarkMode ? '#2A2113' : '#FDF3DC', ink: isDarkMode ? '#F5EAD6' : '#451A03' };
+  const palette = isGoals ? getMonthPalette(monthIdx) : { ...getMonthPalette(monthIdx), accent: '#e63e00', bg: isDarkMode ? '#2A2113' : '#FDF3DC', ink: isDarkMode ? '#F5EAD6' : '#451A03' };
 
   const title = isGoals
     ? (isArabic ? 'أهداف ومهام العام' : 'Goals & To-dos')

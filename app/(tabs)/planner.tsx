@@ -598,8 +598,8 @@ const Planner = () => {
         {(() => {
           const py = yearPalettes[Math.max(0, years.indexOf(activeYear))] ?? getMonthPalette(0);
           const ach = isDarkMode
-            ? { bg: '#D97706', ink: '#FFFFFF', accent: '#FDE047', shadow: '#B45309' }
-            : { bg: '#F59E0B', ink: '#FFFFFF', accent: '#FEF08A', shadow: '#D97706' };
+            ? { bg: '#e63e00', ink: '#FFFFFF', accent: '#FFFFFF', shadow: '#e63e00' }
+            : { bg: '#e63e00', ink: '#FFFFFF', accent: '#FFFFFF', shadow: '#e63e00' };
           const cardBase: any = {
             flex: 1,
             height: 140,
@@ -1386,8 +1386,8 @@ const Planner = () => {
                 {/* Tile 3: Achievements & Wins */}
                 <View style={styles.monthDetailedMetricBox}>
                   <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
-                    <Ionicons name="trophy" size={18} color="#F59E0B" />
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>
+                    <Ionicons name="trophy" size={18} color="#e63e00" />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#e63e00' }}>
                       {completedAchievements.length > 0 ? `+${completedAchievements.length}` : '—'}
                     </Text>
                   </View>
@@ -1501,14 +1501,14 @@ const Planner = () => {
                 {completedAchievements.length > 0 && (
                   <View style={[
                     styles.monthSummaryItem, 
-                    { backgroundColor: '#F59E0B15', borderColor: '#F59E0B30' },
+                    { backgroundColor: '#e63e0015', borderColor: '#e63e0030' },
                     isArabic && { flexDirection: 'row-reverse' }
                   ]}>
-                    <Ionicons name="trophy" size={16} color="#F59E0B" />
-                    <Text style={[styles.monthSummaryItemText, { color: '#F59E0B' }, isArabic && { textAlign: 'right' }]}>
+                    <Ionicons name="trophy" size={16} color="#e63e00" />
+                    <Text style={[styles.monthSummaryItemText, { color: '#e63e00' }, isArabic && { textAlign: 'right' }]}>
                       {isArabic ? 'إنجازات محققة' : 'Achievements Reached'}
                     </Text>
-                    <Text style={[styles.monthSummaryItemCount, { color: '#F59E0B' }]}>
+                    <Text style={[styles.monthSummaryItemCount, { color: '#e63e00' }]}>
                       {completedAchievements.length}
                     </Text>
                   </View>
