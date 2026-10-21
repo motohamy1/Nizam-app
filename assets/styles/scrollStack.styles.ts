@@ -179,13 +179,20 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       borderWidth: 1,
       paddingHorizontal: 14,
       paddingVertical: 14,
-      height: 270,
+      // The card fills the box it is placed in, so the same card can sit in
+      // the home page stack (a fixed 270pt box) and keep its own size
+      // anywhere else.
+      height: '100%',
+      minHeight: 270,
       justifyContent: 'space-between',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: isDarkMode ? 0.45 : 0.25,
-      shadowRadius: 16,
-      elevation: 8,
+      // Tight, directional shadow tinted to the card's own colour instead of a
+      // wide black halo: in a vertical stack a fat symmetric shadow turns the
+      // whole column into a pile of floating blobs.
+      shadowColor: '#ff5c16',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDarkMode ? 0.22 : 0.16,
+      shadowRadius: 10,
+      elevation: 6,
     },
     cardHeader: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -318,52 +325,117 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       fontWeight: '700',
     },
 
-    // Card 2: Upcoming Events Specific Styles
+    // Card 2: Upcoming Events & Reminders Specific Styles
     eventScrollView: {
       flex: 1,
       marginVertical: 4,
     },
     eventScrollContent: {
-      gap: 6,
+      gap: 8,
       paddingVertical: 2,
     },
     eventRow: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    eventRowHeader: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      gap: 10,
+      justifyContent: 'space-between',
+      marginBottom: 6,
+      gap: 8,
+    },
+    eventRowHeaderLeft: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    eventRowHeaderRight: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
     },
     eventTimeChip: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 7,
       flexShrink: 0,
     },
     eventTimeText: {
       fontSize: 11,
       fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    eventTypeBadge: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 2.5,
+      borderRadius: 6,
+      flexShrink: 0,
+    },
+    eventTypeBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    eventCheckCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    eventBody: {
+      width: '100%',
+      gap: 4,
     },
     eventInfo: {
       flex: 1,
       gap: 2,
     },
     eventTitle: {
-      fontSize: 13,
-      fontWeight: '600',
+      fontSize: 13.5,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+      lineHeight: 18,
+      textAlign: isArabic ? 'right' : 'left',
     },
     eventMeta: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
-      marginTop: 1,
+      marginTop: 2,
     },
     eventMetaText: {
+      fontSize: 11,
+      fontWeight: '500',
+      lineHeight: 15,
+      textAlign: isArabic ? 'right' : 'left',
+    },
+    eventFooterMeta: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 4,
+    },
+    eventMetaTag: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+      flexShrink: 1,
+    },
+    eventMetaTagText: {
       fontSize: 11,
       fontWeight: '500',
     },

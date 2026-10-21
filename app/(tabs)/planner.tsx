@@ -2110,6 +2110,7 @@ const Planner = () => {
 
         {/* ─── Modals ─── */}
         <TaskDetailModal
+          key={selectedTaskForModal ? `planner-task-${selectedTaskForModal}` : 'planner-task-closed'}
           visible={!!selectedTaskForModal}
           onClose={() => setSelectedTaskForModal(null)}
           todoId={selectedTaskForModal}

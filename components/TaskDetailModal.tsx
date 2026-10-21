@@ -196,6 +196,18 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
       setHashtags([]);
       setNewHashtag("");
       setDraftLink(projectId ? { type: 'project', projectId } : null);
+    } else if (visible && todoId) {
+      setDraftLink(null);
+      setPendingSubtasks([]);
+      setEditingPendingIdx(null);
+      setPendingLinkIdx(null);
+      setTimerEditPendingIdx(null);
+      setNewSubLink(null);
+    } else if (!visible) {
+      setDraftLink(null);
+      setInitializedForId(null);
+      setTaskStack([]);
+      isClosingRef.current = false;
     }
   }, [visible, todoId, projectId]);
 
@@ -274,11 +286,19 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
     setTimerEditPendingIdx(null);
     setNewSubLink(null);
     // Explicitly reset draft state for next time
+    setDraftLink(null);
     setEditText("");
     setDescription("");
     setPriority("Medium");
     setHours("0");
     setMinutes("0");
+    setDueDate(undefined);
+    setStatus("not_started");
+    setNewSubtaskText("");
+    setIsEditingTimer(false);
+    setTimerDirection('down');
+    setHashtags([]);
+    setNewHashtag("");
     onClose();
   };
 
@@ -622,8 +642,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
   const linkedItem = project || linkedSubCategory || linkedCategory;
   // Persisted project colors are brand pastels; map to light-mode inks so the
   // accent chip, timer and links stay visible on the light sheet.
-  const projectColor = modeColor(linkedItem?.color || '#e5f19d', isDarkMode);
+  // Home page signature palette: Electric Orange & Neon Lime
+  const HOME_ORANGE = '#FF6720';
+  const HOME_LIME = isDarkMode ? '#C8F135' : '#D4FF32';
+
+  // Persisted project colors are brand pastels; map to light-mode inks so the
+  // accent chip, timer and links stay visible on the light sheet.
+  // Defaults to our home page Electric Orange (#FF6720) instead of the old pale lime.
+  const projectColor = modeColor(linkedItem?.color || HOME_ORANGE, isDarkMode);
   const projectTextColor = isLightColor(projectColor) ? '#101116' : '#FFFFFF';
+  const doneButtonBg = linkedItem?.color ? projectColor : HOME_LIME;
+  const doneButtonTextColor = isLightColor(doneButtonBg) ? '#0D1405' : '#FFFFFF';
   const linkedItemName = project?.name || linkedSubCategory?.name || linkedCategory?.name;
 
   if (!visible) return null;
@@ -1192,7 +1221,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => {
                         if (!currentTodoId) {
-                          setDraftLink(prev => ({ ...prev, categoryId: undefined, subCategoryId: undefined, projectId: undefined }));
+                          setDraftLink(prev => {
+                            if (!prev) return null;
+                            const next = { ...prev, categoryId: undefined, subCategoryId: undefined, projectId: undefined };
+                            return next.goalId ? next : null;
+                          });
                         } else {
                           linkTask({ id: currentTodoId, categoryId: undefined, subCategoryId: undefined, projectId: undefined, goalId: todo?.goalId });
                         }
@@ -1234,7 +1267,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => {
                         if (!currentTodoId) {
-                          setDraftLink(prev => ({ ...prev, goalId: undefined }));
+                          setDraftLink(prev => {
+                            if (!prev) return null;
+                            const next = { ...prev, goalId: undefined };
+                            return (next.categoryId || next.subCategoryId || next.projectId) ? next : null;
+                          });
                         } else {
                           linkTask({ id: currentTodoId, goalId: undefined, categoryId: todo?.categoryId, subCategoryId: todo?.subCategoryId, projectId: todo?.projectId });
                         }
@@ -1345,6 +1382,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                       onUpdateText={handleUpdateSubText}
                       onUpdateStatus={(id, status) => updateStatus({ id, status })}
                       onSelect={(id) => openSubtaskDetail(id)}
+                      accentColor={projectColor}
                     />
                   ))}
 
@@ -1475,8 +1513,22 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
 
           {/* Bottom Action */}
           <View style={[styles.footer, { borderTopColor: colors.border + '40', backgroundColor: colors.bg }]}>
-            <TouchableOpacity style={[styles.doneButton, { backgroundColor: projectColor }]} onPress={handleClose}>
-              <Text style={[styles.doneButtonText, { color: projectTextColor }]}>{isArabic ? "تم" : "Done"}</Text>
+            <TouchableOpacity 
+              style={[
+                styles.doneButton, 
+                { 
+                  backgroundColor: doneButtonBg,
+                  shadowColor: doneButtonBg,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDarkMode ? 0.35 : 0.25,
+                  shadowRadius: 10,
+                  elevation: 4,
+                }
+              ]} 
+              onPress={handleClose}
+              activeOpacity={0.88}
+            >
+              <Text style={[styles.doneButtonText, { color: doneButtonTextColor, fontWeight: '800' }]}>{isArabic ? "تم" : "Done"}</Text>
             </TouchableOpacity>
           </View>
 

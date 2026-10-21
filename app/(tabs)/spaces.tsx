@@ -1415,6 +1415,7 @@ const CategoryDetailView = ({
       />
 
       <TaskDetailModal
+        key={selectedTaskForDetail ? `spaces-task-${selectedTaskForDetail}` : 'spaces-task-closed'}
         visible={!!selectedTaskForDetail}
         onClose={() => setSelectedTaskForDetail(null)}
         todoId={selectedTaskForDetail}

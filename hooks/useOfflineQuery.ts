@@ -16,23 +16,54 @@ const singleResultQueryKeys = [
 const isEmptySingleResultCache = (queryKey: string, value: any) =>
   singleResultQueryKeys.includes(queryKey) && Array.isArray(value) && value.length === 0;
 
-// Last JSON we persisted per cache key. On flaky/slow networks the WebSocket
-// re-delivers unchanged results (and each reconnect resends snapshots);
-// re-serializing + rewriting large task lists on every update caused visible
-// tab-switch jank. Skip the write when the payload is identical.
+// Last JSON we persisted per cache key.
 const lastPersistedJsonByKey: Record<string, string> = {};
 
-// Defensive read of the module-shared memory cache. During a hot-reload the
-// offlineStorage module can be re-evaluated while a mounted screen still holds
-// the old module identity; if that intermediate state is ever broken, reading
-// the binding would throw and red-screen the app — degrade to "no cache"
-// instead (the live Convex subscription still fills the screen).
+// Defensive read of the module-shared memory cache.
 const readMemoryCache = (key: string): any => {
   try {
     return memoryCache?.[key];
   } catch (e) {
     return undefined;
   }
+};
+
+const findInListCaches = (prefix: string, id: string): any => {
+  try {
+    for (const k of Object.keys(memoryCache)) {
+      if (k.startsWith(prefix)) {
+        const list = memoryCache[k];
+        if (Array.isArray(list)) {
+          const found = list.find((item: any) => item?._id === id);
+          if (found) return found;
+        }
+      }
+    }
+  } catch (e) {}
+  return undefined;
+};
+
+const readCachedValue = (queryKey: string, args: any, cacheKey: string): any => {
+  const memVal = readMemoryCache(cacheKey);
+  if (memVal !== undefined && !isEmptySingleResultCache(queryKey, memVal)) {
+    return memVal;
+  }
+  // Fast instantaneous fallback lookup from list collections
+  if (queryKey === 'todos.getById' && args?.id) {
+    const found = findInListCaches('CACHE_todos', args.id);
+    if (found) {
+      memoryCache[cacheKey] = found;
+      return found;
+    }
+  }
+  if (queryKey === 'projects.getProjectMetadata' && args?.id) {
+    const found = findInListCaches('CACHE_projects.getProjects', args.id);
+    if (found) {
+      memoryCache[cacheKey] = found;
+      return found;
+    }
+  }
+  return undefined;
 };
 
 // Only client-created temp docs are "offline ids". Real Convex ids must never
@@ -100,14 +131,15 @@ function withPendingState(cacheKey: string, data: any): any {
 }
 
 export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: any): T | undefined {
-  const convexArgs = (args === 'skip' || hasOfflineId(args)) ? 'skip' : args;
+  const isSkipped = args === 'skip';
+  const convexArgs = (isSkipped || hasOfflineId(args)) ? 'skip' : args;
   const convexData = useQuery(queryFn, convexArgs);
   const cacheKey = getCacheKey(queryKey, args);
 
   // Synchronously initialize with in-memory cache if available
   const [offlineData, setOfflineData] = useState<any>(() => {
-    const memVal = readMemoryCache(cacheKey);
-    return isEmptySingleResultCache(queryKey, memVal) ? undefined : memVal;
+    if (isSkipped) return undefined;
+    return readCachedValue(queryKey, args, cacheKey);
   });
 
   const [isOffline, setIsOffline] = useState(false);
@@ -121,8 +153,12 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
 
   // Sync state with in-memory or persisted cache whenever cacheKey changes
   const refreshFromCache = useCallback(() => {
-    const memVal = readMemoryCache(cacheKey);
-    if (memVal !== undefined && !isEmptySingleResultCache(queryKey, memVal)) {
+    if (isSkipped) {
+      setOfflineData(undefined);
+      return;
+    }
+    const memVal = readCachedValue(queryKey, args, cacheKey);
+    if (memVal !== undefined) {
       setOfflineData(memVal);
       return;
     }
@@ -142,7 +178,7 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
         }
       })
       .catch(() => {});
-  }, [cacheKey, queryKey]);
+  }, [cacheKey, queryKey, args, isSkipped]);
 
   // Initial and cacheKey change refresh
   useEffect(() => {
@@ -151,20 +187,19 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
 
   // Subscribe to offlineStorage events (fires on any optimistic update or cache change)
   useEffect(() => {
+    if (isSkipped) return;
     const unsub = subscribeToCache(() => {
-      const memVal = readMemoryCache(cacheKey);
+      const memVal = readCachedValue(queryKey, args, cacheKey);
       if (memVal !== undefined) {
         setOfflineData(memVal);
       }
     });
     return unsub;
-  }, [cacheKey]);
+  }, [cacheKey, isSkipped, queryKey, args]);
 
-  // When live Convex server data arrives, update cache & persistence. The
-  // render-merged `withPendingState` below keeps un-acknowledged optimistic
-  // state visible, so this snapshot replacement is no longer destructive.
+  // When live Convex server data arrives, update cache & persistence.
   useEffect(() => {
-    if (convexData !== undefined) {
+    if (convexData !== undefined && !isSkipped) {
       memoryCache[cacheKey] = convexData;
       try {
         const json = JSON.stringify(convexData);
@@ -173,25 +208,27 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
           AsyncStorage.setItem(cacheKey, json).catch(() => {});
         }
       } catch (e) {
-        // non-serializable payload — persist best-effort
         AsyncStorage.setItem(cacheKey, JSON.stringify(convexData)).catch(() => {});
       }
       setOfflineData(convexData);
     }
-  }, [convexData, cacheKey]);
+  }, [convexData, cacheKey, isSkipped]);
 
-  // If offline or if live Convex data hasn't arrived yet (e.g. slow connection), serve cached data instantly
-  const base = isOffline
-    ? offlineData !== undefined
-      ? offlineData
-      : args !== 'skip' && !singleResultQueryKeys.includes(queryKey)
-        ? []
-        : offlineData
-    : convexData !== undefined
-      ? convexData
-      : offlineData;
+  const base = isSkipped
+    ? undefined
+    : isOffline
+      ? offlineData !== undefined
+        ? offlineData
+        : !singleResultQueryKeys.includes(queryKey)
+          ? []
+          : offlineData
+      : convexData !== undefined
+        ? convexData
+        : offlineData;
 
-  // Overlay pending optimistic changes and locally-created docs on every
-  // render; the raw server/cache snapshot above stays untouched.
-  return useMemo(() => withPendingState(cacheKey, base) as T | undefined, [base, cacheKey]);
+  // Overlay pending optimistic changes and locally-created docs on every render
+  return useMemo(() => {
+    if (isSkipped) return undefined;
+    return withPendingState(cacheKey, base) as T | undefined;
+  }, [base, cacheKey, isSkipped]);
 }

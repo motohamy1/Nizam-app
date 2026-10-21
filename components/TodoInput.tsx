@@ -153,7 +153,8 @@ const TodoInput: React.FC<TodoInputProps> = ({ initialDate, projectId, onFocus }
         </TouchableOpacity>
 
         <TaskDetailModal
-          visible={isDetailModalVisible}
+        key={isDetailModalVisible ? `todo-input-detail-${lastCreatedId || 'new'}` : 'todo-input-detail-closed'}
+        visible={isDetailModalVisible}
           onClose={() => {
             setIsDetailModalVisible(false);
             setLastCreatedId(null);

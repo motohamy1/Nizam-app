@@ -6,6 +6,7 @@ interface HomeStatCardsProps {
   totalTasks: number;
   doneTasks: number;
   notDoneTasks: number;
+  toDoTasks?: number;
   isArabic?: boolean;
   onPressTotal?: () => void;
   onPressDone?: () => void;
@@ -16,6 +17,7 @@ export const HomeStatCards: React.FC<HomeStatCardsProps> = ({
   totalTasks,
   doneTasks,
   notDoneTasks,
+  toDoTasks,
   isArabic = false,
   onPressTotal,
   onPressDone,
@@ -28,35 +30,37 @@ export const HomeStatCards: React.FC<HomeStatCardsProps> = ({
   const labelColor = isDarkMode ? '#d4d4d8' : colors.textMuted;
   const valColor = isDarkMode ? '#ffffff' : colors.text;
 
+  const displayToDo = toDoTasks !== undefined ? toDoTasks : totalTasks;
+
   return (
     <View style={[styles.container, isArabic && styles.containerRtl]}>
-      {/* 1. Total Tasks Today */}
+      {/* 1. To Do */}
       <TouchableOpacity
         style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}
         activeOpacity={onPressTotal ? 0.75 : 1}
         onPress={onPressTotal}
       >
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: labelColor }]}>
-          {isArabic ? 'إجمالي مهام اليوم' : 'Total Tasks for Today is'}
+        <Text numberOfLines={1} style={[styles.cardTitle, { color: labelColor }]}>
+          {isArabic ? 'للقيام بها' : 'To Do'}
         </Text>
-        <View style={styles.valueRow}>
+        <View style={[styles.valueRow, isArabic && styles.valueRowRtl]}>
           <Text style={[styles.cardValue, { color: valColor }]}>
-            {totalTasks.toLocaleString(isArabic ? 'ar-EG' : 'en-US')}
+            {displayToDo.toLocaleString(isArabic ? 'ar-EG' : 'en-US')}
           </Text>
-          <Text style={styles.emoji}>🔥</Text>
+          <Text style={styles.emoji}>⏳</Text>
         </View>
       </TouchableOpacity>
 
-      {/* 2. Tasks Done Today */}
+      {/* 2. Done */}
       <TouchableOpacity
         style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}
         activeOpacity={onPressDone ? 0.75 : 1}
         onPress={onPressDone}
       >
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: labelColor }]}>
-          {isArabic ? 'المهام المكتملة اليوم' : 'Total Tasks Done Today is'}
+        <Text numberOfLines={1} style={[styles.cardTitle, { color: labelColor }]}>
+          {isArabic ? 'مكتمل' : 'Done'}
         </Text>
-        <View style={styles.valueRow}>
+        <View style={[styles.valueRow, isArabic && styles.valueRowRtl]}>
           <Text style={[styles.cardValue, { color: valColor }]}>
             {doneTasks.toLocaleString(isArabic ? 'ar-EG' : 'en-US')}
           </Text>
@@ -64,20 +68,20 @@ export const HomeStatCards: React.FC<HomeStatCardsProps> = ({
         </View>
       </TouchableOpacity>
 
-      {/* 3. Tasks Not Done */}
+      {/* 3. Not Done */}
       <TouchableOpacity
         style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}
         activeOpacity={onPressNotDone ? 0.75 : 1}
         onPress={onPressNotDone}
       >
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: labelColor }]}>
-          {isArabic ? 'المهام غير المكتملة' : 'Total Tasks Not Done is'}
+        <Text numberOfLines={1} style={[styles.cardTitle, { color: labelColor }]}>
+          {isArabic ? 'غير مكتمل' : 'Not Done'}
         </Text>
-        <View style={styles.valueRow}>
+        <View style={[styles.valueRow, isArabic && styles.valueRowRtl]}>
           <Text style={[styles.cardValue, { color: valColor }]}>
             {notDoneTasks.toLocaleString(isArabic ? 'ar-EG' : 'en-US')}
           </Text>
-          <Text style={styles.emoji}>⏳</Text>
+          <Text style={styles.emoji}>❌</Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -90,8 +94,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    marginTop: 5,
-    marginBottom: 6,
+    marginTop: 2,
+    marginBottom: 4,
     width: '100%',
   },
   containerRtl: {
@@ -99,38 +103,41 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minHeight: 74,
-    borderRadius: 22,
+    minHeight: 38,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardTitle: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     textAlign: 'center',
     lineHeight: 13,
   },
   valueRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    marginTop: 4,
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  valueRowRtl: {
+    flexDirection: 'row-reverse',
   },
   cardValue: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
     letterSpacing: -0.3,
   },
   emoji: {
-    fontSize: 12,
+    fontSize: 11,
   },
 });
 

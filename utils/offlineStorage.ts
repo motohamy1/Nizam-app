@@ -59,7 +59,7 @@ export const reconcileOverlay = (item: any) => {
   if (!item?._id) return;
   const o = pendingOverlays[item._id];
   if (!o) return;
-  const echoKeys = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration'];
+  const echoKeys = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration', 'projectId', 'categoryId', 'subCategoryId', 'goalId'];
   const allMatch = echoKeys.every(
     (k) => o.patch[k] === undefined || item[k] === o.patch[k] ||
       // normalize undefined vs null vs missing timer fields
@@ -733,7 +733,7 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       if (!targetId) break;
 
       let capturedPatch: Record<string, any> | null = null;
-      const OVERLAY_KEYS = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration', 'timerDirection'];
+      const OVERLAY_KEYS = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration', 'timerDirection', 'projectId', 'categoryId', 'subCategoryId', 'goalId'];
 
       const patchTodo = (item: any) => {
         if (item._id !== targetId) return item;
@@ -962,11 +962,27 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       return { success: true };
     }
 
-    case 'projects:deleteCategory': {
+        case 'projects:deleteCategory': {
       const catId = args.id;
       updateMatchingCaches('CACHE_projects.getCategories', (list) => {
         if (!Array.isArray(list)) return list;
         return list.filter((c: any) => c._id !== catId);
+      });
+
+      notifyCacheChanged();
+      return { success: true };
+    }
+
+    case 'projects:linkCategoryToGoal': {
+      const catId = args.id;
+      updateMatchingCaches('CACHE_projects.getCategories', (list) => {
+        if (!Array.isArray(list)) return list;
+        return list.map((c: any) => (c._id === catId ? { ...c, goalId: args.goalId } : c));
+      });
+
+      updateMatchingCaches('CACHE_projects.getCategory_', (cat) => {
+        if (!cat || cat._id !== catId) return cat;
+        return { ...cat, goalId: args.goalId };
       });
 
       notifyCacheChanged();
@@ -1051,11 +1067,27 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       return { success: true };
     }
 
-    case 'projects:deleteProject': {
+        case 'projects:deleteProject': {
       const projId = args.id;
       updateMatchingCaches('CACHE_projects.getProjects', (list) => {
         if (!Array.isArray(list)) return list;
         return list.filter((p: any) => p._id !== projId);
+      });
+
+      notifyCacheChanged();
+      return { success: true };
+    }
+
+    case 'projects:linkProjectToGoal': {
+      const projId = args.id;
+      updateMatchingCaches('CACHE_projects.getProjects', (list) => {
+        if (!Array.isArray(list)) return list;
+        return list.map((p: any) => (p._id === projId ? { ...p, goalId: args.goalId } : p));
+      });
+
+      updateMatchingCaches('CACHE_projects.getProject', (p) => {
+        if (!p || p._id !== projId) return p;
+        return { ...p, goalId: args.goalId };
       });
 
       notifyCacheChanged();
@@ -1250,7 +1282,7 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       return { success: true };
     }
 
-    case 'yearlyGoals:deleteGoal': {
+        case 'yearlyGoals:deleteGoal': {
       const goalId = args.id;
       updateMatchingCaches('CACHE_yearlyGoals', (list) => {
         if (!Array.isArray(list)) return list;
@@ -1259,6 +1291,34 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
 
       notifyCacheChanged();
       return { success: true };
+    }
+
+    case 'aiGoals:saveArchitectGoals': {
+      if (Array.isArray(args.goals)) {
+        args.goals.forEach((g: any, index: number) => {
+          const subTempId = `${tempId}_${index}`;
+          const newGoal = {
+            _id: subTempId,
+            _creationTime: Date.now() + index,
+            isCompleted: false,
+            userId: args.userId,
+            year: args.year,
+            month: args.month,
+            day: args.day,
+            ...g,
+          };
+          const prependGoal = (list: any) =>
+            Array.isArray(list) ? [...list.filter((x: any) => x._id !== subTempId), newGoal] : [newGoal];
+          const touched = [
+            ...updateMatchingCaches('CACHE_yearlyGoals', prependGoal),
+            ...updateMatchingCaches('CACHE_monthlyGoals', prependGoal),
+            ...updateMatchingCaches('CACHE_dailyGoals', prependGoal),
+          ];
+          registerPendingTemp(newGoal, touched);
+        });
+        notifyCacheChanged();
+      }
+      return tempId;
     }
 
     case 'yearlyGoals:createAchievement':

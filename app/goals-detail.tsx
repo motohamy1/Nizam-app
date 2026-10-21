@@ -1007,6 +1007,7 @@ export default function GoalsDetailScreen() {
 
         {/* ─── Task Detail Modal for Linked Tasks ─── */}
         <TaskDetailModal
+          key={selectedTaskDetailId ? `goals-task-${selectedTaskDetailId}` : 'goals-task-closed'}
           visible={!!selectedTaskDetailId}
           onClose={() => setSelectedTaskDetailId(null)}
           todoId={selectedTaskDetailId}

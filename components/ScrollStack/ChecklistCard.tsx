@@ -40,10 +40,6 @@ interface ChecklistCardProps {
   notesCount?: string | number;
 }
 
-// Vibrant Brand Electric Orange matching Stitch design (#ff5c16)
-const GRAD_TOP = '#ff5c16';
-const GRAD_BOTTOM = '#ff4a00';
-
 export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   tasks,
   doneCount,
@@ -63,6 +59,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
+  const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   const displayTasks = tasks.length > 0 ? tasks : [];
   const primaryTask = displayTasks[0];
@@ -83,34 +80,34 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
 
   return (
     <LinearGradient
-      colors={[GRAD_TOP, GRAD_BOTTOM]}
-      style={[styles.card, { borderColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' }]}
+      colors={[frame.gradTop, frame.gradBottom]}
+      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
     >
       {/* 1. Header Row */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          {/* Rounded square checkmark badge */}
+          {/* Rounded square checkmark badge matching Reminders and Events card */}
           <View
             style={{
               width: 36,
               height: 36,
               borderRadius: 13,
-              backgroundColor: 'rgba(0,0,0,0.18)',
+              backgroundColor: frame.badgeBg,
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.08)',
+              borderColor: frame.rowBorder,
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}
           >
-            <Ionicons name="checkmark" size={20} color="#000000" />
+            <Ionicons name="checkmark" size={20} color={frame.badgeFg} />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text
               style={{
                 fontSize: 17,
                 fontWeight: '900',
-                color: '#000000',
+                color: frame.text,
                 letterSpacing: -0.3,
                 lineHeight: 21,
               }}
@@ -123,7 +120,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               style={{
                 fontSize: 11.5,
                 fontWeight: '700',
-                color: 'rgba(0,0,0,0.75)',
+                color: frame.textMuted,
                 marginTop: 1,
               }}
               numberOfLines={1}
@@ -143,7 +140,9 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               flexDirection: isArabic ? 'row-reverse' : 'row',
               alignItems: 'center',
               gap: 4,
-              backgroundColor: 'rgba(0,0,0,0.14)',
+              backgroundColor: frame.pillBg,
+              borderWidth: 1,
+              borderColor: frame.rowBorder,
               paddingHorizontal: 9,
               paddingVertical: 5,
               borderRadius: 10,
@@ -152,12 +151,12 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             activeOpacity={0.7}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Ionicons name="create-outline" size={13} color="#000000" />
+            <Ionicons name="create-outline" size={13} color={frame.badgeFg} />
             <Text
               style={{
                 fontSize: 11,
                 fontWeight: '800',
-                color: 'rgba(0,0,0,0.85)',
+                color: frame.text,
               }}
             >
               {isArabic ? 'خيارات' : 'Options'}
@@ -166,7 +165,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         )}
       </View>
 
-      {/* 2. Checklist Items List / Rows (Checklist items ONLY) */}
+      {/* 2. Checklist Items List / Rows */}
       {displayTasks.length > 0 ? (
         <ScrollView
           style={{ maxHeight: 96, marginTop: 4 }}
@@ -178,9 +177,9 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             <View
               key={item._id}
               style={{
-                backgroundColor: 'rgba(0,0,0,0.15)',
+                backgroundColor: frame.rowBg,
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.08)',
+                borderColor: frame.rowBorder,
                 borderRadius: 14,
                 paddingVertical: 7,
                 paddingHorizontal: 11,
@@ -205,10 +204,10 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     height: 20,
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: 'rgba(0,0,0,0.60)',
+                    borderColor: item.status === 'done' ? frame.accent : 'rgba(255, 255, 255, 0.40)',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: item.status === 'done' ? '#000000' : 'transparent',
+                    backgroundColor: item.status === 'done' ? frame.accent : 'transparent',
                   }}
                 >
                   {item.status === 'done' && (
@@ -225,7 +224,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     style={{
                       fontSize: 13,
                       fontWeight: '800',
-                      color: '#000000',
+                      color: frame.text,
                       letterSpacing: 0.2,
                       textDecorationLine:
                         item.status === 'done' ? 'line-through' : 'none',
@@ -242,7 +241,9 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               {item.linkedCount && item.linkedCount > 0 ? (
                 <View
                   style={{
-                    backgroundColor: 'rgba(0,0,0,0.22)',
+                    backgroundColor: frame.pillBg,
+                    borderWidth: 1,
+                    borderColor: frame.rowBorder,
                     borderRadius: 7,
                     paddingHorizontal: 7,
                     paddingVertical: 2.5,
@@ -252,15 +253,17 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     marginLeft: 6,
                   }}
                 >
-                  <Ionicons name="link" size={10} color="#000000" />
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#000000' }}>
+                  <Ionicons name="link" size={10} color={frame.badgeFg} />
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: frame.badgeFg }}>
                     {item.linkedCount}
                   </Text>
                 </View>
               ) : item.priority ? (
                 <View
                   style={{
-                    backgroundColor: '#000000',
+                    backgroundColor: frame.badgeBg,
+                    borderWidth: 1,
+                    borderColor: frame.rowBorder,
                     borderRadius: 7,
                     paddingHorizontal: 7,
                     paddingVertical: 2.5,
@@ -269,7 +272,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                 >
                   <Text
                     style={{
-                      color: '#FFFFFF',
+                      color: frame.badgeFg,
                       fontSize: 9.5,
                       fontWeight: '900',
                       letterSpacing: 0.5,
@@ -290,9 +293,9 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           }}
           activeOpacity={0.85}
           style={{
-            backgroundColor: 'rgba(0,0,0,0.15)',
+            backgroundColor: frame.rowBg,
             borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.08)',
+            borderColor: frame.rowBorder,
             borderRadius: 14,
             paddingVertical: 8,
             paddingHorizontal: 11,
@@ -316,7 +319,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                 height: 20,
                 borderRadius: 6,
                 borderWidth: 2,
-                borderColor: 'rgba(0,0,0,0.60)',
+                borderColor: 'rgba(255, 255, 255, 0.40)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -325,7 +328,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               style={{
                 fontSize: 13,
                 fontWeight: '800',
-                color: 'rgba(0,0,0,0.65)',
+                color: frame.textMuted,
                 letterSpacing: 0.2,
               }}
               numberOfLines={1}
@@ -336,7 +339,9 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
 
           <View
             style={{
-              backgroundColor: '#000000',
+              backgroundColor: frame.badgeBg,
+              borderWidth: 1,
+              borderColor: frame.rowBorder,
               borderRadius: 7,
               paddingHorizontal: 8,
               paddingVertical: 2.5,
@@ -345,7 +350,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           >
             <Text
               style={{
-                color: '#FFFFFF',
+                color: frame.badgeFg,
                 fontSize: 9.5,
                 fontWeight: '900',
                 letterSpacing: 0.5,
@@ -363,7 +368,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           width: '100%',
           borderWidth: 1.6,
           borderStyle: 'dashed',
-          borderColor: 'rgba(0,0,0,0.30)',
+          borderColor: 'rgba(255, 92, 22, 0.40)',
           borderRadius: 16,
           paddingVertical: 8,
           flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -371,6 +376,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           justifyContent: 'center',
           gap: 6,
           marginTop: 7,
+          backgroundColor: 'rgba(255, 92, 22, 0.04)',
         }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -378,8 +384,8 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         }}
         activeOpacity={0.75}
       >
-        <Ionicons name="add" size={15} color="#000000" />
-        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#000000' }}>
+        <Ionicons name="add" size={15} color={frame.badgeFg} />
+        <Text style={{ fontSize: 12.5, fontWeight: '800', color: frame.badgeFg }}>
           {isArabic ? '+ إضافة عنصر للقائمة' : '+ Add checklist item'}
         </Text>
       </TouchableOpacity>
@@ -388,7 +394,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       <View
         style={{
           borderTopWidth: 1,
-          borderTopColor: 'rgba(0,0,0,0.12)',
+          borderTopColor: 'rgba(255, 255, 255, 0.08)',
           flexDirection: isArabic ? 'row-reverse' : 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -409,21 +415,21 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               width: 34,
               height: 34,
               borderRadius: 11,
-              backgroundColor: 'rgba(0,0,0,0.18)',
+              backgroundColor: frame.badgeBg,
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.08)',
+              borderColor: frame.rowBorder,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="checkmark-done" size={18} color="#000000" />
+            <Ionicons name="checkmark-done" size={18} color={frame.badgeFg} />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
             <Text
               style={{
                 fontSize: 26,
                 fontWeight: '900',
-                color: '#000000',
+                color: frame.text,
                 letterSpacing: -0.6,
                 lineHeight: 28,
               }}
@@ -434,7 +440,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               style={{
                 fontSize: 10,
                 fontWeight: '800',
-                color: 'rgba(0,0,0,0.72)',
+                color: frame.textMuted,
                 textTransform: 'uppercase',
                 letterSpacing: 0.3,
               }}
@@ -457,7 +463,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               style={{
                 fontSize: 26,
                 fontWeight: '900',
-                color: '#000000',
+                color: frame.text,
                 letterSpacing: -0.6,
                 lineHeight: 28,
               }}
@@ -468,7 +474,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               style={{
                 fontSize: 10,
                 fontWeight: '800',
-                color: 'rgba(0,0,0,0.72)',
+                color: frame.textMuted,
                 textTransform: 'uppercase',
                 letterSpacing: 0.3,
               }}
@@ -481,14 +487,14 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               width: 34,
               height: 34,
               borderRadius: 11,
-              backgroundColor: 'rgba(0,0,0,0.18)',
+              backgroundColor: frame.badgeBg,
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.08)',
+              borderColor: frame.rowBorder,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="time-outline" size={18} color="#000000" />
+            <Ionicons name="time-outline" size={18} color={frame.badgeFg} />
           </View>
         </View>
       </View>
@@ -497,4 +503,3 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
 };
 
 export default ChecklistCard;
-

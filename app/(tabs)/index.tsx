@@ -42,15 +42,16 @@ import TimerModal from "@/components/TimerModal";
 import FloatingActionButton from "@/components/FloatingActionButton";
 import LivePress from "@/components/LivePress";
 import HomeStatCards from "@/components/HomeStatCards";
+import { CardStack } from "@/components/CardStack";
+import ActiveTaskCard from "@/components/ActiveTaskCard";
+import { ActiveTaskProvider } from "@/components/ActiveTaskContext";
 import StackedTaskModals from "@/components/StackedTaskModals";
 import { startUpdate, pauseUpdate } from '@/utils/timerActions';
 
 import {
-  ScrollStack,
   ChecklistCard,
   UpcomingEventsCard,
   MonthlyOverviewCard,
-  ProductivityCard,
   InsightsCard,
   EventManagementModal,
   EventData,
@@ -656,6 +657,7 @@ const Index = () => {
             nestedScrollEnabled={true}
             scrollEventThrottle={16}
           >
+            <ActiveTaskProvider tasks={currentDayTasks}>
             <Header />
 
             {/* 1. Dynamic Date Bar */}
@@ -669,87 +671,94 @@ const Index = () => {
               taskCounts={dayTaskCounts}
             />
 
-            {/* 2. Hero Section: Scroll Stack Component (Horizontal Rolodex Deck) */}
-            {/* 2. Hero Section: Scroll Stack Component (Horizontal Rolodex Deck) */}
-            <ScrollStack
-              axis="horizontal"
-              sideCardVariant="wireframe"
-              cardInset={38}
-              isArabic={isArabic}
-              primaryCardIndices={[0, 1]}
-              secondaryRelocateDelay={12000}
-              palettes={[
-                STACK_CARD_PALETTES.checklist,
-                STACK_CARD_PALETTES.upcoming,
-                STACK_CARD_PALETTES.monthly,
-                STACK_CARD_PALETTES.productivity,
-                STACK_CARD_PALETTES.insights,
-              ]}
-              labels={[
-                t.todaysChecklist,
-                t.remindersAndEvents,
-                t.monthlyOverview,
-                t.productivityFocus,
-                t.tabInsights || (isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'),
-              ]}
-            >
-              {/* Card 0: Today's Checklist (Electric Orange) */}
-              <ChecklistCard
-                tasks={todayChecklistTasks}
-                doneCount={checklistDoneCount}
-                totalCount={checklistTotalCount}
-                onToggleTask={handleToggleTaskStatus}
-                onOpenTaskDetail={(id) => handleEditTask(id)}
-                onQuickManage={() => setGlobalActionModalVisible(true)}
-                onScrollToTasksSection={handleScrollToTasksSection}
-                onAddNewTask={() => setIsTaskModalVisible(true)}
-                onAddChecklistItem={() => openChecklistItemModal(null)}
-                onOpenChecklistItem={(id) => openChecklistItemModal(id)}
-                streakScore={streakCount}
-                notesCount="186"
-              />
+            {/* 2. Card Stack — the home cards sit on top of each other in one
+                box. The Active Task card is on top; drag it sideways to send it
+                to the back and bring the next card forward. */}
+            <View style={{ zIndex: 100, elevation: Platform.OS === 'android' ? 50 : undefined, overflow: 'visible' }}>
+              <CardStack
+                layout="fan"
+                visible={4}
+                spread={0.6}
+                depth={0.5}
+                radius={32}
+                cardHeight={275}
+                peek={44}
+                threshold={85}
+                isRTL={isArabic}
+                autoResetToTop={true}
+                autoResetDelay={16000}
+                style={{ marginTop: 6, marginBottom: 12 }}
+                cards={[
+                  /* Card 0: Active Task (the task the user is working on right now) */
+                  <ActiveTaskCard
+                    key="active-task"
+                    isArabic={isArabic}
+                    onRunTask={handleRunTask}
+                    onPauseTask={handlePauseTask}
+                    onCompleteTask={handleCompleteTask}
+                    onOpenDetail={handleEditTask}
+                    onAddTask={() => setIsTaskModalVisible(true)}
+                    style={{ height: '100%' }}
+                  />,
 
-              {/* Card 1: Upcoming Events & Reminders (Second most important card) */}
-              <UpcomingEventsCard
-                events={upcomingEvents}
-                onOpenEventModal={handleOpenEventModal}
-                onToggleDone={handleToggleEventDone}
-              />
+                  /* Card 1: Today's Checklist (Electric Orange) */
+                  <ChecklistCard
+                    key="checklist"
+                    tasks={todayChecklistTasks}
+                    doneCount={checklistDoneCount}
+                    totalCount={checklistTotalCount}
+                    onToggleTask={handleToggleTaskStatus}
+                    onOpenTaskDetail={(id) => handleEditTask(id)}
+                    onQuickManage={() => setGlobalActionModalVisible(true)}
+                    onScrollToTasksSection={handleScrollToTasksSection}
+                    onAddNewTask={() => setIsTaskModalVisible(true)}
+                    onAddChecklistItem={() => openChecklistItemModal(null)}
+                    onOpenChecklistItem={(id) => openChecklistItemModal(id)}
+                    streakScore={streakCount}
+                    notesCount="186"
+                  />,
 
-              {/* Card 2: Monthly Overview */}
-              <MonthlyOverviewCard
-                monthName={currentMonthName}
-                year={currentYear}
-                completedTasks={monthDoneCount}
-                totalTasks={monthTotalCount}
-                activeGoalsCount={activeMonthlyGoals}
-                onPress={() => router.push('/(tabs)/planner')}
-              />
+                  /* Card 2: Upcoming Events & Reminders */
+                  <UpcomingEventsCard
+                    key="upcoming"
+                    events={upcomingEvents}
+                    onOpenEventModal={handleOpenEventModal}
+                    onToggleDone={handleToggleEventDone}
+                  />,
 
-              {/* Card 3: Productivity & Focus Tracker */}
-              <ProductivityCard
-                streakDays={streakCount}
-                weeklyRate={weeklyRatePercent}
-                onStartFocus={handleStartFocusTimer}
-              />
+                  /* Card 3: Monthly Overview */
+                  <MonthlyOverviewCard
+                    key="monthly"
+                    monthName={currentMonthName}
+                    year={currentYear}
+                    completedTasks={monthDoneCount}
+                    totalTasks={monthTotalCount}
+                    activeGoalsCount={activeMonthlyGoals}
+                    onPress={() => router.push('/(tabs)/planner')}
+                  />,
 
-              {/* Card 4: AI Insights & Wellbeing Card */}
-              <InsightsCard
-                insights={dailyInsights}
-                onPress={() => router.push('/(tabs)/insights')}
+                  /* Card 4: AI Insights & Wellbeing Card */
+                  <InsightsCard
+                    key="insights"
+                    insights={dailyInsights}
+                    onPress={() => router.push('/(tabs)/insights')}
+                  />,
+                ]}
               />
-            </ScrollStack>
+            </View>
 
             {/* 2b. Mini Stat Cards Section (Stitch design: Today's Tasks, Done, Not Done) */}
-            <HomeStatCards
+            <View style={{ zIndex: 1, elevation: 1 }}>
+              <HomeStatCards
               totalTasks={todayAllForProgress}
               doneTasks={todayDoneForProgress}
               notDoneTasks={Math.max(0, todayAllForProgress - todayDoneForProgress)}
               isArabic={isArabic}
             />
+            </View>
 
             {/* 3. Centered CTA Button (Stitch design: Neon Lime Add Task Button) */}
-            <View style={{ paddingHorizontal: 16, marginTop: 5, marginBottom: 6, alignItems: 'center' }}>
+            <View style={{ zIndex: 1, elevation: 1, paddingHorizontal: 16, marginTop: 5, marginBottom: 6, alignItems: 'center' }}>
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={() => {
@@ -782,6 +791,7 @@ const Index = () => {
 
             {/* 4. Overlaid Interactive Task Modals (Base Tasks Sheet + Overlaid Active Task Sheet) */}
             <View 
+              style={{ zIndex: 1, elevation: 1 }}
               onLayout={(e) => {
                 setTasksSectionY(e.nativeEvent.layout.y);
               }}
@@ -790,6 +800,7 @@ const Index = () => {
                 tasks={currentDayTasks}
                 isArabic={isArabic}
                 now={now}
+                goals={yearlyGoals}
                 onRunTask={handleRunTask}
                 onPauseTask={handlePauseTask}
                 onCompleteTask={handleCompleteTask}
@@ -798,18 +809,21 @@ const Index = () => {
                 onAddTask={() => setIsTaskModalVisible(true)}
               />
             </View>
+            </ActiveTaskProvider>
 
           </ScrollView>
         )}
 
         {/* Task Modals */}
         <TaskDetailModal 
+          key={isTaskModalVisible ? `new-task-${selectedDate}` : 'new-task-closed'}
           visible={isTaskModalVisible}
           onClose={() => setIsTaskModalVisible(false)}
           todoId={null}
           initialDate={selectedDate}
         />
         <TaskDetailModal 
+          key={editingTaskId ? `edit-task-${editingTaskId}` : 'edit-task-closed'}
           visible={editingTaskId !== null}
           onClose={() => { setEditingTaskId(null); setEditingTaskSection(undefined); }}
           todoId={editingTaskId}

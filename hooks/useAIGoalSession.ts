@@ -5,7 +5,8 @@
  */
 
 import { useState, useRef, useCallback } from 'react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction } from 'convex/react';
+import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { api } from '@/convex/_generated/api';
 import {
   AIGoalDraft,
@@ -23,6 +24,15 @@ import {
   validateColorAndIcon,
 } from '@/utils/aiGoalValidation';
 import { findRelevantCategories } from '@/utils/aiGoalContext';
+
+function withTimeout<T>(promise: Promise<T>, ms = 15000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('NETWORK_TIMEOUT')), ms)
+    ),
+  ]);
+}
 
 const MAX_UNDO_STACK = 15;
 
@@ -58,7 +68,7 @@ export function useAIGoalSession({
   const architectAction = useAction(api.aiGoals.architectGoalIntent);
   const refineAction = useAction(api.aiGoals.refineGoalIntent);
   const expandAction = useAction(api.aiGoals.expandGoalIntent);
-  const saveGoalsMutation = useMutation(api.aiGoals.saveArchitectGoals);
+  const saveGoalsMutation = useOfflineMutation(api.aiGoals.saveArchitectGoals, 'aiGoals:saveArchitectGoals');
 
   const pushHistory = useCallback((currentDraft: AIGoalDraft | null) => {
     if (!currentDraft) return;
@@ -113,7 +123,7 @@ export function useAIGoalSession({
           templateId: g.templateId,
         }));
 
-        const rawResult = await architectAction({
+        const rawResult = await withTimeout(architectAction({
           userMessage: cleanPrompt,
           timeframe,
           year,
@@ -122,7 +132,7 @@ export function useAIGoalSession({
           existingSections: relevantList.length > 0 ? relevantList : existingCategories,
           previousGoalsInSession: previousGoalsPayload,
           language: isArabic ? 'ar' : 'en',
-        });
+        }), 15000);
 
         // Deterministically normalize into AIGoalDraft
         const normalizedDraft = normalizeGoalArchitectResponse(rawResult, {
@@ -371,12 +381,12 @@ export function useAIGoalSession({
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        const rawResult = await refineAction({
+        const rawResult = await withTimeout(refineAction({
           currentDraft: draft,
           instruction: clean,
           existingSections: existingCategories,
           language: isArabic ? 'ar' : 'en',
-        });
+        }), 15000);
 
         setDraft((prev) => {
           if (!prev) return prev;
@@ -477,7 +487,7 @@ export function useAIGoalSession({
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        const res = await expandAction({
+        const res = await withTimeout(expandAction({
           goalTitle: draft.goal.title,
           description: draft.goal.description,
           category: draft.category.selectedName,
@@ -485,7 +495,7 @@ export function useAIGoalSession({
           userInstructions: clean || 'Suggest realistic, sequential milestones to achieve this goal.',
           currentMilestones: draft.milestones,
           language: isArabic ? 'ar' : 'en',
-        });
+        }), 15000);
 
         setDraft((prev) => {
           if (!prev) return prev;

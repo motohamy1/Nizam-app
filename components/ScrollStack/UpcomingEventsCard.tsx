@@ -130,6 +130,8 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
       typeBadgeText = t.typeEvent;
     }
 
+    const timeFormatted = formatTime(evt.startTime || evt.date);
+
     return (
       <View 
         key={evt._id} 
@@ -139,105 +141,126 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
           isDone && { opacity: 0.65 }
         ]}
       >
+        {/* Top Header Row of the Item: Time badge + Type badge on leading side, Checkbox + Details arrow on trailing side */}
+        <View style={styles.eventRowHeader}>
+          <TouchableOpacity
+            style={styles.eventRowHeaderLeft}
+            onPress={() => onOpenEventModal(evt)}
+            activeOpacity={0.7}
+          >
+            {/* Time Badge with dynamic type-aware icon */}
+            {timeFormatted ? (
+              <View style={[styles.eventTimeChip, { backgroundColor: frame.pillBg }]}>
+                <Ionicons name={chipIcon as any} size={12} color={frame.text} />
+                <Text style={[styles.eventTimeText, { color: frame.text }]}>
+                  {timeFormatted}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Type badge */}
+            {typeBadgeText ? (
+              <View style={[styles.eventTypeBadge, { backgroundColor: frame.pillBg }]}>
+                <Text style={[styles.eventTypeBadgeText, { color: frame.text }]}>{typeBadgeText}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+
+          <View style={styles.eventRowHeaderRight}>
+            {/* Manual done / restore circle */}
+            {onToggleDone ? (
+              <TouchableOpacity
+                onPress={() => handleToggleDone(evt)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[
+                  styles.eventCheckCircle,
+                  {
+                    borderColor: isDone ? frame.accent : 'rgba(255, 255, 255, 0.40)',
+                    backgroundColor: isDone ? frame.accent : 'transparent',
+                  }
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={isDone ? (t.restoreEvent || 'Restore') : (t.markDone || 'Mark as done')}
+              >
+                {isDone && (
+                  <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Edit / Detail Icon */}
+            <TouchableOpacity
+              onPress={() => onOpenEventModal(evt)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ paddingLeft: 2 }}
+            >
+              <Ionicons 
+                name={isArabic ? "chevron-back" : "chevron-forward"} 
+                size={15} 
+                color={frame.textMuted} 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Main Body: Title given 100% width and up to 2 lines so it never gets cut off */}
         <TouchableOpacity
-          style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
           onPress={() => onOpenEventModal(evt)}
           activeOpacity={0.7}
+          style={styles.eventBody}
         >
-          {/* Time Badge with dynamic type-aware icon */}
-          <View style={[styles.eventTimeChip, { backgroundColor: frame.pillBg }]}>
-            <Ionicons name={chipIcon as any} size={13} color={frame.text} />
-            <Text style={[styles.eventTimeText, { color: frame.text }]}>
-              {formatTime(evt.startTime || evt.date)}
-            </Text>
-          </View>
+          <Text
+            style={[
+              styles.eventTitle, 
+              { color: frame.text }, 
+              isDone && { textDecorationLine: 'line-through', opacity: 0.55 }
+            ]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {evt.title}
+          </Text>
 
-          {/* Event Info */}
-          <View style={[styles.eventInfo, { flex: 1, minWidth: 0 }]}>
-            <View style={[{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, width: '100%' }]}>
-              <Text
-                style={[
-                  styles.eventTitle, 
-                  { flex: 1, flexShrink: 1, color: frame.text }, 
-                  isDone && { textDecorationLine: 'line-through', opacity: 0.55 }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {evt.title}
+          {evt.description ? (
+            <View style={styles.eventMeta}>
+              <Ionicons name="document-text-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
+              <Text style={[styles.eventMetaText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                {evt.description}
               </Text>
-              {typeBadgeText ? (
-                <View style={{ backgroundColor: frame.pillBg, paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 4, flexShrink: 0 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: frame.text }}>{typeBadgeText}</Text>
+            </View>
+          ) : null}
+
+          {(evt.location || evt.meetingLink || (evt.repeatPeriod && evt.repeatPeriod !== 'none')) ? (
+            <View style={styles.eventFooterMeta}>
+              {evt.location ? (
+                <View style={styles.eventMetaTag}>
+                  <Ionicons name="location-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
+                  <Text style={[styles.eventMetaTagText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                    {evt.location}
+                  </Text>
+                </View>
+              ) : null}
+
+              {evt.meetingLink ? (
+                <View style={styles.eventMetaTag}>
+                  <Ionicons name="videocam-outline" size={12} color={frame.accent} style={{ flexShrink: 0 }} />
+                  <Text style={[styles.eventMetaTagText, { color: frame.accent, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
+                    {isArabic ? 'رابط الاجتماع' : 'Meeting Link'}
+                  </Text>
+                </View>
+              ) : null}
+
+              {evt.repeatPeriod && evt.repeatPeriod !== 'none' ? (
+                <View style={styles.eventMetaTag}>
+                  <Ionicons name="repeat-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
+                  <Text style={[styles.eventMetaTagText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                    {`${t.repeatEvery || 'Every'} ${repeatUnitLabel(evt.repeatPeriod)} × ${evt.repeatCount || 1} ${t.repeatTimes || 'times'}`}
+                  </Text>
                 </View>
               ) : null}
             </View>
-
-            {evt.description ? (
-              <View style={[styles.eventMeta, { width: '100%' }]}>
-                <Ionicons name="document-text-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
-                <Text style={[styles.eventMetaText, { flex: 1, flexShrink: 1, color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
-                  {evt.description}
-                </Text>
-              </View>
-            ) : null}
-
-            {(evt.location || evt.meetingLink) && (
-              <View style={[styles.eventMeta, { width: '100%' }]}>
-                {evt.location ? (
-                  <>
-                    <Ionicons name="location-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
-                    <Text style={[styles.eventMetaText, { flex: 1, flexShrink: 1, color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
-                      {evt.location}
-                    </Text>
-                  </>
-                ) : null}
-                {evt.meetingLink ? (
-                  <>
-                    <Ionicons name="videocam-outline" size={12} color={frame.accent} style={{ flexShrink: 0 }} />
-                    <Text style={[styles.eventMetaText, { color: frame.accent, fontWeight: '700', flex: 1, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                      {isArabic ? 'رابط الاجتماع' : 'Meeting Link'}
-                    </Text>
-                  </>
-                ) : null}
-              </View>
-            )}
-
-            {evt.repeatPeriod && evt.repeatPeriod !== 'none' ? (
-              <View style={[styles.eventMeta, { width: '100%' }]}>
-                <Ionicons name="repeat-outline" size={12} color={frame.text} style={{ flexShrink: 0 }} />
-                <Text style={[styles.eventMetaText, { color: frame.text, flex: 1, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                  {`${t.repeatEvery} ${repeatUnitLabel(evt.repeatPeriod)} × ${evt.repeatCount || 1} ${t.repeatTimes}`}
-                </Text>
-              </View>
-            ) : null}
-          </View>
+          ) : null}
         </TouchableOpacity>
-
-        {/* Manual done / restore */}
-        {onToggleDone ? (
-          <TouchableOpacity
-            onPress={() => handleToggleDone(evt)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ paddingHorizontal: 4, flexShrink: 0 }}
-            accessibilityRole="button"
-            accessibilityLabel={isDone ? (t.restoreEvent || 'Restore') : (t.markDone || 'Mark as done')}
-          >
-            <Ionicons
-              name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
-              size={20}
-              color={isDone ? frame.accent : frame.textMuted}
-            />
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Edit Icon */}
-        <Ionicons 
-          name={isArabic ? "chevron-back" : "chevron-forward"} 
-          size={16} 
-          color={frame.textMuted} 
-          style={{ flexShrink: 0, marginHorizontal: 4 }} 
-        />
       </View>
     );
   };
@@ -245,7 +268,7 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
   return (
     <LinearGradient
       colors={[frame.gradTop, frame.gradBottom]}
-      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }] }
     >
       {/* Header */}
       <TouchableOpacity 

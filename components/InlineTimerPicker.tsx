@@ -13,7 +13,7 @@ export const InlineTimerPicker = ({
   colors,
   t,
   isArabic,
-  accentColor = '#e5f19d',
+  accentColor = '#FF6720',
 }: {
   initialMs?: number;
   initialDirection?: string;

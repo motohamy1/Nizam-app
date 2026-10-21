@@ -50,6 +50,8 @@ const mutationMap: Record<string, any> = {
   'projects:addProject': apiAny.projects.addProject,
   'projects:updateProject': apiAny.projects.updateProject,
   'projects:deleteProject': apiAny.projects.deleteProject,
+  'projects:linkCategoryToGoal': apiAny.projects.linkCategoryToGoal,
+  'projects:linkProjectToGoal': apiAny.projects.linkProjectToGoal,
 
   // Category Items & Planner Items
   'projects:addCategoryItem': apiAny.projects.addCategoryItem,
@@ -79,6 +81,9 @@ const mutationMap: Record<string, any> = {
   'yearlyGoals:addDayAchievement': apiAny.yearlyGoals.addDayAchievement,
   'yearlyGoals:updateAchievement': apiAny.yearlyGoals.updateAchievement,
   'yearlyGoals:deleteAchievement': apiAny.yearlyGoals.deleteAchievement,
+
+  // AI Goals
+  'aiGoals:saveArchitectGoals': apiAny.aiGoals?.saveArchitectGoals,
 
   // Auth / Settings
   'auth:updateSettings': apiAny.auth.updateSettings,
