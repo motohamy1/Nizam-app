@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -480,31 +481,7 @@ export default function AddScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.modePill}
-          onPress={() => {
-            if (isRecording) {
-              handleToggleInlineRecording();
-            }
-            router.push({
-              pathname: '/note-detail',
-              params: {
-                isReminder: 'false',
-                tag: currentHashtag,
-              },
-            });
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name="create-outline"
-            size={16}
-            color={colors.textMuted}
-          />
-          <Text style={styles.modePillText}>
-            {isArabic ? 'كتابة' : 'Type'}
-          </Text>
-        </TouchableOpacity>
+
       </View>
 
       <ScrollView
@@ -901,6 +878,32 @@ export default function AddScreen() {
           )}
         </Animated.View>
       </ScrollView>
+
+      {/* ─── Floating Action Button (FAB) for Note Creation ─── */}
+      <TouchableOpacity
+        style={[
+          styles.floatingAddNoteFab,
+          { bottom: Math.max(insets.bottom, 16) + 74 },
+        ]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (isRecording) {
+            handleToggleInlineRecording();
+          }
+          router.push({
+            pathname: '/note-detail',
+            params: {
+              isReminder: 'false',
+              tag: currentHashtag,
+            },
+          });
+        }}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={isArabic ? 'إنشاء ملاحظة جديدة' : 'Create new note'}
+      >
+        <Ionicons name="create-outline" size={26} color="#101116" />
+      </TouchableOpacity>
 
       {/* ─── Add/Change Custom Dynamic Hashtag Modal ─────────────────── */}
       <Modal

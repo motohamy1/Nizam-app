@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import CircularProgress from './CircularProgress';
 import PixelTrail from './PixelTrail';
@@ -67,7 +66,7 @@ interface ActiveTaskCardProps {
  * bottom of the page; it now lives at the top of the card stack, so it is the
  * first thing the user meets when the page opens.
  */
-export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
+export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   isArabic = false,
   onRunTask,
   onPauseTask,
@@ -229,39 +228,27 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
       activeTask?.status === 'paused' ||
       activeTask?.status === 'done');
 
-  // Priority badge styling
+  // Priority badge styling (text-only semantic colors, no background fill or borders)
   const getPriorityBadge = (priority?: string) => {
     switch (priority) {
       case 'Urgent':
         return {
-          bg: 'rgba(232, 62, 140, 0.20)',
-          text: '#f1498b',
-          onLight: '#9d174d',
-          border: 'rgba(232, 62, 140, 0.40)',
+          text: '#ff80ab',
           label: isArabic ? 'عاجل' : 'Urgent',
         };
       case 'High':
         return {
-          bg: 'rgba(251, 191, 36, 0.20)',
-          text: '#fbbf24',
-          onLight: '#92610a',
-          border: 'rgba(251, 191, 36, 0.40)',
+          text: '#fde047',
           label: isArabic ? 'مرتفع' : 'High',
         };
       case 'Medium':
         return {
-          bg: 'rgba(16, 185, 129, 0.20)',
-          text: '#10b981',
-          onLight: '#04785a',
-          border: 'rgba(16, 185, 129, 0.40)',
+          text: '#4ade80',
           label: isArabic ? 'متوسط' : 'Medium',
         };
       default:
         return {
-          bg: 'rgba(255, 255, 255, 0.10)',
-          text: '#a1a1aa',
-          onLight: '#3f3f46',
-          border: 'rgba(255, 255, 255, 0.20)',
+          text: '#f1f5f9',
           label: isArabic ? 'عادي' : 'Low',
         };
     }
@@ -283,21 +270,13 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
   };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.94}
-      onPress={() => {
-        if (!activeTask) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onOpenDetail(activeTask._id);
-      }}
-      style={[styles.card, style]}
-    >
-      {/* Base gradient background matching the electric orange theme */}
-      <LinearGradient
-        colors={['#ff7224', '#d83200']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
+    <View style={[styles.card, style]}>
+      {/* Solid dark orange background matching the Today tasks card and electric orange theme */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: '#e63e00' },
+        ]}
       />
 
       {/* Dynamic PixelTrail (React Bits): syncs timer progress in count-down, height & gravity drops in count-up, freezes on pause */}
@@ -305,8 +284,8 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
         gridSize={24}
         trailSize={0.15}
         maxAge={500}
-        color="#ff6720"
-        trailColor="#ffa066"
+        color="#e63e00"
+        trailColor="#f24f13"
         shape="square"
         gap={0.1}
         decay="fade"
@@ -362,7 +341,13 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
 
         {/* Task Title, Description, Status/Link Labels, & Circular Progress Timer Row */}
         <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
-          <View
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={() => {
+              if (!activeTask) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onOpenDetail(activeTask._id);
+            }}
             style={[
               { flex: 1, minWidth: 0 },
               isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
@@ -411,30 +396,17 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
                 </View>
               )}
 
-              {/* Priority */}
+              {/* Priority: text only with colored font, no background fill, no border, no icon */}
               {activeTask?.priority && (
-                <View
+                <Text
+                  numberOfLines={1}
                   style={[
-                    styles.labelPill,
-                    styles.labelPillStrong,
-                    isArabic && styles.rowRtl,
+                    styles.priorityTextOnly,
+                    { color: getPriorityBadge(activeTask.priority).text },
                   ]}
                 >
-                  <Ionicons
-                    name="flag-outline"
-                    size={10}
-                    color={getPriorityBadge(activeTask.priority).onLight}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.labelText,
-                      { color: getPriorityBadge(activeTask.priority).onLight },
-                    ]}
-                  >
-                    {getPriorityBadge(activeTask.priority).label}
-                  </Text>
-                </View>
+                  {getPriorityBadge(activeTask.priority).label}
+                </Text>
               )}
 
               {/* Linked goal */}
@@ -467,7 +439,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
                 </View>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Rounded Progress Timer (Interactive Tap to Run/Pause) */}
           {activeTask && (
@@ -611,7 +583,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
                 }}
                 style={styles.completeBtn}
               >
-                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={14} color="#000000" />
                 <Text style={styles.completeBtnText}>
                   {isArabic ? 'إكمال' : 'Complete'}
                 </Text>
@@ -662,9 +634,9 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = ({
           )}
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -672,18 +644,13 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.12)',
-    backgroundColor: '#ff5c16',
+    backgroundColor: '#e63e00',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
     overflow: 'hidden',
     position: 'relative',
-    // Tight, directional shadow tinted to the card's own colour.
-    shadowColor: '#ff5c16',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.24,
-    shadowRadius: 10,
-    elevation: 6,
+    justifyContent: 'space-between',
   },
   rowRtl: {
     flexDirection: 'row-reverse',
@@ -860,9 +827,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   completeBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.26)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.4,
+    borderColor: '#000000',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -873,12 +840,12 @@ const styles = StyleSheet.create({
   completeBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   pauseBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.20)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.50)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.4,
+    borderColor: '#000000',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 14,
@@ -886,7 +853,15 @@ const styles = StyleSheet.create({
   pauseBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#000000',
+  },
+  priorityTextOnly: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    alignSelf: 'center',
   },
   addTaskBtn: {
     flex: 1,
@@ -905,4 +880,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActiveTaskCard;
+export default React.memo(ActiveTaskCard);

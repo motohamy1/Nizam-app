@@ -266,6 +266,7 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
   // Pan Gesture on top card
   const panGesture = useMemo(() => {
     return Gesture.Pan()
+      .enabled(isTop)
       .activeOffsetX([-10, 10])
       .failOffsetY([-18, 18])
       .onBegin(() => {
@@ -454,7 +455,7 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
     const sp = isTop || isFlinging.value > 0 ? spin.value : 0;
 
     const isInteracting = isTop || isFlinging.value > 0;
-    const zIndexVal = isFlinging.value > 0 ? 1000 : isTop ? 900 : settings.count - Math.round(p);
+    const zIndexVal = isFlinging.value > 0 ? 1000 : Math.round(100 - p * 10);
 
     return {
       transform: [
@@ -473,7 +474,7 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
         Extrapolation.CLAMP
       ),
       zIndex: zIndexVal,
-      elevation: isInteracting ? 50 : Math.max(1, 10 - Math.round(p)),
+      elevation: isInteracting ? 30 : Math.max(1, 10 - position),
     };
   });
 
@@ -487,7 +488,7 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
     );
 
     return {
-      opacity: isTop || isFlinging.value > 0 ? 0 : Math.max(0, shadeOpacity),
+      opacity: isFlinging.value > 0 ? 0 : Math.max(0, shadeOpacity),
     };
   });
 
@@ -546,11 +547,7 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
       ]}
       pointerEvents={isTop ? 'auto' : 'none'}
     >
-      {isTop ? (
-        <GestureDetector gesture={panGesture}>{cardFace}</GestureDetector>
-      ) : (
-        cardFace
-      )}
+      <GestureDetector gesture={panGesture}>{cardFace}</GestureDetector>
     </Animated.View>
   );
 };
@@ -578,7 +575,7 @@ export const CardStack: React.FC<CardStackProps> = ({
   autoplay = false,
   autoplayDelay = 3000,
   autoResetToTop = true,
-  autoResetDelay = 16000,
+  autoResetDelay = 9000,
   onChange,
   cardHeight = 275,
   cardWidth,

@@ -686,7 +686,7 @@ const Index = () => {
                 threshold={85}
                 isRTL={isArabic}
                 autoResetToTop={true}
-                autoResetDelay={16000}
+                autoResetDelay={9000}
                 style={{ marginTop: 6, marginBottom: 12 }}
                 cards={[
                   /* Card 0: Active Task (the task the user is working on right now) */

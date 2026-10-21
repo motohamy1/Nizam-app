@@ -136,7 +136,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
         >
           <View style={[styles.headerLeft, isArabic && styles.rowRtl]}>
             <View style={styles.iconBadge}>
-              <Ionicons name="checkbox-outline" size={20} color="#ff5c16" />
+              <Ionicons name="checkbox-outline" size={20} color="#ffb09c" />
             </View>
             <View style={[{ minWidth: 0, flexShrink: 1 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
               <View style={[styles.titleGroup, isArabic && styles.rowRtl]}>
@@ -161,7 +161,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
               <Ionicons
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
                 size={18}
-                color="#ff5c16"
+                color="#ffb09c"
               />
             </View>
           </View>
@@ -173,7 +173,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
             {/* Task Items List */}
             {tasks.length === 0 ? (
               <View style={styles.emptyTasksContainer}>
-                <Ionicons name="clipboard-outline" size={32} color="rgba(255, 92, 22, 0.4)" />
+                <Ionicons name="clipboard-outline" size={32} color="rgba(255, 176, 156, 0.45)" />
                 <Text style={styles.emptyTasksTitle}>
                   {isArabic ? 'لا توجد مهام اليوم' : 'No tasks today'}
                 </Text>
@@ -192,7 +192,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                       style={[
                         styles.taskRow,
                         isTaskDone && { opacity: 0.6 },
-                        isSelected && { borderColor: '#ff5c16', backgroundColor: 'rgba(255, 92, 22, 0.08)' },
+                        isSelected && { borderColor: '#ffb09c', backgroundColor: 'rgba(255, 176, 156, 0.08)' },
                         isArabic && styles.rowRtl,
                       ]}
                     >
@@ -209,10 +209,10 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                         }}
                         style={[
                           styles.checkbox,
-                          isTaskDone && { backgroundColor: '#ff5c16', borderColor: '#ff5c16' },
+                          isTaskDone && { backgroundColor: '#ffb09c', borderColor: '#ffb09c' },
                         ]}
                       >
-                        {isTaskDone && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+                        {isTaskDone && <Ionicons name="checkmark" size={13} color="#000000" />}
                       </TouchableOpacity>
 
                       {/* Task Info - tap selects as active task */}
@@ -262,7 +262,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                           </View>
                           {t.goalId && goalNames[t.goalId] && (
                             <View style={styles.metaChip}>
-                              <Ionicons name="flag-outline" size={10} color="#ff5c16" />
+                              <Ionicons name="flag-outline" size={10} color="#ffb09c" />
                               <Text numberOfLines={1} style={styles.metaChipText}>
                                 {goalNames[t.goalId]}
                               </Text>
@@ -281,7 +281,7 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                           }}
                           style={styles.pencilBtn}
                         >
-                          <Ionicons name="pencil-outline" size={13} color="#ff5c16" />
+                          <Ionicons name="pencil-outline" size={13} color="#ffb09c" />
                         </TouchableOpacity>
 
                         {!isTaskDone && (
@@ -381,9 +381,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 92, 22, 0.16)',
+    backgroundColor: 'rgba(255, 176, 156, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 92, 22, 0.25)',
+    borderColor: 'rgba(255, 176, 156, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: 'rgba(255, 92, 22, 0.20)',
+    backgroundColor: 'rgba(255, 176, 156, 0.15)',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 1.5,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: 10.5,
     fontWeight: '900',
-    color: '#ff5c16',
+    color: '#ffb09c',
   },
   cardSubtitle: {
     fontSize: 11.5,
@@ -426,9 +426,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 92, 22, 0.14)',
+    backgroundColor: 'rgba(255, 176, 156, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 92, 22, 0.25)',
+    borderColor: 'rgba(255, 176, 156, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 92, 22, 0.20)',
+    borderColor: 'rgba(255, 176, 156, 0.20)',
     borderRadius: 14,
     padding: 10,
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 1.8,
-    borderColor: 'rgba(255, 92, 22, 0.60)',
+    borderColor: 'rgba(255, 176, 156, 0.60)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -478,14 +478,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 92, 22, 0.25)',
+    backgroundColor: 'rgba(255, 176, 156, 0.20)',
     borderWidth: 1,
-    borderColor: '#ff5c16',
+    borderColor: '#ffb09c',
   },
   selectedPillText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#ff5c16',
+    color: '#ffb09c',
   },
   priorityPill: {
     borderRadius: 6,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   metaChipText: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: '#ff5c16',
+    color: '#ffb09c',
   },
   actionsRow: {
     flexDirection: 'row',
@@ -522,9 +522,9 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 92, 22, 0.12)',
+    backgroundColor: 'rgba(255, 176, 156, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 92, 22, 0.25)',
+    borderColor: 'rgba(255, 176, 156, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -532,13 +532,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ff5c16',
+    backgroundColor: '#ffb09c',
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 16,
   },
   runButtonActive: {
-    backgroundColor: '#ff3c00',
+    backgroundColor: '#ff9d84',
   },
   runButtonIcon: {
     fontSize: 9,
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   addTaskBtn: {
-    backgroundColor: '#ff5c16',
+    backgroundColor: '#ffb09c',
     borderRadius: 16,
     paddingVertical: 10,
     flexDirection: 'row',

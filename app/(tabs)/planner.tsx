@@ -2,7 +2,7 @@ import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
@@ -63,6 +63,7 @@ const LIST_TYPE_CARDS = [
 ];
 
 const Planner = () => {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ year?: string; month?: string; day?: string; from?: string }>();
   const { colors, isDarkMode } = useTheme();
   const { userId, language } = useAuth();
@@ -1546,15 +1547,14 @@ const Planner = () => {
         <TouchableOpacity
           style={[
             styles.floatingGoalFab,
-            isArabic ? { left: 20 } : { right: 20 }
+            { bottom: Math.max(insets.bottom, 16) + 74 }
           ]}
           onPress={handleOpenCreateGoal}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={isArabic ? 'هدف جديد' : 'New Goal'}
         >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
-          <Text style={styles.floatingGoalFabText}>
-            {isArabic ? 'هدف جديد' : 'New Goal'}
-          </Text>
+          <Ionicons name="add" size={30} color="#101116" />
         </TouchableOpacity>
       </View>
     );

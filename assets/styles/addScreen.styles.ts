@@ -781,5 +781,21 @@ export const createAddScreenStyles = (colors: ColorScheme, isArabic: boolean = f
       fontWeight: '700',
       color: lavFillText,
     },
+    floatingAddNoteFab: {
+      position: 'absolute',
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: '#C8F135',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#C8F135',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 6,
+      zIndex: 99,
+    },
   });
 };

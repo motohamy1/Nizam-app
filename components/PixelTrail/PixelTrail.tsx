@@ -90,12 +90,8 @@ const CountdownDiagonalGrid: React.FC<{
 
         const priority = Math.max(0, Math.min(1, diagDist + jitter));
 
-        // Colors matching the card's native background gradient (#ff7224 top-left to #d83200 bottom-right)
-        const t = (cFrac + rFrac) / 2;
-        const red = Math.min(255, Math.round(255 - t * 35));
-        const green = Math.min(255, Math.round(124 - t * 62));
-        const blue = Math.min(255, Math.round(44 - t * 40));
-        const color = `rgb(${red}, ${green}, ${blue})`;
+        // Solid dark orange tone matching the card's #e63e00 background without any gradient
+        const color = '#e63e00';
 
         rowCells.push({ row: r, col: c, priority, color });
       }
@@ -187,13 +183,8 @@ const BackgroundWaveColumn: React.FC<{
   return (
     <Animated.View style={[styles.bgColumn, columnAnimatedStyle]}>
       {Array.from({ length: totalRows }).map((_, rIdx) => {
-        const rFrac = rIdx / Math.max(1, totalRows - 1);
-        const t = (colFraction + rFrac) / 2;
-        // Warm harmonious orange tone matching background with a soft luminous boost
-        const red = Math.min(255, Math.round(255 - t * 35 + 12));
-        const green = Math.min(255, Math.round(126 - t * 60));
-        const blue = Math.min(255, Math.round(48 - t * 38));
-        const brickColor = `rgb(${red}, ${green}, ${blue})`;
+        // Solid dark orange matching #e63e00 theme without any gradient
+        const brickColor = '#e63e00';
 
         return (
           <View
@@ -203,12 +194,8 @@ const BackgroundWaveColumn: React.FC<{
               shapeStyle,
               {
                 backgroundColor: brickColor,
-                borderColor: 'rgba(255, 255, 255, 0.20)',
+                borderColor: 'rgba(255, 255, 255, 0.22)',
                 borderWidth: 0.6,
-                shadowColor: brickColor,
-                shadowOpacity: 0.35,
-                shadowRadius: 2,
-                elevation: 1,
               },
             ]}
           />
@@ -379,12 +366,7 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2.5,
     borderWidth: 0.6,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.16,
-    shadowRadius: 1,
-    elevation: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   emptyBrick: {
     width: '100%',
