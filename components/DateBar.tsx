@@ -22,6 +22,7 @@ interface DateBarProps {
   isArabic?: boolean;
   taskCounts?: Map<number, number>;
   defaultCollapsed?: boolean;
+  tone?: 'default' | 'onLime';
 }
 
 const ITEM_WIDTH = 48;
@@ -42,9 +43,11 @@ const DateBar: React.FC<DateBarProps> = ({
   homeStyles,
   isArabic = false,
   taskCounts,
-  defaultCollapsed = true,
+  defaultCollapsed = false,
+  tone = 'default',
 }) => {
   const { colors, isDarkMode } = useTheme();
+  const isOnLime = tone === 'onLime';
   const { language } = useAuth();
   const { t } = useTranslation(language);
   const flatListRef = useRef<FlatList>(null);
@@ -157,16 +160,39 @@ const DateBar: React.FC<DateBarProps> = ({
             onOpenDayPlanner(dayStart);
           }
         }}
-        style={[homeStyles.dateBarDay, isActive && homeStyles.dateBarDayActive]}
+        style={[
+          homeStyles.dateBarDay,
+          isOnLime && {
+            backgroundColor: 'rgba(0, 0, 0, 0.07)',
+            borderColor: 'rgba(0, 0, 0, 0.10)',
+          },
+          isActive && homeStyles.dateBarDayActive,
+          isActive && isOnLime && {
+            backgroundColor: '#0E1208',
+            borderColor: '#0E1208',
+            shadowColor: '#000000',
+            shadowOpacity: 0.35,
+          },
+        ]}
       >
         <Text
-          style={[homeStyles.dateBarWeekday, isActive && homeStyles.dateBarWeekdayActive]}
+          style={[
+            homeStyles.dateBarWeekday,
+            isOnLime && { color: '#2C3A1A', fontWeight: '600' },
+            isActive && homeStyles.dateBarWeekdayActive,
+            isActive && isOnLime && { color: '#d4ff32', fontWeight: '800' },
+          ]}
           numberOfLines={1}
         >
           {weekdayStr}
         </Text>
         <Text
-          style={[homeStyles.dateBarDayNum, isActive && homeStyles.dateBarDayNumActive]}
+          style={[
+            homeStyles.dateBarDayNum,
+            isOnLime && { color: '#0E1208', fontWeight: '800' },
+            isActive && homeStyles.dateBarDayNumActive,
+            isActive && isOnLime && { color: '#d4ff32', fontWeight: '900' },
+          ]}
         >
           {dayNum}
         </Text>
@@ -174,7 +200,8 @@ const DateBar: React.FC<DateBarProps> = ({
           <View
             style={[
               homeStyles.dateBarDot,
-              isActive && { backgroundColor: '#16270E' },
+              isOnLime && { backgroundColor: '#0E1208' },
+              isActive && { backgroundColor: isOnLime ? '#d4ff32' : '#16270E' },
             ]}
           />
         )}
@@ -209,13 +236,19 @@ const DateBar: React.FC<DateBarProps> = ({
               : (isArabic ? 'طي شريط الأيام' : 'Collapse day bar')
           }
         >
-          <Text style={homeStyles.dateBarMonth} numberOfLines={1}>
+          <Text
+            style={[
+              homeStyles.dateBarMonth,
+              isOnLime && { color: '#0E1208', fontWeight: '800' },
+            ]}
+            numberOfLines={1}
+          >
             {dateLabel}
           </Text>
           <Ionicons
             name={isCollapsed ? 'chevron-down' : 'chevron-up'}
             size={16}
-            color={colors.textMuted}
+            color={isOnLime ? '#0E1208' : colors.textMuted}
             style={homeStyles.dateBarChevron}
           />
         </LivePress>
@@ -223,11 +256,22 @@ const DateBar: React.FC<DateBarProps> = ({
         <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
           {onOpenDayPlanner && (
             <LivePress
-              style={homeStyles.dateBarPlannerBtn}
+              style={[
+                homeStyles.dateBarPlannerBtn,
+                isOnLime && {
+                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  borderColor: 'rgba(0, 0, 0, 0.14)',
+                },
+              ]}
               onPress={() => onOpenDayPlanner(selectedDate)}
             >
-              <Ionicons name="calendar-outline" size={13} color={colors.primary} />
-              <Text style={homeStyles.dateBarPlannerBtnText}>
+              <Ionicons name="calendar-outline" size={13} color={isOnLime ? '#0E1208' : colors.primary} />
+              <Text
+                style={[
+                  homeStyles.dateBarPlannerBtnText,
+                  isOnLime && { color: '#0E1208', fontWeight: '800' },
+                ]}
+              >
                 {isArabic ? 'تفاصيل اليوم' : 'Day Detail'}
               </Text>
             </LivePress>
@@ -235,13 +279,26 @@ const DateBar: React.FC<DateBarProps> = ({
 
           {!isSelectedToday && (
             <LivePress
-              style={homeStyles.dateBarReset}
+              style={[
+                homeStyles.dateBarReset,
+                isOnLime && {
+                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  borderColor: 'rgba(0, 0, 0, 0.14)',
+                },
+              ]}
               onPress={() => {
                 clearAutoReturnTimer();
                 onSelectDate(todayStart);
               }}
             >
-              <Text style={homeStyles.dateBarResetText}>{t.today}</Text>
+              <Text
+                style={[
+                  homeStyles.dateBarResetText,
+                  isOnLime && { color: '#0E1208', fontWeight: '800' },
+                ]}
+              >
+                {t.today}
+              </Text>
             </LivePress>
           )}
         </View>

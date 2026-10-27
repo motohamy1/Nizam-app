@@ -9,7 +9,11 @@ import { Text, View, TouchableOpacity } from 'react-native'
 import { useTranslation } from '@/utils/i18n'
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader'
 
-const Header = () => {
+interface HeaderProps {
+  tone?: 'default' | 'onLime';
+}
+
+const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
     const { colors } = useTheme();
     const { userId, language, isAnonymous } = useAuth();
     const { t, isArabic } = useTranslation(language);
@@ -18,6 +22,7 @@ const Header = () => {
     const homeStyles = createHomeStyles(colors, isArabic);
 
     const greeting = isArabic ? `مرحباً، ${userSettings?.name || t.guest}` : `Hi, ${userSettings?.name || 'Guest'}`;
+    const isOnLime = tone === 'onLime';
 
     return (
         <AnimatedWavyHeader
@@ -27,12 +32,28 @@ const Header = () => {
         >
             <View style={[homeStyles.header, { paddingTop: 8, paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
                 <View style={[homeStyles.headerLeft, isArabic && { alignItems: 'flex-end' }]}>
-                    <Text style={[homeStyles.headerGreeting, isArabic && { textAlign: 'right' }]}>{greeting}</Text>
+                    <Text
+                      style={[
+                        homeStyles.headerGreeting,
+                        isOnLime && { color: '#0E1208', fontWeight: '800' },
+                        isArabic && { textAlign: 'right' },
+                      ]}
+                    >
+                      {greeting}
+                    </Text>
                 </View>
 
                 <TouchableOpacity
-                    activeOpacity={0.97}
-                    style={homeStyles.headerRight}
+                    activeOpacity={0.88}
+                    style={[
+                      homeStyles.headerRight,
+                      isOnLime && {
+                        backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                        borderColor: 'rgba(0, 0, 0, 0.12)',
+                        shadowOpacity: 0,
+                        elevation: 0,
+                      },
+                    ]}
                     onPress={() => {
                       import('@/utils/notifications').then(({ requestPermissionsAsync }) => {
                         requestPermissionsAsync().then(granted => {
@@ -48,7 +69,7 @@ const Header = () => {
                     <Ionicons
                         name="notifications-outline"
                         size={20}
-                        color={colors.text}
+                        color={isOnLime ? '#0E1208' : colors.text}
                     />
                 </TouchableOpacity>
             </View>

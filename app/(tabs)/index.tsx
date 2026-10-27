@@ -6,11 +6,12 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -30,22 +31,22 @@ import { useScreenGuide } from "@/hooks/useScreenGuide";
 import { useTaskTimers } from "@/hooks/useTaskTimers";
 import { computeRepeatOccurrence, RepeatPeriod } from "@/utils/notifications";
 
-import ScreenBackground from "@/components/ScreenBackground";
-import Header from "@/components/Header";
-import DateBar from "@/components/DateBar";
+import {
+  HomeTopWidget,
+  HomeFeatureStrip,
+  FeatureSheet,
+  HomeTasksWidget,
+  HomeFeatureKey,
+  HomeFeatureDef,
+  LIME_ACCENT,
+} from "@/components/home";
+
+import { ActiveTaskProvider } from "@/components/ActiveTaskContext";
 import ActionModal from "@/components/ActionModal";
 import ChecklistItemModal from "@/components/ChecklistItemModal";
 import ScreenGuide, { GuideTip } from "@/components/ScreenGuide";
 import TaskDetailModal from "@/components/TaskDetailModal";
-import TaskKanban, { KanbanColumn } from "@/components/TaskKanban";
 import TimerModal from "@/components/TimerModal";
-import FloatingActionButton from "@/components/FloatingActionButton";
-import LivePress from "@/components/LivePress";
-import HomeStatCards from "@/components/HomeStatCards";
-import { CardStack } from "@/components/CardStack";
-import ActiveTaskCard from "@/components/ActiveTaskCard";
-import { ActiveTaskProvider } from "@/components/ActiveTaskContext";
-import StackedTaskModals from "@/components/StackedTaskModals";
 import { startUpdate, pauseUpdate } from '@/utils/timerActions';
 
 import {
@@ -56,7 +57,6 @@ import {
   EventManagementModal,
   EventData,
   UpcomingEventDisplay,
-  STACK_CARD_PALETTES,
 } from "@/components/ScrollStack";
 
 import { api } from "../../convex/_generated/api";
@@ -75,6 +75,7 @@ const months_ar = [
 
 const Index = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { userId, language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const { colors, isDarkMode } = useTheme();
@@ -90,18 +91,21 @@ const Index = () => {
   const setTimerRunState = useOfflineMutation(api.todos.setTimerRunState, "todos:setTimerRunState");
 
   // Yearly goals for monthly card
-    const currentYear = new Date().getFullYear();
-    const currentMonthIdx = new Date().getMonth();
-    const currentMonthName = isArabic ? months_ar[currentMonthIdx] : months_en[currentMonthIdx];
-    const yearlyGoals = useOfflineQuery<any[]>(
-      'yearlyGoals.getGoals',
-      api.yearlyGoals.getGoals,
-      userId ? { userId, year: currentYear } : 'skip'
-    ) || [];
+  const currentYear = new Date().getFullYear();
+  const currentMonthIdx = new Date().getMonth();
+  const currentMonthName = isArabic ? months_ar[currentMonthIdx] : months_en[currentMonthIdx];
+  const yearlyGoals = useOfflineQuery<any[]>(
+    'yearlyGoals.getGoals',
+    api.yearlyGoals.getGoals,
+    userId ? { userId, year: currentYear } : 'skip'
+  ) || [];
 
-    // Daily insights for focus topics and wellbeing
-    const dailyInsights = useOfflineQuery('insights.daily', api.insights.getLatestInsights,
-      userId ? { userId, period: "day" } : 'skip');
+  // Daily insights for focus topics and wellbeing
+  const dailyInsights = useOfflineQuery(
+    'insights.daily',
+    api.insights.getLatestInsights,
+    userId ? { userId, period: "day" } : 'skip'
+  );
 
   // Local State
   const [isGlobalActionModalVisible, setGlobalActionModalVisible] = useState(false);
@@ -115,11 +119,11 @@ const Index = () => {
   const [checklistItemSession, setChecklistItemSession] = useState(0);
   const [eventToEdit, setEventToEdit] = useState<EventData | null>(null);
   const [isFocusTimerModalVisible, setFocusTimerModalVisible] = useState(false);
+  const [activeFeature, setActiveFeature] = useState<HomeFeatureKey | null>(null);
 
   const [todayStart] = useState(() => startOfDay(Date.now()));
   const [now] = useState(() => Date.now());
   const [selectedDate, setSelectedDate] = useState(todayStart);
-  const [tasksSectionY, setTasksSectionY] = useState(0);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const homeStyles = createHomeStyles(colors, isArabic);
@@ -129,19 +133,16 @@ const Index = () => {
   useDeadlineReminders(todos, language);
 
   const homeTips: GuideTip[] = isArabic ? [
-    { icon: 'add-circle-outline', title: 'أضف مهمة', description: 'اكتب مهمتك في الحقل بالأسفل واضغط إرسال لإضافتها.', accentColor: '#dbd4fd' },
+    { icon: 'add-circle-outline', title: 'أضف مهمة', description: 'اضغط على زر + في الزاوية لإضافة مهمة جديدة.', accentColor: '#dbd4fd' },
     { icon: 'timer-outline', title: 'مؤقت ذكي', description: 'اضغط على أيقونة الساعة لتحديد مدة المهمة وموعدها.', accentColor: '#defef9' },
-    { icon: 'hand-left-outline', title: 'اضغط مطولاً', description: 'اضغط مطولاً على أي مهمة لحذفها أو مشاركتها أو ربطها بمشروع.', accentColor: '#f6e5c9' },
+    { icon: 'hand-left-outline', title: 'الميزات السريعة', description: 'تصفح الميزات في الشريط الأوسط للوصول للقوائم والمواعيد.', accentColor: '#f6e5c9' },
   ] : [
-    { icon: 'add-circle-outline', title: 'Add a Task', description: 'Type your task in the input field below and hit send to add it.', accentColor: '#dbd4fd' },
+    { icon: 'add-circle-outline', title: 'Add a Task', description: 'Tap the floating + button in the bottom corner to add a task.', accentColor: '#dbd4fd' },
     { icon: 'timer-outline', title: 'Smart Timer', description: 'Tap the clock icon on any task to set a duration and due date.', accentColor: '#defef9' },
-    { icon: 'hand-left-outline', title: 'Long Press', description: 'Long press any task to delete, share, or link it to a project.', accentColor: '#f6e5c9' },
+    { icon: 'hand-left-outline', title: 'Quick Features', description: 'Scroll through the feature cards in the middle to open checklists & events.', accentColor: '#f6e5c9' },
   ];
 
-  // Normalized Todos (Tasks ONLY for Kanban board).
-  // The `parentId` filter mirrors the server `todos.get` query (top-level only):
-  // if a stale or optimistically-merged cache ever leaks a subtask in here, it
-  // would otherwise render as an individual task on the board.
+  // Normalized Todos (Top-level tasks only)
   const normalizedTodos = useMemo(() => {
     if (!todos) return [];
     return todos
@@ -152,9 +153,7 @@ const Index = () => {
       }));
   }, [todos]);
 
-  // Upcoming Events from Todos (meetings, appointments, reminders, and timed events).
-  // Done items stay in the list — the card splits them into an expandable
-  // "Completed" section instead of hiding them, and completion is manual.
+  // Upcoming Events from Todos
   const upcomingEvents: UpcomingEventDisplay[] = useMemo(() => {
     if (!todos) return [];
     const nowTs = Date.now();
@@ -201,24 +200,6 @@ const Index = () => {
 
   const isViewingToday = selectedDate === todayStart;
 
-  // Today's Progress Stats
-  const { todayDoneForProgress, todayAllForProgress } = useMemo(() => {
-    let doneCount = 0;
-    let totalCount = 0;
-
-    normalizedTodos.forEach(t => {
-      const effectiveDay = getEffectiveTaskDay(t, todayStart);
-      if (effectiveDay === todayStart) {
-        totalCount++;
-        if (t.status === 'done') {
-          doneCount++;
-        }
-      }
-    });
-
-    return { todayDoneForProgress: doneCount, todayAllForProgress: totalCount };
-  }, [normalizedTodos, todayStart]);
-
   // Monthly Overview Stats
   const { monthDoneCount, monthTotalCount, activeMonthlyGoals } = useMemo(() => {
     const monthStart = new Date(currentYear, currentMonthIdx, 1).getTime();
@@ -245,8 +226,7 @@ const Index = () => {
   }, [normalizedTodos, yearlyGoals, currentYear, currentMonthIdx, todayStart]);
 
   // Productivity & Streak Stats
-  const { streakCount, weeklyRatePercent } = useMemo(() => {
-    // Calculate simple streak based on consecutive completed days
+  const { streakCount } = useMemo(() => {
     const completedTimestamps = normalizedTodos
       .filter(t => t.status === 'done' && t.completedAt)
       .map(t => getEffectiveTaskDay(t, todayStart));
@@ -268,14 +248,8 @@ const Index = () => {
       checkDay -= 86400000;
     }
 
-    const weekStart = todayStart - 6 * 86400000;
-    const weekTotal = normalizedTodos.filter(t => getEffectiveTaskDay(t, todayStart) >= weekStart).length;
-    const weekDone = normalizedTodos.filter(t => t.status === 'done' && getEffectiveTaskDay(t, todayStart) >= weekStart).length;
-    const rate = weekTotal === 0 ? 100 : Math.round((weekDone / weekTotal) * 100);
-
     return {
       streakCount: Math.max(streak, 1),
-      weeklyRatePercent: Math.min(100, Math.max(0, rate)),
     };
   }, [normalizedTodos, todayStart]);
 
@@ -287,66 +261,26 @@ const Index = () => {
     return (a._creationTime || 0) - (b._creationTime || 0);
   };
 
-  // Kanban Columns & Counts
-  const { kanbanColumns, dayTaskCounts, boardIsEmpty, todayChecklistTasks } = useMemo(() => {
-    const dayEnd = selectedDate + 86400000;
-
-    const anchorOf = (t: any): number => {
-      return getEffectiveTaskDay(t, todayStart);
-    };
-
+  // Day Task Counts for DateBar
+  const dayTaskCounts = useMemo(() => {
     const counts = new Map<number, number>();
     normalizedTodos.forEach(t => {
-      const a = anchorOf(t);
+      const a = getEffectiveTaskDay(t, todayStart);
       counts.set(a, (counts.get(a) || 0) + 1);
     });
+    return counts;
+  }, [normalizedTodos, todayStart]);
 
-    const isDayClosed = isDayPastCutoff(selectedDate);
-    const dayTasks = normalizedTodos.filter(t => anchorOf(t) === selectedDate);
-    const carryOverdue = isViewingToday
-      ? normalizedTodos.filter(t => {
-          const a = anchorOf(t);
-          return a < todayStart && t.status !== 'done' && t.status !== 'not_done' && t.dueDate && t.dueDate < todayStart;
-        })
-      : [];
-
-    // When a past day has exceeded its Day D+1 7:00 AM cutoff, uncompleted tasks automatically move to "Not Done"
-    const todoCol = isDayClosed
-      ? []
-      : dayTasks.filter(t => t.status === 'not_started' || t.status === 'paused').sort(byPriority);
-
-    const inProgressCol = isDayClosed
-      ? []
-      : dayTasks.filter(t => t.status === 'in_progress').sort(byPriority);
-
-    const doneCol = dayTasks.filter(t => t.status === 'done').sort(byPriority);
-
-    const notDoneCol = isDayClosed
-      ? dayTasks.filter(t => t.status !== 'done').sort(byPriority)
-      : [
-          ...dayTasks.filter(t => t.status === 'not_done'),
-          ...dayTasks.filter(t => (t.status === 'not_started' || t.status === 'paused') && t.dueDate && t.dueDate < dayEnd),
-          ...carryOverdue,
-        ].sort(byPriority);
-
-    const columns: KanbanColumn[] = [
-      { key: 'todo', title: t.toDoColumn, color: modeColor('#F9A8D4', isDarkMode), tasks: todoCol },
-      { key: 'in_progress', title: t.inProgressColumn, color: modeColor('#e5f19d', isDarkMode), tasks: inProgressCol },
-      { key: 'done', title: t.doneColumn, color: modeColor('#10B981', isDarkMode), tasks: doneCol },
-      { key: 'not_done', title: t.notDoneColumn, color: colors.danger, tasks: notDoneCol },
-    ];
-
-    const empty = todoCol.length + inProgressCol.length + doneCol.length + notDoneCol.length === 0;
-
-    // Daily checklist rows for Card 0: checklist items ONLY (never regular tasks)
+  // Checklist items for the selected day
+  const { todayChecklistTasks, checklistDoneCount, checklistTotalCount } = useMemo(() => {
     const linkedCountByParent = new Map<string, number>();
     (linkedChildren || []).forEach((c: any) => {
       if (c.parentId) linkedCountByParent.set(c.parentId, (linkedCountByParent.get(c.parentId) || 0) + 1);
     });
 
     const dayChecklistRaw = (todos || []).filter(t => {
-      if (t.parentId) return false; // subtasks/linked children never render standalone
-      const a = anchorOf(t);
+      if (t.parentId) return false;
+      const a = getEffectiveTaskDay(t, todayStart);
       return a === selectedDate && t.type === 'checklist';
     });
 
@@ -360,24 +294,25 @@ const Index = () => {
       linkedCount: linkedCountByParent.get(task._id) || 0,
     }));
 
-    return { 
-      kanbanColumns: columns, 
-      dayTaskCounts: counts, 
-      boardIsEmpty: empty, 
-      todayChecklistTasks: checklistTasks 
+    const done = checklistTasks.filter(t => t.status === 'done').length;
+
+    return {
+      todayChecklistTasks: checklistTasks,
+      checklistDoneCount: done,
+      checklistTotalCount: checklistTasks.length,
     };
-  }, [normalizedTodos, selectedDate, sortActive, todayStart, isViewingToday, colors, t, linkedChildren]);
+  }, [todos, selectedDate, todayStart, linkedChildren]);
 
-  const checklistDoneCount = useMemo(
-    () => todayChecklistTasks.filter(t => t.status === 'done').length,
-    [todayChecklistTasks]
-  );
-  const checklistTotalCount = todayChecklistTasks.length;
+  // Tasks for the selected date (sorted by priority)
+  const currentDayTasks = useMemo(() => {
+    return normalizedTodos
+      .filter(t => getEffectiveTaskDay(t, todayStart) === selectedDate)
+      .sort(byPriority);
+  }, [normalizedTodos, selectedDate, todayStart, sortActive]);
 
-  const activeBoardTasks = useMemo(
-    () => kanbanColumns.filter(c => c.key !== 'done').flatMap(c => c.tasks),
-    [kanbanColumns]
-  );
+  const currentDayDoneCount = useMemo(() => {
+    return currentDayTasks.filter(t => t.status === 'done').length;
+  }, [currentDayTasks]);
 
   const handleEditTask = (id: Id<"todos">, section?: 'subtask') => {
     setEditingTaskId(id);
@@ -390,7 +325,6 @@ const Index = () => {
     updateStatus({ id, status: nextStatus });
   };
 
-  // Checklist items live in the Today's Checklist card, not on the Kanban board
   const openChecklistItemModal = (id: Id<"todos"> | null) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setEditingChecklistItemId(id);
@@ -398,14 +332,7 @@ const Index = () => {
     setIsChecklistItemModalVisible(true);
   };
 
-  // Filtered and sorted tasks for the selected date for StackedTaskModals
-  const currentDayTasks = useMemo(() => {
-    return normalizedTodos
-      .filter(t => getEffectiveTaskDay(t, todayStart) === selectedDate)
-      .sort(byPriority);
-  }, [normalizedTodos, selectedDate, todayStart, sortActive]);
-
-  // Task Actions for StackedTaskModals
+  // Task Actions
   const handleRunTask = (task: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (task.timerDuration || task.timerDirection === 'up') {
@@ -437,17 +364,25 @@ const Index = () => {
     updateStatus({ id: task._id, status: 'not_started' });
   };
 
-  // Smooth scroll down to the relocated Tasks section
-  const handleScrollToTasksSection = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (tasksSectionY > 0) {
-      scrollViewRef.current?.scrollTo({ y: tasksSectionY - 10, animated: true });
-    } else {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }
+  // Open Day Planner in tabs
+  const handleOpenDayPlanner = (dayTimestamp: number) => {
+    const d = new Date(dayTimestamp);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const day = d.getDate();
+
+    router.push({
+      pathname: '/(tabs)/planner',
+      params: {
+        year: year.toString(),
+        month: month.toString(),
+        day: day.toString(),
+        from: 'home',
+      }
+    });
   };
 
-  // Reminder / Event Management Handlers
+  // Event handlers
   const handleOpenEventModal = (evt?: UpcomingEventDisplay) => {
     if (evt) {
       setEventToEdit({
@@ -472,12 +407,6 @@ const Index = () => {
 
   const handleSaveEvent = async (evt: EventData) => {
     const itemType = evt.type || 'reminder';
-    // Only send repeat args when repeat is actually set. Sending
-    // `repeatPeriod: ''` / `repeatCount: undefined` on every save made
-    // creates fail on deployments whose validators predate the repeat
-    // feature (unknown/empty args), which surfaced as "Failed to save".
-    // The '' clear-signal is sent only when turning repeat OFF on a doc
-    // that had it (server nulls both columns for that case).
     const repeatOn = !!evt.repeatPeriod && evt.repeatPeriod !== 'none';
     const hadRepeat =
       !!eventToEdit?.repeatPeriod && (eventToEdit.repeatPeriod as string) !== 'none';
@@ -489,15 +418,13 @@ const Index = () => {
       : evt._id && hadRepeat
         ? { repeatPeriod: '' }
         : {};
-    // Ensure notification permissions and channels
+
     try {
       const { requestPermissionsAsync, ensureNotificationChannels } = await import('@/utils/notifications');
       await ensureNotificationChannels();
       await requestPermissionsAsync();
     } catch {}
 
-    // Cancel the previous series before writing the new one so shrinking the
-    // count or turning repeat off can't leave orphaned future notifications.
     if (evt._id) {
       import('@/utils/notifications').then(n =>
         n.cancelReminderSeries(String(evt._id))
@@ -536,7 +463,6 @@ const Index = () => {
       savedId = typeof res === 'string' ? res : (res as any)?._id;
     }
 
-    // Schedule notification immediately so alerts never miss
     if (savedId) {
       try {
         const { scheduleRepeatingReminder, scheduleReminderNotification } = await import('@/utils/notifications');
@@ -571,10 +497,6 @@ const Index = () => {
     await deleteTodo({ id });
   };
 
-  // Manual completion — reminders/events never auto-complete when their time
-  // passes; only the user's confirm moves them to the Completed section.
-  // Guarded: status is an absolute value, so an unguarded double-tap flips it
-  // twice (done → not_started) and the item silently stays incomplete.
   const handleToggleEventDone = useGuardedSubmit(async (id: Id<"todos">, currentStatus?: string) => {
     const nextStatus = currentStatus === 'done' ? 'not_started' : 'done';
     if (nextStatus === 'done') {
@@ -591,12 +513,9 @@ const Index = () => {
   };
 
   const handleSaveFocusTimer = async (durationInMs: number, dueDate?: number, date?: number) => {
-    // Find top active task or set generic focus timer
-    const topTask = activeBoardTasks[0];
+    const topTask = currentDayTasks[0];
     if (!topTask) return;
     try {
-      // Sequential on purpose: the run state must apply after the duration is
-      // stored (both keep their relative order in the offline queue as well).
       await setTimerMutation({
         id: topTask._id,
         duration: durationInMs,
@@ -611,57 +530,98 @@ const Index = () => {
     }
   };
 
-  const selectedDayLabel = new Date(selectedDate).toLocaleDateString(
-    isArabic ? 'ar-SA' : 'en-US',
-    { weekday: 'long', month: 'short', day: 'numeric' }
-  );
+  // Feature strip definition
+  const featuresList: HomeFeatureDef[] = useMemo(() => [
+    {
+      key: 'checklist',
+      icon: 'checkbox-outline',
+      title: isArabic ? 'قائمة المهام' : 'Checklist',
+      badge: checklistTotalCount > 0 ? `${checklistDoneCount}/${checklistTotalCount}` : undefined,
+      accentColor: '#FD8B2D',
+    },
+    {
+      key: 'reminders',
+      icon: 'notifications-outline',
+      title: isArabic ? 'التذكيرات' : 'Reminders',
+      badge: upcomingEvents.length > 0 ? `${upcomingEvents.length}` : undefined,
+      accentColor: '#38BDF8',
+    },
+    {
+      key: 'monthly',
+      icon: 'calendar-outline',
+      title: isArabic ? 'نظرة شهرية' : 'Monthly',
+      accentColor: '#A78BFA',
+    },
+    {
+      key: 'insights',
+      icon: 'sparkles-outline',
+      title: isArabic ? 'تحليلات AI' : 'Insights',
+      accentColor: '#34D399',
+    },
+    {
+      key: 'timer',
+      icon: 'timer-outline',
+      title: isArabic ? 'مؤقت التركيز' : 'Focus Timer',
+      accentColor: '#F472B6',
+    },
+  ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length]);
 
-  const handleOpenDayPlanner = (dayTimestamp: number) => {
-    const d = new Date(dayTimestamp);
-    const year = d.getFullYear();
-    const month = d.getMonth();
-    const day = d.getDate();
-
-    router.push({
-      pathname: '/(tabs)/planner',
-      params: {
-        year: year.toString(),
-        month: month.toString(),
-        day: day.toString(),
-        from: 'home',
-      }
-    });
+  const handleSelectFeature = (key: HomeFeatureKey) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (key === 'timer') {
+      handleStartFocusTimer();
+    } else {
+      setActiveFeature(key);
+    }
   };
+
+  const featureSheetTitle = useMemo(() => {
+    switch (activeFeature) {
+      case 'checklist':
+        return isArabic ? 'قائمة المهام اليومية' : "Today's Checklist";
+      case 'reminders':
+        return isArabic ? 'المواعيد والتذكيرات' : 'Upcoming Reminders & Events';
+      case 'monthly':
+        return isArabic ? 'نظرة عامة على الشهر' : 'Monthly Overview';
+      case 'insights':
+        return isArabic ? 'تحليلات ورؤى ذكية' : 'AI Insights & Wellbeing';
+      default:
+        return '';
+    }
+  }, [activeFeature, isArabic]);
 
   return (
     <KeyboardAvoidingView 
-      style={homeStyles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
-      <SafeAreaView style={homeStyles.safeArea} edges={['top']}>
-        {todos === undefined ? (
-          <View style={{ flex: 1 }}>
-            <Header />
-            <View style={homeStyles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.secondary} />
-            </View>
-          </View>
-        ) : (
+      {/* Device Status Bar settles inside the lime widget at the top */}
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={LIME_ACCENT}
+        translucent={true}
+      />
+
+      {todos === undefined ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.secondary} />
+        </View>
+      ) : (
+        <ActiveTaskProvider tasks={currentDayTasks}>
           <ScrollView 
             ref={scrollViewRef}
-            contentContainerStyle={homeStyles.scrollContent} 
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 120 },
+            ]} 
             showsVerticalScrollIndicator={false} 
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled={true}
             scrollEventThrottle={16}
           >
-            <ActiveTaskProvider tasks={currentDayTasks}>
-            <Header />
-
-            {/* 1. Dynamic Date Bar */}
-            <DateBar
+            {/* 1. UPPER WIDGET (Lime Accent with rounded bottom corners, holds Header & DateBar) */}
+            <HomeTopWidget
               selectedDate={selectedDate}
               todayStart={todayStart}
               onSelectDate={setSelectedDate}
@@ -671,256 +631,201 @@ const Index = () => {
               taskCounts={dayTaskCounts}
             />
 
-            {/* 2. Card Stack — the home cards sit on top of each other in one
-                box. The Active Task card is on top; drag it sideways to send it
-                to the back and bring the next card forward. */}
-            <View style={{ zIndex: 100, elevation: Platform.OS === 'android' ? 50 : undefined, overflow: 'visible' }}>
-              <CardStack
-                layout="fan"
-                visible={4}
-                spread={0.6}
-                depth={0.5}
-                radius={32}
-                cardHeight={275}
-                peek={44}
-                threshold={85}
-                isRTL={isArabic}
-                autoResetToTop={true}
-                autoResetDelay={9000}
-                style={{ marginTop: 6, marginBottom: 12 }}
-                cards={[
-                  /* Card 0: Active Task (the task the user is working on right now) */
-                  <ActiveTaskCard
-                    key="active-task"
-                    isArabic={isArabic}
-                    onRunTask={handleRunTask}
-                    onPauseTask={handlePauseTask}
-                    onCompleteTask={handleCompleteTask}
-                    onOpenDetail={handleEditTask}
-                    onAddTask={() => setIsTaskModalVisible(true)}
-                    style={{ height: '100%' }}
-                  />,
-
-                  /* Card 1: Today's Checklist (Electric Orange) */
-                  <ChecklistCard
-                    key="checklist"
-                    tasks={todayChecklistTasks}
-                    doneCount={checklistDoneCount}
-                    totalCount={checklistTotalCount}
-                    onToggleTask={handleToggleTaskStatus}
-                    onOpenTaskDetail={(id) => handleEditTask(id)}
-                    onQuickManage={() => setGlobalActionModalVisible(true)}
-                    onScrollToTasksSection={handleScrollToTasksSection}
-                    onAddNewTask={() => setIsTaskModalVisible(true)}
-                    onAddChecklistItem={() => openChecklistItemModal(null)}
-                    onOpenChecklistItem={(id) => openChecklistItemModal(id)}
-                    streakScore={streakCount}
-                    notesCount="186"
-                  />,
-
-                  /* Card 2: Upcoming Events & Reminders */
-                  <UpcomingEventsCard
-                    key="upcoming"
-                    events={upcomingEvents}
-                    onOpenEventModal={handleOpenEventModal}
-                    onToggleDone={handleToggleEventDone}
-                  />,
-
-                  /* Card 3: Monthly Overview */
-                  <MonthlyOverviewCard
-                    key="monthly"
-                    monthName={currentMonthName}
-                    year={currentYear}
-                    completedTasks={monthDoneCount}
-                    totalTasks={monthTotalCount}
-                    activeGoalsCount={activeMonthlyGoals}
-                    onPress={() => router.push('/(tabs)/planner')}
-                  />,
-
-                  /* Card 4: AI Insights & Wellbeing Card */
-                  <InsightsCard
-                    key="insights"
-                    insights={dailyInsights}
-                    onPress={() => router.push('/(tabs)/insights')}
-                  />,
-                ]}
-              />
-            </View>
-
-            {/* 2b. Mini Stat Cards Section (Stitch design: Today's Tasks, Done, Not Done) */}
-            <View style={{ zIndex: 1, elevation: 1 }}>
-              <HomeStatCards
-              totalTasks={todayAllForProgress}
-              doneTasks={todayDoneForProgress}
-              notDoneTasks={Math.max(0, todayAllForProgress - todayDoneForProgress)}
+            {/* 2. THIRD SECTION (Transparent Horizontally Scrollable Feature Cards) */}
+            <HomeFeatureStrip
+              features={featuresList}
+              onSelectFeature={handleSelectFeature}
               isArabic={isArabic}
             />
-            </View>
 
-            {/* 3. Centered CTA Button (Stitch design: Neon Lime Add Task Button) */}
-            <View style={{ zIndex: 1, elevation: 1, paddingHorizontal: 16, marginTop: 5, marginBottom: 6, alignItems: 'center' }}>
-              <TouchableOpacity
-                activeOpacity={0.88}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsTaskModalVisible(true);
-                }}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#d4ff32',
-                  borderRadius: 32,
-                  paddingVertical: 13,
-                  paddingHorizontal: 20,
-                  flexDirection: isArabic ? 'row-reverse' : 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  shadowColor: '#d4ff32',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 10,
-                  elevation: 4,
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#000000', lineHeight: 20 }}>+</Text>
-                <Text style={{ fontSize: 14.5, fontWeight: '800', color: '#000000', letterSpacing: -0.2 }}>
-                  {isArabic ? 'إضافة مهمة' : 'Add Task'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 4. Overlaid Interactive Task Modals (Base Tasks Sheet + Overlaid Active Task Sheet) */}
-            <View 
-              style={{ zIndex: 1, elevation: 1 }}
-              onLayout={(e) => {
-                setTasksSectionY(e.nativeEvent.layout.y);
-              }}
-            >
-              <StackedTaskModals
-                tasks={currentDayTasks}
-                isArabic={isArabic}
-                now={now}
-                goals={yearlyGoals}
-                onRunTask={handleRunTask}
-                onPauseTask={handlePauseTask}
-                onCompleteTask={handleCompleteTask}
-                onReopenTask={handleReopenTask}
-                onOpenDetail={handleEditTask}
-                onAddTask={() => setIsTaskModalVisible(true)}
-              />
-            </View>
-            </ActiveTaskProvider>
-
+            {/* 3. LOWER WIDGET (Purple #8A2BE2 with rounded corners, holds 4-Task CardStack) */}
+            <HomeTasksWidget
+              tasks={currentDayTasks}
+              doneCount={currentDayDoneCount}
+              totalCount={currentDayTasks.length}
+              isArabic={isArabic}
+              onRunTask={handleRunTask}
+              onPauseTask={handlePauseTask}
+              onCompleteTask={handleCompleteTask}
+              onEditTask={handleEditTask}
+              onAddTask={() => setIsTaskModalVisible(true)}
+              onViewAll={() => handleOpenDayPlanner(selectedDate)}
+            />
           </ScrollView>
+
+          {/* 4. Floating Call-To-Action Button ("Add Task" in bottom right above tabs bar) */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsTaskModalVisible(true);
+            }}
+            style={[
+              styles.floatingCta,
+              isArabic ? { left: 20 } : { right: 20 },
+              { bottom: insets.bottom + 74 },
+            ]}
+          >
+            <Ionicons name="add" size={20} color="#000000" />
+            <Text style={styles.floatingCtaText}>
+              {isArabic ? 'إضافة مهمة' : 'Add Task'}
+            </Text>
+          </TouchableOpacity>
+        </ActiveTaskProvider>
+      )}
+
+      {/* Feature Sheet Modal for Checklist, Reminders, Monthly, Insights */}
+      <FeatureSheet
+        visible={activeFeature !== null}
+        onClose={() => setActiveFeature(null)}
+        title={featureSheetTitle}
+        isArabic={isArabic}
+      >
+        {activeFeature === 'checklist' && (
+          <ChecklistCard
+            tasks={todayChecklistTasks}
+            doneCount={checklistDoneCount}
+            totalCount={checklistTotalCount}
+            onToggleTask={handleToggleTaskStatus}
+            onOpenTaskDetail={(id) => handleEditTask(id)}
+            onQuickManage={() => setGlobalActionModalVisible(true)}
+            onScrollToTasksSection={() => {
+              setActiveFeature(null);
+            }}
+            onAddNewTask={() => {
+              setActiveFeature(null);
+              setIsTaskModalVisible(true);
+            }}
+            onAddChecklistItem={() => openChecklistItemModal(null)}
+            onOpenChecklistItem={(id) => openChecklistItemModal(id)}
+            streakScore={streakCount}
+            notesCount="186"
+          />
         )}
 
-        {/* Task Modals */}
-        <TaskDetailModal 
-          key={isTaskModalVisible ? `new-task-${selectedDate}` : 'new-task-closed'}
-          visible={isTaskModalVisible}
-          onClose={() => setIsTaskModalVisible(false)}
-          todoId={null}
-          initialDate={selectedDate}
-        />
-        <TaskDetailModal 
-          key={editingTaskId ? `edit-task-${editingTaskId}` : 'edit-task-closed'}
-          visible={editingTaskId !== null}
-          onClose={() => { setEditingTaskId(null); setEditingTaskSection(undefined); }}
-          todoId={editingTaskId}
-          initialSection={editingTaskSection}
-        />
+        {activeFeature === 'reminders' && (
+          <UpcomingEventsCard
+            events={upcomingEvents}
+            onOpenEventModal={handleOpenEventModal}
+            onToggleDone={handleToggleEventDone}
+          />
+        )}
 
-        {/* Checklist Item Modal (add / edit items inside Today's Checklist) */}
-        <ChecklistItemModal
-          visible={isChecklistItemModalVisible}
-          onClose={() => { setIsChecklistItemModalVisible(false); setEditingChecklistItemId(null); }}
-          itemId={editingChecklistItemId}
-          session={checklistItemSession}
-          initialDate={selectedDate}
-          candidateTasks={normalizedTodos.map(task => ({ _id: task._id, text: task.text, status: task.status }))}
-          onOpenTask={(id) => handleEditTask(id)}
-        />
+        {activeFeature === 'monthly' && (
+          <MonthlyOverviewCard
+            monthName={currentMonthName}
+            year={currentYear}
+            completedTasks={monthDoneCount}
+            totalTasks={monthTotalCount}
+            activeGoalsCount={activeMonthlyGoals}
+            onPress={() => {
+              setActiveFeature(null);
+              router.push('/(tabs)/planner');
+            }}
+          />
+        )}
 
-        {/* Event Management Modal */}
-        <EventManagementModal
-          visible={isEventModalVisible}
-          onClose={() => setIsEventModalVisible(false)}
-          initialDate={selectedDate}
-          eventToEdit={eventToEdit}
-          onSaveEvent={handleSaveEvent}
-          onDeleteEvent={handleDeleteEvent}
-        />
+        {activeFeature === 'insights' && (
+          <InsightsCard
+            insights={dailyInsights}
+            onPress={() => {
+              setActiveFeature(null);
+              router.push('/(tabs)/insights');
+            }}
+          />
+        )}
+      </FeatureSheet>
 
-        {/* Focus Timer Modal */}
-        <TimerModal
-          visible={isFocusTimerModalVisible}
-          onClose={() => setFocusTimerModalVisible(false)}
-          onSave={handleSaveFocusTimer}
-          initialDate={selectedDate}
-        />
-      </SafeAreaView>
-
-      {/* Global Action Modal */}
-      <ActionModal 
-        visible={isGlobalActionModalVisible}
-        onClose={() => setGlobalActionModalVisible(false)}
-        title={isArabic ? 'خيارات القائمة' : 'List Options'}
-        isArabic={isArabic}
-        options={[
-          {
-            label: t.sortByPriority,
-            icon: 'star-outline',
-            onPress: () => setSortActive('priority')
-          },
-          {
-            label: t.sortByDueDate,
-            icon: 'calendar-outline',
-            onPress: () => setSortActive('date')
-          },
-          {
-            label: t.markAllDone,
-            icon: 'checkmark-done-outline',
-            onPress: () => {
-              activeBoardTasks.forEach(t => updateStatus({ id: t._id, status: 'done' }));
-            }
-          },
-          {
-            label: t.clearCompleted,
-            icon: 'trash-outline',
-            variant: 'destructive',
-            onPress: () => {
-              const completedTasks = kanbanColumns.find(c => c.key === 'done')?.tasks || [];
-              if (completedTasks.length === 0) {
-                return;
-              }
-              
-              Alert.alert(
-                isArabic ? 'مسح المهام المكتملة' : 'Clear Completed Tasks',
-                isArabic 
-                  ? `هل أنت متأكد من حذف ${completedTasks.length} مهمة مكتملة؟ لا يمكن التراجع عن هذا الإجراء.` 
-                  : `Are you sure you want to delete ${completedTasks.length} completed task${completedTasks.length === 1 ? '' : 's'}? This action cannot be undone.`,
-                [
-                  {
-                    text: isArabic ? 'إلغاء' : 'Cancel',
-                    style: 'cancel'
-                  },
-                  {
-                    text: isArabic ? 'حذف' : 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      completedTasks.forEach(t => deleteTodo({ id: t._id }));
-                    }
-                  }
-                ]
-              );
-            }
-          }
-        ]}
+      {/* Task Creation & Edit Modals */}
+      <TaskDetailModal 
+        key={isTaskModalVisible ? `new-task-${selectedDate}` : 'new-task-closed'}
+        visible={isTaskModalVisible}
+        onClose={() => setIsTaskModalVisible(false)}
+        todoId={null}
+        initialDate={selectedDate}
+      />
+      <TaskDetailModal 
+        key={editingTaskId ? `edit-task-${editingTaskId}` : 'edit-task-closed'}
+        visible={editingTaskId !== null}
+        onClose={() => { setEditingTaskId(null); setEditingTaskSection(undefined); }}
+        todoId={editingTaskId}
+        initialSection={editingTaskSection}
       />
 
-      <ScreenGuide visible={showGuide} tips={homeTips} onDismiss={dismissGuide} isArabic={isArabic} />
+      {/* Checklist Item Modal */}
+      <ChecklistItemModal
+        visible={isChecklistItemModalVisible}
+        onClose={() => { setIsChecklistItemModalVisible(false); setEditingChecklistItemId(null); }}
+        itemId={editingChecklistItemId}
+        session={checklistItemSession}
+        initialDate={selectedDate}
+        candidateTasks={normalizedTodos.map(task => ({ _id: task._id, text: task.text, status: task.status }))}
+        onOpenTask={(id) => handleEditTask(id)}
+      />
+
+      {/* Event Management Modal */}
+      <EventManagementModal
+        visible={isEventModalVisible}
+        onClose={() => setIsEventModalVisible(false)}
+        initialDate={selectedDate}
+        eventToEdit={eventToEdit}
+        onSaveEvent={handleSaveEvent}
+        onDeleteEvent={handleDeleteEvent}
+      />
+
+      {/* Focus Timer Modal */}
+      <TimerModal
+        visible={isFocusTimerModalVisible}
+        onClose={() => setFocusTimerModalVisible(false)}
+        onSave={handleSaveFocusTimer}
+        initialDate={selectedDate}
+      />
+
+      {/* Screen Guide Tooltips */}
+      <ScreenGuide
+        visible={showGuide}
+        tips={homeTips}
+        onDismiss={dismissGuide}
+        isArabic={isArabic}
+      />
     </KeyboardAvoidingView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  floatingCta: {
+    position: 'absolute',
+    backgroundColor: LIME_ACCENT,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    gap: 6,
+    zIndex: 999,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  floatingCtaText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: -0.2,
+  },
+});
 
 export default Index;

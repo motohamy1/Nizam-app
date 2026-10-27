@@ -42,7 +42,8 @@ const formatTime = (ms: number) => {
 const asDoc = (value: any): any =>
   value && !Array.isArray(value) && typeof value === 'object' ? value : null;
 
-interface ActiveTaskCardProps {
+export interface ActiveTaskCardProps {
+  task?: TaskItem | null;
   isArabic?: boolean;
   onRunTask: (task: TaskItem) => void;
   onPauseTask: (task: TaskItem) => void;
@@ -67,6 +68,7 @@ interface ActiveTaskCardProps {
  * first thing the user meets when the page opens.
  */
 export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
+  task,
   isArabic = false,
   onRunTask,
   onPauseTask,
@@ -76,7 +78,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   style,
 }) => {
   const activeTaskState = useActiveTask();
-  const activeTask = activeTaskState?.activeTask ?? null;
+  const activeTask = task !== undefined ? task : (activeTaskState?.activeTask ?? null);
   const selectTask = activeTaskState?.selectTask;
   const advanceAfterComplete = activeTaskState?.advanceAfterComplete;
 
