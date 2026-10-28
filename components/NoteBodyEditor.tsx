@@ -6,14 +6,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  StyleSheet,
+import { StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
-} from 'react-native';
+  View, type TextInputInstance } from 'react-native';
 
 export type BlockType =
   | 'normal'
@@ -205,7 +203,7 @@ const NoteBodyEditor = forwardRef<NoteBodyEditorHandle, NoteBodyEditorProps>((pr
   const [activeId, setActiveId] = useState<string | null>(null);
   const activeIdRef = useRef<string | null>(null);
   const blocksRef = useRef<BlockItem[]>(blocks);
-  const inputRefs = useRef<Record<string, TextInput | null>>({});
+  const inputRefs = useRef<Record<string, any>>({});
   const selectionMapRef = useRef<Record<string, { start: number; end: number }>>({});
   const lastSerializedRef = useRef<string>(value || '');
 

@@ -5,12 +5,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -125,7 +126,7 @@ const Index = () => {
   const [now] = useState(() => Date.now());
   const [selectedDate, setSelectedDate] = useState(todayStart);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const homeStyles = createHomeStyles(colors, isArabic);
   const { showGuide, dismissGuide } = useScreenGuide('home');
   useTaskTimers(todos, updateStatus, linkedChildren as any[], setTimerMutation, language);
@@ -597,11 +598,7 @@ const Index = () => {
       keyboardVerticalOffset={0}
     >
       {/* Device Status Bar settles inside the lime widget at the top */}
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={LIME_ACCENT}
-        translucent={true}
-      />
+      <StatusBar style="dark" />
 
       {todos === undefined ? (
         <View style={styles.loadingContainer}>

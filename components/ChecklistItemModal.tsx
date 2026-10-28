@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
-import {
-  ActivityIndicator,
+import { ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -12,8 +11,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  useWindowDimensions,
-} from 'react-native';
+  useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
@@ -76,7 +74,7 @@ const ChecklistItemForm: React.FC<{
   const frame = createCardFrame(CARD_ACCENTS.rose, isDarkMode, colors.secondaryText);
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const isEditing = item !== null;
   const itemId: Id<'todos'> | null = item?._id ?? null;

@@ -13,7 +13,7 @@ import { useSubtaskTimerNotifications } from '@/hooks/useSubtaskTimerNotificatio
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, useWindowDimensions, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import Svg, { Circle, G, Text as SvgText } from 'react-native-svg';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { InlineTimerPicker } from './InlineTimerPicker';
@@ -33,9 +33,9 @@ interface TaskDetailModalProps {
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, todoId, initialDate, projectId, initialSection }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const subtaskSectionY = useRef<number>(0);
-  const subtaskInputRef = useRef<TextInput>(null);
+  const subtaskInputRef = useRef<TextInputInstance>(null);
   const { colors, isDarkMode } = useTheme();
   const { userId, language } = useAuth();
   const { t, isArabic } = useTranslation(language);

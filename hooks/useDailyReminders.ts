@@ -16,7 +16,7 @@ export function useDailyReminders(todos: any[] | undefined, language: string = '
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      if (appState.current?.match(/inactive|background/) && nextAppState === 'active') {
         if (todosRef.current && Array.isArray(todosRef.current)) {
           scheduleMorningReminder(todosRef.current, language);
           scheduleEveningReminder(todosRef.current, language);

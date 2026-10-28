@@ -7,15 +7,13 @@ import { useTranslation } from '@/utils/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
+import { KeyboardAvoidingView,
   Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View, type TextInputInstance } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -69,7 +67,7 @@ const BlockItem = React.memo(({
   onContentChange, onToggleTodo, onAddNewBlock, onDeleteBlock, onFocus
 }: {
   item: Block; isArabic: boolean; colors: any;
-  blockRefs: React.MutableRefObject<{ [key: string]: TextInput | null }>;
+  blockRefs: React.MutableRefObject<{ [key: string]: any }>;
   onContentChange: (blockId: string, newContent: string) => void;
   onToggleTodo: (blockId: string) => void;
   onAddNewBlock: (afterBlockId: string, type: Block['type']) => void;
@@ -156,7 +154,7 @@ const RichEditor = React.memo(({
   isArabic: boolean; colors: any;
   activeBlockId: string | null;
   setActiveBlockId: (id: string | null) => void;
-  blockRefs: React.MutableRefObject<{ [key: string]: TextInput | null }>;
+  blockRefs: React.MutableRefObject<{ [key: string]: any }>;
 }) => {
   const handleBlockTextChange = useCallback((blockId: string, newContent: string) => {
     if (newContent.includes('\n')) {
@@ -271,7 +269,7 @@ export default function YearDetailScreen() {
   // Blocks per category
   const [blocksMap, setBlocksMap] = useState<Record<string, Block[]>>({});
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  const blockRefs = useRef<{ [key: string]: TextInput | null }>({});
+  const blockRefs = useRef<{ [key: string]: any }>({});
 
   // Queries
   const goalsData = useOfflineQuery<any[]>('yearlyGoals', api.yearlyGoals.getGoals, userId ? { userId, year: yearNum } : 'skip') || [];

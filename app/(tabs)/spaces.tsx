@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -5,7 +6,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Modal,
   TextInput,
   Animated,
@@ -2283,7 +2283,7 @@ const Projects: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
+      <StatusBar style={colors.statusBarStyle === "light-content" ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea}>
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           {layer === 'categories' ? (

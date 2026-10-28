@@ -181,7 +181,7 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
     }, 1000);
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      if (appState.current?.match(/inactive|background/) && nextAppState === 'active') {
         if (todosRef.current) {
           checkTasks(todosRef.current);
         }

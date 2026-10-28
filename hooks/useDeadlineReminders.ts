@@ -256,7 +256,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      if (appState.current?.match(/inactive|background/) && nextAppState === 'active') {
         const current = todosRef.current;
         if (current && Array.isArray(current)) {
           // Re-check against the persisted set: anything not yet nudged for

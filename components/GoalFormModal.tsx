@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
+import { View,
   Text,
   Modal,
   TextInput,
@@ -11,8 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  useWindowDimensions,
-} from 'react-native';
+  useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
 import LivePress from '@/components/LivePress';
@@ -96,7 +94,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   const { colors, isDarkMode } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const isEdit = mode === 'edit' || (item && item._id);
   const [type, setType] = useState<'goal' | 'achievement'>('goal');

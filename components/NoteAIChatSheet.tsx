@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
+import { View,
   Text,
   Modal,
   TextInput,
@@ -12,8 +11,7 @@ import {
   Platform,
   Clipboard,
   Alert,
-  useWindowDimensions,
-} from 'react-native';
+  useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
@@ -322,7 +320,7 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const [inputMessage, setInputMessage] = useState('');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     if (visible) {

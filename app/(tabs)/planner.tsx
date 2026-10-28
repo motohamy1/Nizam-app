@@ -1,6 +1,7 @@
+import { StatusBar } from 'expo-status-bar';
 import ScreenBackground from '@/components/ScreenBackground';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet, BackHandler, KeyboardAvoidingView, Platform, FlatList, Share, TextInput, Dimensions, LayoutAnimation, PanResponder, useWindowDimensions, Modal, type ScrollViewInstance } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -158,8 +159,8 @@ const Planner = () => {
   const [editingGoalItem, setEditingGoalItem] = useState<any | null>(null);
   const [activeMonthTab, setActiveMonthTab] = useState<'goals' | 'analytics'>('goals');
   const [monthPerformanceY, setMonthPerformanceY] = useState(0);
-  const monthScrollViewRef = useRef<ScrollView>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const monthScrollViewRef = useRef<ScrollViewInstance>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const currentYear = new Date().getFullYear();
@@ -2193,7 +2194,7 @@ const Planner = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
 
-      <StatusBar barStyle={colors.statusBarStyle} backgroundColor="transparent" translucent={true} />
+      <StatusBar style={colors.statusBarStyle === "light-content" ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea}>
         <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
           <View style={[styles.header, { paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>

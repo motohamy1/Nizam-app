@@ -11,8 +11,7 @@ import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Dimensions,
+import { Dimensions,
   KeyboardAvoidingView,
   Keyboard,
   Modal,
@@ -24,8 +23,7 @@ import {
   View,
   Alert,
   StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator, type ScrollViewInstance } from 'react-native';
 import { useMutation, useAction, useQuery } from 'convex/react';
 import { AudioPlayerCard } from '@/components/AudioPlayerCard';
 import { DynamicVoiceCard } from '@/components/DynamicVoiceCard';
@@ -108,7 +106,7 @@ export default function NoteDetailScreen() {
   const [dateTimeConfirmed, setDateTimeConfirmed] = useState(false);
 
   const bodyEditorRef = useRef<NoteBodyEditorHandle>(null);
-  const scrollViewRef = useRef<ScrollView | null>(null);
+  const scrollViewRef = useRef<ScrollViewInstance | null>(null);
   const activeLineYRef = useRef<{ y: number; h: number } | null>(null);
   const editorTopRef = useRef(0);
 

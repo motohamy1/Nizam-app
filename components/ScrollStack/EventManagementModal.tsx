@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Modal,
+import { Modal,
   View,
   Text,
   TextInput,
@@ -10,8 +9,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Alert,
-  findNodeHandle,
-} from 'react-native';
+  findNodeHandle, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
@@ -65,7 +63,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
-  const formScrollRef = useRef<ScrollView>(null);
+  const formScrollRef = useRef<ScrollViewInstance>(null);
 
   // Scroll the focused input above the keyboard inside the sheet. Android
   // fires the keyboard event late, hence the longer delay.
@@ -82,11 +80,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
       }
     }, Platform.OS === 'ios' ? 150 : 400);
   };
-  const titleInputRef = useRef<TextInput>(null);
-  const locationInputRef = useRef<TextInput>(null);
-  const meetingLinkInputRef = useRef<TextInput>(null);
-  const notesInputRef = useRef<TextInput>(null);
-  const repeatCountInputRef = useRef<TextInput>(null);
+  const titleInputRef = useRef<TextInputInstance>(null);
+  const locationInputRef = useRef<TextInputInstance>(null);
+  const meetingLinkInputRef = useRef<TextInputInstance>(null);
+  const notesInputRef = useRef<TextInputInstance>(null);
+  const repeatCountInputRef = useRef<TextInputInstance>(null);
 
   const [title, setTitle] = useState('');
   const [itemType, setItemType] = useState<ManagedItemType>('reminder');

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import {
-  View,
+import { View,
   Text,
   TouchableOpacity,
   ScrollView,
@@ -12,8 +11,7 @@ import {
   Dimensions,
   useWindowDimensions,
   Alert,
-  PanResponder,
-} from 'react-native';
+  PanResponder, type ScrollViewInstance } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Id } from '@/convex/_generated/dataModel';
 import useTheme from '@/hooks/useTheme';
@@ -115,7 +113,7 @@ export const DayTimelineSchedule: React.FC<DayTimelineScheduleProps> = ({
   const { colors, isDarkMode } = useTheme();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const { height: screenHeight } = useWindowDimensions();
-  const timelineScrollRef = useRef<ScrollView>(null);
+  const timelineScrollRef = useRef<ScrollViewInstance>(null);
 
   // Dynamic Prayer Times according to User Location (Egypt/Cairo and global)
   const locationConfig = useMemo(() => getUserLocationConfig(), []);

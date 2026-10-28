@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ScrollView, Text, View, TouchableOpacity, LayoutAnimation, useWindowDimensions } from 'react-native';
+import { ScrollView, Text, View, TouchableOpacity, LayoutAnimation, useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -599,7 +599,7 @@ export const TaskKanban: React.FC<TaskKanbanProps> = ({ columns, homeStyles, isA
   const { t } = useTranslation(isArabic ? 'ar' : 'en');
   const { width: screenWidth } = useWindowDimensions();
 
-  const scrollViewRef = React.useRef<ScrollView>(null);
+  const scrollViewRef = React.useRef<ScrollViewInstance>(null);
   const [activeColIndex, setActiveColIndex] = useState(0);
 
   const COLUMN_WIDTH = Math.min(Math.max(screenWidth - 56, 280), 340);
