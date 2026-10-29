@@ -230,44 +230,44 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
         ]}
       />
 
-      {/* Main Content Layout with 3 strict vertical zones */}
+      {/* Main Content Layout with Upper Content + Pinned Bottom Actions */}
       <View style={styles.cardInner}>
-        {/* Zone 1: Header Row (Badge + Status + Open Button) */}
-        <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
-          <View style={styles.taskBadge}>
-            <Text style={styles.taskBadgeText}>{badgeText}</Text>
-          </View>
-          <View
-            style={{
-              flexDirection: isArabic ? 'row-reverse' : 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <View style={styles.statusPill}>
-              <Text style={styles.statusPillText}>
-                {showProgressPercent
-                  ? `${activeStatusLabel} • ${activeTaskProgress}%`
-                  : activeStatusLabel}
-              </Text>
+        {/* Upper Part: Header Row + Task Title + Crystalloid Ball Timer + Labels + Subtasks */}
+        <View style={styles.upperSection}>
+          {/* Header Row (Badge + Status + Open Button) */}
+          <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
+            <View style={styles.taskBadge}>
+              <Text style={styles.taskBadgeText}>{badgeText}</Text>
             </View>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                if (!activeTask) return;
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onOpenDetail(activeTask._id);
+            <View
+              style={{
+                flexDirection: isArabic ? 'row-reverse' : 'row',
+                alignItems: 'center',
+                gap: 6,
               }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.openDetailBtn}
             >
-              <Ionicons name="open-outline" size={13} color="#000000" />
-            </TouchableOpacity>
+              <View style={styles.statusPill}>
+                <Text style={styles.statusPillText}>
+                  {showProgressPercent
+                    ? `${activeStatusLabel} • ${activeTaskProgress}%`
+                    : activeStatusLabel}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  if (!activeTask) return;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onOpenDetail(activeTask._id);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.openDetailBtn}
+              >
+                <Ionicons name="open-outline" size={13} color="#000000" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Zone 2: Flexible Middle Section (Title + Ball + Subtasks) */}
-        <View style={styles.middleSection}>
           {/* Title, Labels & Crystalloid Ball */}
           <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
             <TouchableOpacity
@@ -303,34 +303,8 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                 </Text>
               ) : null}
 
-              {/* Timer mode, priority and linked goal / project / space labels */}
+              {/* Priority and linked goal / project / space labels */}
               <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
-                {/* Timer indicator pill */}
-                {hasTimer && (
-                  <View
-                    style={[
-                      styles.labelPill,
-                      styles.labelPillStrong,
-                      isArabic && styles.rowRtl,
-                    ]}
-                  >
-                    <Ionicons
-                      name={isCountUp ? 'stopwatch-outline' : 'timer-outline'}
-                      size={11}
-                      color="#000000"
-                    />
-                    <Text numberOfLines={1} style={styles.labelText}>
-                      {isCountUp
-                        ? isArabic
-                          ? 'مؤقت تصاعدي'
-                          : 'Count-up'
-                        : isArabic
-                        ? 'تنازلي'
-                        : 'Countdown'}
-                    </Text>
-                  </View>
-                )}
-
                 {/* Priority label */}
                 {activeTask?.priority && (
                   <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
@@ -372,30 +346,34 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               </View>
             </TouchableOpacity>
 
-            {/* Progress Indicator: Strictly Crystalloid Ball in both active and idle/paused states */}
-            {activeTask && (
-              <CrystalizedBall
-                size={54}
-                preset="ember"
-                color="#FF6B35"
-                isRunning={activeTask.status === 'in_progress'}
-                isCountDown={isCountDown}
-                timerLabel={
-                  hasTimer
+            {/* Progress Indicator: Strictly Crystalloid Ball in all states (active, idle, or empty) */}
+            <CrystalizedBall
+              size={54}
+              preset="ember"
+              color="#FF6B35"
+              isRunning={activeTask?.status === 'in_progress'}
+              isCountDown={isCountDown}
+              timerLabel={
+                activeTask
+                  ? hasTimer
                     ? formatTime(timerValue)
                     : activeTaskProgress !== null
                     ? `${activeTaskProgress}%`
                     : ''
+                  : ''
+              }
+              onPress={() => {
+                if (!activeTask) {
+                  onAddTask?.();
+                  return;
                 }
-                onPress={() => {
-                  if (activeTask.status === 'in_progress') {
-                    handlePauseTaskAction(activeTask);
-                  } else {
-                    handleRunTaskAction(activeTask);
-                  }
-                }}
-              />
-            )}
+                if (activeTask.status === 'in_progress') {
+                  handlePauseTaskAction(activeTask);
+                } else {
+                  handleRunTaskAction(activeTask);
+                }
+              }}
+            />
           </View>
 
           {/* Subtasks Toggle Button (Shown if task has subtasks) */}
@@ -558,11 +536,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 2,
   },
-  middleSection: {
-    flex: 1,
-    minHeight: 0,
-    justifyContent: 'center',
-    marginVertical: 4,
+  upperSection: {
+    width: '100%',
+    justifyContent: 'flex-start',
   },
   rowRtl: {
     flexDirection: 'row-reverse',
@@ -571,7 +547,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 8,
     flexShrink: 0,
   },
   taskBadge: {
@@ -610,7 +586,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6,
     gap: 8,
   },
   labelsRow: {
