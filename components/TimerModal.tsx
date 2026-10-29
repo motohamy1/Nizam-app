@@ -23,6 +23,12 @@ interface TimerModalProps {
   initialDate?: number;
 }
 
+const MODAL_PURPLE_BG = '#1C0A2A';
+const MODAL_PURPLE_BORDER = '#8E2CAC';
+const MODAL_PURPLE_TINT = 'rgba(142, 44, 172, 0.14)';
+const MODAL_PURPLE_LINE = 'rgba(142, 44, 172, 0.35)';
+const MODAL_CORAL_ACCENT = '#FF9470';
+
 const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initialDate }) => {
   const { colors, isDarkMode } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
@@ -56,14 +62,16 @@ const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initi
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.overlay, { backgroundColor: colors.text + '80' }]}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]}>
           <TouchableWithoutFeedback>
             <View
               style={[
                 styles.modalContainer,
                 {
-                  backgroundColor: colors.surface,
-                  shadowColor: colors.text,
+                  backgroundColor: MODAL_PURPLE_BG,
+                  borderWidth: 2,
+                  borderColor: MODAL_PURPLE_BORDER,
+                  shadowColor: '#8E2CAC',
                   marginBottom: keyboardHeight > 0 ? Math.min(keyboardHeight, 180) : 0,
                   maxHeight: isKeyboardVisible ? Math.max(300, screenHeight - keyboardHeight - 40) : '85%',
                 },
@@ -75,58 +83,84 @@ const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initi
                 contentContainerStyle={{ alignItems: 'center', paddingBottom: isKeyboardVisible ? 20 : 0 }}
                 style={{ width: '100%' }}
               >
-                <Text style={[styles.title, { color: colors.text }]}>Set timer & deadline</Text>
+                <Text style={[styles.title, { color: '#FFFFFF' }]}>Set timer & deadline</Text>
                 
-                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Duration</Text>
+                <Text style={[styles.sectionTitle, { color: 'rgba(255, 255, 255, 0.70)' }]}>Duration</Text>
                 <View style={styles.inputRow}>
                   <View style={styles.inputGroup}>
                     <TextInput
-                      style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                      style={[
+                        styles.input,
+                        {
+                          color: '#FFFFFF',
+                          borderColor: MODAL_PURPLE_LINE,
+                          backgroundColor: MODAL_PURPLE_TINT,
+                        },
+                      ]}
                       keyboardType="numeric"
                       value={hours}
                       onChangeText={setHours}
                       maxLength={2}
                       selectTextOnFocus
                     />
-                    <Text style={[styles.label, { color: colors.textMuted }]}>Hours</Text>
+                    <Text style={[styles.label, { color: 'rgba(255, 255, 255, 0.70)' }]}>Hours</Text>
                   </View>
-                  <Text style={[styles.colon, { color: colors.text }]}>:</Text>
+                  <Text style={[styles.colon, { color: MODAL_CORAL_ACCENT }]}>:</Text>
                   <View style={styles.inputGroup}>
                     <TextInput
-                      style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                      style={[
+                        styles.input,
+                        {
+                          color: '#FFFFFF',
+                          borderColor: MODAL_PURPLE_LINE,
+                          backgroundColor: MODAL_PURPLE_TINT,
+                        },
+                      ]}
                       keyboardType="numeric"
                       value={minutes}
                       onChangeText={setMinutes}
                       maxLength={2}
                       selectTextOnFocus
                     />
-                    <Text style={[styles.label, { color: colors.textMuted }]}>Mins</Text>
+                    <Text style={[styles.label, { color: 'rgba(255, 255, 255, 0.70)' }]}>Mins</Text>
                   </View>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Deadline</Text>
+                <Text style={[styles.sectionTitle, { color: 'rgba(255, 255, 255, 0.70)' }]}>Deadline</Text>
                 <TouchableOpacity 
-                  style={[styles.dateButton, { borderColor: colors.border }]} 
+                  style={[
+                    styles.dateButton,
+                    {
+                      borderColor: MODAL_PURPLE_LINE,
+                      backgroundColor: MODAL_PURPLE_TINT,
+                    },
+                  ]} 
                   onPress={() => { setDatePickerMode('dueDate'); setShowDatePicker(true); }}
                 >
-                  <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.dateButtonText, { color: dueDate ? colors.text : colors.textMuted }]}>
+                  <Ionicons name="calendar-outline" size={20} color={MODAL_CORAL_ACCENT} />
+                  <Text style={[styles.dateButtonText, { color: dueDate ? '#FFFFFF' : 'rgba(255, 255, 255, 0.50)' }]}>
                     {dueDate ? dueDate.toLocaleDateString() : 'No deadline'}
                   </Text>
                   {dueDate && (
                     <TouchableOpacity onPress={() => setDueDate(null)}>
-                      <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                      <Ionicons name="close-circle" size={20} color={MODAL_CORAL_ACCENT} />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
 
-                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Plan for</Text>
+                <Text style={[styles.sectionTitle, { color: 'rgba(255, 255, 255, 0.70)' }]}>Plan for</Text>
                 <TouchableOpacity 
-                  style={[styles.dateButton, { borderColor: colors.border }]} 
+                  style={[
+                    styles.dateButton,
+                    {
+                      borderColor: MODAL_PURPLE_LINE,
+                      backgroundColor: MODAL_PURPLE_TINT,
+                    },
+                  ]} 
                   onPress={() => { setDatePickerMode('plannerDate'); setShowDatePicker(true); }}
                 >
-                  <Ionicons name="calendar-clear-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.dateButtonText, { color: colors.text }]}>
+                  <Ionicons name="calendar-clear-outline" size={20} color={MODAL_CORAL_ACCENT} />
+                  <Text style={[styles.dateButtonText, { color: '#FFFFFF' }]}>
                     {plannerDate.toLocaleDateString()}
                   </Text>
                 </TouchableOpacity>
@@ -143,11 +177,25 @@ const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initi
                 )}
 
                 <View style={styles.buttonRow}>
-                  <TouchableOpacity style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
-                    <Text style={[styles.buttonText, { color: colors.textMuted }]}>Cancel</Text>
+                  <TouchableOpacity
+                    style={[styles.button, styles.cancelButton, { borderColor: MODAL_PURPLE_LINE }]}
+                    onPress={onClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel"
+                  >
+                    <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.button, styles.saveButton, { backgroundColor: colors.primary, shadowColor: colors.text }]} onPress={handleSave} accessibilityRole="button" accessibilityLabel="Save timer settings">
-                    <Text style={[styles.buttonText, { color: colors.primaryText }]}>Save settings</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.saveButton,
+                      { backgroundColor: MODAL_CORAL_ACCENT, shadowColor: MODAL_CORAL_ACCENT },
+                    ]}
+                    onPress={handleSave}
+                    accessibilityRole="button"
+                    accessibilityLabel="Save timer settings"
+                  >
+                    <Text style={[styles.buttonText, { color: '#14081E' }]}>Save settings</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -168,32 +216,31 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
-    borderRadius: 32,
+    borderRadius: 24,
     padding: 24,
-    alignItems: 'center',
-    elevation: 20,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 2,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
+    fontWeight: '800',
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 16,
+    fontWeight: '700',
     alignSelf: 'flex-start',
+    marginBottom: 12,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    gap: 16,
+    gap: 12,
+    marginBottom: 24,
   },
   inputGroup: {
     alignItems: 'center',
@@ -210,7 +257,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   colon: {
     fontSize: 24,
@@ -222,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 12,
     marginBottom: 24,
@@ -230,7 +277,7 @@ const styles = StyleSheet.create({
   dateButtonText: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -249,7 +296,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },

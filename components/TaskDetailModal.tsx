@@ -644,7 +644,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
   // accent chip, timer and links stay visible on the light sheet.
   // Home page signature palette: Electric Orange & Neon Lime
   const HOME_ORANGE = '#FF6720';
-  const HOME_LIME = isDarkMode ? '#C8F135' : '#D4FF32';
+  const HOME_LIME = '#8E2CAC';
 
   // Persisted project colors are brand pastels; map to light-mode inks so the
   // accent chip, timer and links stay visible on the light sheet.

@@ -1033,7 +1033,7 @@ const CategoryDetailView = ({
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleSaveDescription} style={[styles.sectionPillBtn, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.sectionPillBtnText, { color: '#000' }]}>
+                <Text style={[styles.sectionPillBtnText, { color: colors.primaryText }]}>
                   {isArabic ? 'حفظ' : 'Save'}
                 </Text>
               </TouchableOpacity>
@@ -1125,7 +1125,7 @@ const CategoryDetailView = ({
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleAddToggleItem} style={[styles.formSubmitBtn, { backgroundColor: colors.primary }]}>
-                <Text style={{ color: '#000', fontSize: 13, fontWeight: '700' }}>
+                <Text style={{ color: colors.primaryText, fontSize: 13, fontWeight: '700' }}>
                   {isArabic ? 'حفظ الملاحظة' : 'Save Note'}
                 </Text>
               </TouchableOpacity>
@@ -1235,7 +1235,7 @@ const CategoryDetailView = ({
               onSubmitEditing={handleAddChecklist}
             />
             <TouchableOpacity onPress={handleAddChecklist} style={[styles.inlineAddBtn, { backgroundColor: colors.primary }]}>
-              <Ionicons name="arrow-up" size={16} color="#000" />
+              <Ionicons name="arrow-up" size={16} color={colors.primaryText} />
             </TouchableOpacity>
           </View>
         )}
@@ -1330,7 +1330,7 @@ const CategoryDetailView = ({
               onPress={handleAddCategoryTask}
               style={[styles.inlineAddBtn, { backgroundColor: colors.primary }]}
             >
-              <Ionicons name="arrow-up" size={16} color="#000" />
+              <Ionicons name="arrow-up" size={16} color={colors.primaryText} />
             </TouchableOpacity>
           </View>
         )}

@@ -690,8 +690,8 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C8F135',
-      shadowColor: '#C8F135',
+      backgroundColor: '#8E2CAC',
+      shadowColor: '#8E2CAC',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.4,
       shadowRadius: 8,
@@ -701,7 +701,7 @@ export const createPlannerStyles = (colors: ColorScheme, isArabic: boolean = fal
     floatingGoalFabText: {
       fontSize: 14,
       fontWeight: '800',
-      color: '#101116',
+      color: '#FFFFFF',
     },
     monthSectionHeaderRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',

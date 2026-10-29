@@ -7,11 +7,13 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useTheme from '@/hooks/useTheme';
+
+export const SHEET_PURPLE_BG = '#1C0A2A';
+export const SHEET_CORAL_ACCENT = '#FF9470';
+export const SHEET_PURPLE_BORDER = '#8E2CAC';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -30,7 +32,6 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
   isArabic = false,
   children,
 }) => {
-  const { colors, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
@@ -41,6 +42,7 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
+        {/* Transparent backdrop: Tapping the free space above closes the widget without adding any dark overlay */}
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
@@ -49,22 +51,12 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
           style={[
             styles.sheetContainer,
             {
-              backgroundColor: isDarkMode ? '#171922' : colors.surface,
-              paddingBottom: Math.max(insets.bottom, 20),
+              paddingBottom: Math.max(insets.bottom, 16),
             },
           ]}
         >
-          {/* Grab Handle */}
-          <View
-            style={[
-              styles.grabHandle,
-              {
-                backgroundColor: isDarkMode
-                  ? 'rgba(255, 255, 255, 0.25)'
-                  : 'rgba(0, 0, 0, 0.15)',
-              },
-            ]}
-          />
+          {/* Grab Handle matching page accent #FF9470 */}
+          <View style={styles.grabHandle} />
 
           {/* Header Row */}
           <View
@@ -76,7 +68,6 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
             <Text
               style={[
                 styles.titleText,
-                { color: colors.text },
                 isArabic && { textAlign: 'right' },
               ]}
               numberOfLines={1}
@@ -87,17 +78,10 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={onClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={[
-                styles.closeButton,
-                {
-                  backgroundColor: isDarkMode
-                    ? 'rgba(255, 255, 255, 0.1)'
-                    : 'rgba(0, 0, 0, 0.06)',
-                },
-              ]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.closeButton}
             >
-              <Ionicons name="close" size={18} color={colors.text} />
+              <Ionicons name="close" size={18} color={SHEET_CORAL_ACCENT} />
             </TouchableOpacity>
           </View>
 
@@ -113,41 +97,54 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.40)',
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
   },
   sheetContainer: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    maxHeight: SCREEN_HEIGHT * 0.82,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 20,
+    backgroundColor: SHEET_PURPLE_BG,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    borderTopWidth: 2,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: SHEET_PURPLE_BORDER,
+    maxHeight: SCREEN_HEIGHT * 0.84,
+    minHeight: SCREEN_HEIGHT * 0.50,
+    shadowColor: '#3B0E4C',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 24,
     overflow: 'hidden',
+    display: 'flex',
   },
   grabHandle: {
     width: 42,
     height: 4.5,
     borderRadius: 3,
+    backgroundColor: SHEET_CORAL_ACCENT,
+    opacity: 0.85,
     alignSelf: 'center',
     marginTop: 10,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(142, 44, 172, 0.25)',
   },
   titleText: {
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3,
+    color: '#FFFFFF',
+    flex: 1,
   },
   closeButton: {
     width: 32,
@@ -155,10 +152,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 148, 112, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 148, 112, 0.35)',
   },
   content: {
+    flex: 1,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingTop: 8,
   },
 });
 

@@ -84,7 +84,7 @@ const AuthScreen = () => {
           >
             <View style={styles.header}>
               <View style={[styles.logoContainer, { backgroundColor: colors.primary, shadowColor: colors.text }]}>
-                <Ionicons name="checkbox" size={40} color={colors.surfaceText} />
+                <Ionicons name="checkbox" size={40} color={colors.primaryText} />
               </View>
               <Text style={[styles.title, { color: colors.text }]}>
                 {isLogin ? (isArabic ? 'مرحباً بعودتك' : 'Welcome Back') : (isArabic ? 'إنشاء حساب' : 'Create Account')}

@@ -100,52 +100,39 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               flexShrink: 0,
             }}
           >
-            <Ionicons name="checkmark" size={20} color={frame.badgeFg} />
+            <Ionicons name="checkbox" size={19} color={frame.badgeFg} />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text
-              style={{
-                fontSize: 17,
-                fontWeight: '900',
-                color: frame.text,
-                letterSpacing: -0.3,
-                lineHeight: 21,
-              }}
+              style={[styles.cardTitle, { color: frame.text }]}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {t.todaysChecklist || "Today's Checklist"}
+              {isArabic ? 'قائمة المهام اليومية' : "Today's Checklist"}
             </Text>
             <Text
-              style={{
-                fontSize: 11.5,
-                fontWeight: '700',
-                color: frame.textMuted,
-                marginTop: 1,
-              }}
+              style={[styles.cardSubtitle, { color: frame.textMuted }]}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {totalCount === 0
-                ? (isArabic ? 'لا توجد عناصر بعد' : 'No items yet')
-                : `${doneCount}/${totalCount} ${isArabic ? 'عناصر مكتملة' : 'items completed'}`}
+              {doneCount}/{totalCount} {isArabic ? 'عناصر مكتملة' : 'items completed'}
             </Text>
           </View>
         </View>
 
-        {/* Quick Manage / List Options button on header */}
+        {/* Options / Action button */}
         {onQuickManage && (
           <TouchableOpacity
             style={{
               flexDirection: isArabic ? 'row-reverse' : 'row',
               alignItems: 'center',
-              gap: 4,
-              backgroundColor: frame.pillBg,
+              gap: 5,
+              backgroundColor: frame.badgeBg,
               borderWidth: 1,
               borderColor: frame.rowBorder,
               paddingHorizontal: 9,
-              paddingVertical: 5,
-              borderRadius: 10,
+              paddingVertical: 4.5,
+              borderRadius: 14,
             }}
             onPress={onQuickManage}
             activeOpacity={0.7}
@@ -211,7 +198,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                   }}
                 >
                   {item.status === 'done' && (
-                    <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                    <Ionicons name="checkmark" size={13} color="#14081E" />
                   )}
                 </TouchableOpacity>
 
@@ -368,7 +355,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           width: '100%',
           borderWidth: 1.6,
           borderStyle: 'dashed',
-          borderColor: 'rgba(255, 92, 22, 0.40)',
+          borderColor: 'rgba(255, 148, 112, 0.45)',
           borderRadius: 16,
           paddingVertical: 8,
           flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -376,7 +363,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           justifyContent: 'center',
           gap: 6,
           marginTop: 7,
-          backgroundColor: 'rgba(255, 92, 22, 0.04)',
+          backgroundColor: 'rgba(255, 148, 112, 0.08)',
         }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -394,7 +381,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       <View
         style={{
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
+          borderTopColor: 'rgba(142, 44, 172, 0.25)',
           flexDirection: isArabic ? 'row-reverse' : 'row',
           alignItems: 'center',
           justifyContent: 'space-between',

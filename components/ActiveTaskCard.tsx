@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   LayoutAnimation,
   UIManager,
@@ -13,8 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import CircularProgress from './CircularProgress';
-import PixelTrail from './PixelTrail';
+import CrystalizedBall from './CrystalizedBall';
 import { useActiveTask } from './ActiveTaskContext';
 import type { TaskItem } from './ActiveTaskContext';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
@@ -44,6 +44,8 @@ const asDoc = (value: any): any =>
 
 export interface ActiveTaskCardProps {
   task?: TaskItem | null;
+  cardColor?: string;
+  cardBadgeLabel?: string;
   isArabic?: boolean;
   onRunTask: (task: TaskItem) => void;
   onPauseTask: (task: TaskItem) => void;
@@ -52,29 +54,28 @@ export interface ActiveTaskCardProps {
   /** Offered when there is no active task yet, so the card never shows a
    *  button that does nothing. */
   onAddTask?: () => void;
+  cardIndex?: number;
   /** Extra styles, used when the card sits in the stack. */
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * The Active Task card — the first card of the home page stack.
+ * The Active Task card — the primary card of the home page stack.
  *
- * It shows the task the user is working on right now: its title, the live
- * timer, the real progress, its subtasks and the run / complete controls.
- * Tapping the card opens the task detail.
- *
- * The card used to be the front sheet of the overlapping task stack at the
- * bottom of the page; it now lives at the top of the card stack, so it is the
- * first thing the user meets when the page opens.
+ * Displays the current focus task with the Crystalloid Ball timer/progress indicator,
+ * expandable subtasks, priority, labels, and bottom action buttons.
  */
 export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   task,
+  cardColor = '#FF9470',
+  cardBadgeLabel,
   isArabic = false,
   onRunTask,
   onPauseTask,
   onCompleteTask,
   onOpenDetail,
   onAddTask,
+  cardIndex = 0,
   style,
 }) => {
   const activeTaskState = useActiveTask();
@@ -86,10 +87,10 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   const activeSubtasks = useOfflineQuery<any[]>(
     'todos.getSubtasks',
     api.todos.getSubtasks,
-    activeTask ? { parentId: activeTask._id } : 'skip'
+    activeTask?._id && !String(activeTask._id).startsWith('sample_') ? { parentId: activeTask._id } : 'skip'
   );
 
-  // Subtasks toggle in the card (closed as default)
+  // Subtasks toggle in the card (closed by default)
   const [showSubtasksInCard, setShowSubtasksInCard] = useState(false);
   const updateTodo = useOfflineMutation(api.todos.updateTodo, 'todos:updateTodo');
 
@@ -119,123 +120,69 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     activeTask?.categoryId ? { id: activeTask.categoryId } : 'skip'
   );
 
-  const goalDoc = asDoc(linkedGoal);
-  const projectDoc = asDoc(linkedProject);
-  const categoryDoc = asDoc(linkedCategory);
-  const goalName = goalDoc?.text || goalDoc?.title || null;
-  const projectName = projectDoc?.name || null;
-  const categoryName = categoryDoc?.name || null;
+  const goalName = asDoc(linkedGoal)?.text;
+  const projectName = asDoc(linkedProject)?.name;
+  const categoryName = asDoc(linkedCategory)?.name;
 
-  // ─── Live timer for the active task ───
-  // One ticking clock drives the timer; every displayed value is derived from
-  // it, so the card never renders a stale number.
-  // `timerValue` is whatever the clock should display:
-  //   count-down → milliseconds REMAINING
-  //   count-up   → milliseconds ELAPSED
-  // A count-up timer has no duration at all (it is a stopwatch), so it must be
-  // detected through `timerDirection`, never through `timerDuration`.
-  const [clock, setClock] = useState(() => getServerNow());
-
+  // Progress of the active task
+  const [now, setNow] = useState<number>(() => getServerNow());
   useEffect(() => {
-    const id = setInterval(() => setClock(getServerNow()), 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (activeTask?.status === 'in_progress') {
+      const interval = setInterval(() => setNow(getServerNow()), 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTask?.status]);
 
+  const hasTimer = Boolean(
+    activeTask?.timerDuration ||
+      activeTask?.timerDirection === 'up' ||
+      activeTask?.timerStartedAt ||
+      activeTask?.timerAccumulated
+  );
   const isCountUp = activeTask?.timerDirection === 'up';
-  const countDownDuration =
-    activeTask?.timerDuration && activeTask.timerDuration > 0 ? activeTask.timerDuration : null;
-  const hasTimer = isCountUp || countDownDuration !== null;
+  const isCountDown = !isCountUp;
 
-  const timerValue = useMemo(() => {
-    if (!activeTask) return 0;
-    const direction = activeTask.timerDirection;
-    if (activeTask.status === 'in_progress' && activeTask.timerStartTime) {
-      const elapsed = Math.max(0, clock - activeTask.timerStartTime);
-      return direction === 'up'
-        ? elapsed
-        : Math.max(0, (activeTask.timerDuration || 0) - elapsed);
+  let timerValue = 0;
+  let activeTaskProgress: number | null = null;
+
+  if (activeTask) {
+    const accumulated = activeTask.timerAccumulated || 0;
+    const isRunning = activeTask.status === 'in_progress';
+    const runningElapsed = isRunning && activeTask.timerStartedAt ? Math.max(0, now - activeTask.timerStartedAt) : 0;
+    const totalElapsed = accumulated + runningElapsed;
+
+    if (isCountUp) {
+      timerValue = totalElapsed;
+      activeTaskProgress = null;
+    } else if (activeTask.timerDuration) {
+      const duration = activeTask.timerDuration;
+      const remaining = Math.max(0, duration - totalElapsed);
+      timerValue = remaining;
+      activeTaskProgress = Math.min(100, Math.round((totalElapsed / duration) * 100));
+    } else {
+      timerValue = totalElapsed;
+      activeTaskProgress = null;
     }
-    if (activeTask.status === 'paused' && activeTask.timeLeftAtPause !== undefined) {
-      // Count-up stores elapsed time, count-down stores remaining time.
-      return activeTask.timeLeftAtPause;
-    }
-    // Never started.
-    return direction === 'up' ? 0 : activeTask.timerDuration || 0;
-  }, [activeTask, clock]);
+  }
 
-  // Determinable progress for the card:
-  //   count-down timer → how much of the budget is already burnt
-  //   otherwise       → how many subtasks are finished
-  // `null` means "there is nothing to fill a progress bar with" (e.g. a
-  // count-up stopwatch), so the bar is hidden instead of showing a fake %.
-  const isCountDown = !isCountUp && countDownDuration !== null;
-  const progressRatio = useMemo(() => {
-    if (!activeTask) return 0;
-    if (activeTask.status === 'done') return 1;
-    if (isCountDown && countDownDuration && countDownDuration > 0) {
-      const elapsed = Math.max(0, countDownDuration - timerValue);
-      return Math.min(1, Math.max(0, elapsed / countDownDuration));
-    }
-    if (isCountUp && timerValue > 0) {
-      // 25-minute standard focus block progression for count-up stopwatch
-      const standardSessionMs = 25 * 60 * 1000;
-      return Math.min(1, timerValue / standardSessionMs);
-    }
-    return 0;
-  }, [activeTask, isCountDown, isCountUp, countDownDuration, timerValue]);
+  // Status badge label and completion percent
+  const activeStatusLabel = useMemo(() => {
+    if (!activeTask) return isArabic ? 'لا توجد مهام' : 'Idle';
+    if (activeTask.status === 'completed') return isArabic ? 'مكتملة' : 'Completed';
+    if (activeTask.status === 'in_progress') return isArabic ? 'قيد التنفيذ' : 'In Progress';
+    return isArabic ? 'جاهزة' : 'To Do';
+  }, [activeTask, isArabic]);
 
-  const activeTaskProgress = useMemo<number | null>(() => {
-    if (!activeTask) return null;
-    if (activeTask.status === 'done') return 100;
-
-    if (countDownDuration) {
-      const elapsed = Math.max(0, countDownDuration - timerValue);
-      return Math.min(100, Math.max(0, Math.round((elapsed / countDownDuration) * 100)));
-    }
-
-    if (activeSubtasks && activeSubtasks.length > 0) {
-      const doneSub = activeSubtasks.filter((s: any) => s.status === 'done').length;
-      return Math.round((doneSub / activeSubtasks.length) * 100);
-    }
-
-    return null;
-  }, [activeTask, activeSubtasks, timerValue, countDownDuration]);
-
-  const activeStatusLabel = activeTask
-    ? activeTask.status === 'in_progress'
-      ? isArabic
-        ? 'قيد التشغيل'
-        : 'Running'
-      : activeTask.status === 'paused'
-      ? isArabic
-        ? 'متوقف مؤقتاً'
-        : 'Paused'
-      : activeTask.status === 'done'
-      ? isArabic
-        ? 'مكتمل'
-        : 'Done'
-      : isArabic
-      ? 'جاهز'
-      : 'Ready'
-    : isArabic
-    ? 'لا يوجد مهام'
-    : 'Idle';
-
-  // The percentage is only meaningful once the task actually moved — a task
-  // that has not started reads "Ready", not "Ready • 0%".
   const showProgressPercent =
     activeTaskProgress !== null &&
-    (activeTaskProgress > 0 ||
-      activeTask?.status === 'in_progress' ||
-      activeTask?.status === 'paused' ||
-      activeTask?.status === 'done');
+    activeTask?.status === 'in_progress' &&
+    !isCountUp;
 
-  // Priority badge styling (text-only semantic colors, no background fill or borders)
-  const getPriorityBadge = (priority?: string) => {
-    switch (priority) {
+  const getPriorityBadge = (priorityLevel?: string) => {
+    switch (priorityLevel) {
       case 'Urgent':
         return {
-          text: '#ff80ab',
+          text: '#ef4444',
           label: isArabic ? 'عاجل' : 'Urgent',
         };
       case 'High':
@@ -256,61 +203,39 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     }
   };
 
-  const handleRunTaskAction = (task: TaskItem) => {
-    selectTask?.(task);
-    onRunTask(task);
+  const handleRunTaskAction = (targetTask: TaskItem) => {
+    selectTask?.(targetTask);
+    onRunTask(targetTask);
   };
 
-  const handlePauseTaskAction = (task: TaskItem) => {
-    selectTask?.(task);
-    onPauseTask(task);
+  const handlePauseTaskAction = (targetTask: TaskItem) => {
+    selectTask?.(targetTask);
+    onPauseTask(targetTask);
   };
 
-  const handleCompleteTaskAction = (task: TaskItem) => {
-    advanceAfterComplete?.(task);
-    onCompleteTask(task);
+  const handleCompleteTaskAction = (targetTask: TaskItem) => {
+    advanceAfterComplete?.(targetTask);
+    onCompleteTask(targetTask);
   };
+
+  const badgeText = cardBadgeLabel || (isArabic ? 'المهمة النشطة' : 'Active Task');
 
   return (
-    <View style={[styles.card, style]}>
-      {/* Solid dark orange background matching the Today tasks card and electric orange theme */}
+    <View style={[styles.card, { backgroundColor: cardColor }, style]}>
+      {/* Background Color Fill */}
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: '#e63e00' },
+          { backgroundColor: cardColor },
         ]}
       />
 
-      {/* Dynamic PixelTrail (React Bits): syncs timer progress in count-down, height & gravity drops in count-up, freezes on pause */}
-      <PixelTrail
-        gridSize={24}
-        trailSize={0.15}
-        maxAge={500}
-        color="#e63e00"
-        trailColor="#f24f13"
-        shape="square"
-        gap={0.1}
-        decay="fade"
-        gravity={0.6}
-        sparkle={0.6}
-        shine={0.8}
-        glow={0.5}
-        status={activeTask ? activeTask.status : 'idle'}
-        mode={isCountDown ? 'count_down' : 'count_up'}
-        progress={progressRatio}
-        isArabic={isArabic}
-      />
-
-      {/* Interactive Card Content Container. The body takes the free space so
-          the actions stay on the bottom edge of the card. */}
-      <View style={{ zIndex: 2, flex: 1 }}>
-        <View style={{ flex: 1 }}>
-        {/* Header Row: Active Task Badge + Status Pill + Open Detail Button */}
+      {/* Main Content Layout with 3 strict vertical zones */}
+      <View style={styles.cardInner}>
+        {/* Zone 1: Header Row (Badge + Status + Open Button) */}
         <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
           <View style={styles.taskBadge}>
-            <Text style={styles.taskBadgeText}>
-              {isArabic ? 'المهمة النشطة' : 'Active Task'}
-            </Text>
+            <Text style={styles.taskBadgeText}>{badgeText}</Text>
           </View>
           <View
             style={{
@@ -341,236 +266,211 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
           </View>
         </View>
 
-        {/* Task Title, Description, Status/Link Labels, & Circular Progress Timer Row */}
-        <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={() => {
-              if (!activeTask) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onOpenDetail(activeTask._id);
-            }}
-            style={[
-              { flex: 1, minWidth: 0 },
-              isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
-            ]}
-          >
-            <Text
-              numberOfLines={2}
-              style={[styles.taskTitle, isArabic && { textAlign: 'right' }]}
-            >
-              {activeTask
-                ? activeTask.text
-                : isArabic
-                ? 'لا توجد مهمة نشطة حالياً'
-                : 'No active task selected'}
-            </Text>
-
-            {/* Only display description if user provided one — useless placeholder removed */}
-            {activeTask?.description ? (
-              <Text
-                numberOfLines={2}
-                style={[styles.taskDesc, isArabic && { textAlign: 'right' }]}
-              >
-                {activeTask.description}
-              </Text>
-            ) : null}
-
-            {/* Timer mode, priority and linked goal / project / space labels */}
-            <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
-              {/* Timer mode */}
-              {hasTimer && (
-                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                  <Ionicons
-                    name={isCountUp ? 'hourglass-outline' : 'timer-outline'}
-                    size={10}
-                    color="#000000"
-                  />
-                  <Text numberOfLines={1} style={styles.labelText}>
-                    {isCountUp
-                      ? isArabic
-                        ? 'تصاعدي'
-                        : 'Count up'
-                      : isArabic
-                      ? 'تنازلي'
-                      : 'Count down'}
-                  </Text>
-                </View>
-              )}
-
-              {/* Priority: text only with colored font, no background fill, no border, no icon */}
-              {activeTask?.priority && (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.priorityTextOnly,
-                    { color: getPriorityBadge(activeTask.priority).text },
-                  ]}
-                >
-                  {getPriorityBadge(activeTask.priority).label}
-                </Text>
-              )}
-
-              {/* Linked goal */}
-              {goalName && (
-                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                  <Ionicons name="flag" size={10} color="#000000" />
-                  <Text numberOfLines={1} style={styles.labelText}>
-                    {goalName}
-                  </Text>
-                </View>
-              )}
-
-              {/* Linked project */}
-              {projectName && (
-                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                  <Ionicons name="folder-outline" size={10} color="#000000" />
-                  <Text numberOfLines={1} style={styles.labelText}>
-                    {projectName}
-                  </Text>
-                </View>
-              )}
-
-              {/* Linked space / category */}
-              {categoryName && (
-                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                  <Ionicons name="grid-outline" size={10} color="#000000" />
-                  <Text numberOfLines={1} style={styles.labelText}>
-                    {categoryName}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          {/* Rounded Progress Timer (Interactive Tap to Run/Pause) */}
-          {activeTask && (
+        {/* Zone 2: Flexible Middle Section (Title + Ball + Subtasks) */}
+        <View style={styles.middleSection}>
+          {/* Title, Labels & Crystalloid Ball */}
+          <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
             <TouchableOpacity
               activeOpacity={0.82}
+              onPress={() => {
+                if (!activeTask) return;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onOpenDetail(activeTask._id);
+              }}
+              style={[
+                { flex: 1, minWidth: 0 },
+                isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
+              ]}
+            >
+              <Text
+                numberOfLines={showSubtasksInCard ? 1 : 2}
+                style={[styles.taskTitle, isArabic && { textAlign: 'right' }]}
+              >
+                {activeTask
+                  ? activeTask.text
+                  : isArabic
+                  ? 'لا توجد مهمة نشطة حالياً'
+                  : 'No active task selected'}
+              </Text>
+
+              {/* Only display description if user provided one and subtasks are closed */}
+              {activeTask?.description && !showSubtasksInCard ? (
+                <Text
+                  numberOfLines={1}
+                  style={[styles.taskDesc, isArabic && { textAlign: 'right' }]}
+                >
+                  {activeTask.description}
+                </Text>
+              ) : null}
+
+              {/* Timer mode, priority and linked goal / project / space labels */}
+              <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
+                {/* Timer indicator pill */}
+                {hasTimer && (
+                  <View
+                    style={[
+                      styles.labelPill,
+                      styles.labelPillStrong,
+                      isArabic && styles.rowRtl,
+                    ]}
+                  >
+                    <Ionicons
+                      name={isCountUp ? 'stopwatch-outline' : 'timer-outline'}
+                      size={11}
+                      color="#000000"
+                    />
+                    <Text numberOfLines={1} style={styles.labelText}>
+                      {isCountUp
+                        ? isArabic
+                          ? 'مؤقت تصاعدي'
+                          : 'Count-up'
+                        : isArabic
+                        ? 'تنازلي'
+                        : 'Countdown'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Priority label */}
+                {activeTask?.priority && (
+                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                    <Text style={[styles.priorityTextOnly, { color: '#000000' }]}>
+                      {getPriorityBadge(activeTask.priority).label}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Linked goal */}
+                {goalName && (
+                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                    <Ionicons name="flag" size={10} color="#000000" />
+                    <Text numberOfLines={1} style={styles.labelText}>
+                      {goalName}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Linked project */}
+                {projectName && (
+                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                    <Ionicons name="folder-outline" size={10} color="#000000" />
+                    <Text numberOfLines={1} style={styles.labelText}>
+                      {projectName}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Linked space / category */}
+                {categoryName && (
+                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                    <Ionicons name="grid-outline" size={10} color="#000000" />
+                    <Text numberOfLines={1} style={styles.labelText}>
+                      {categoryName}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Progress Indicator: Strictly Crystalloid Ball in both active and idle/paused states */}
+            {activeTask && (
+              <CrystalizedBall
+                size={54}
+                preset="ember"
+                color="#FF6B35"
+                isRunning={activeTask.status === 'in_progress'}
+                isCountDown={isCountDown}
+                timerLabel={
+                  hasTimer
+                    ? formatTime(timerValue)
+                    : activeTaskProgress !== null
+                    ? `${activeTaskProgress}%`
+                    : ''
+                }
+                onPress={() => {
+                  if (activeTask.status === 'in_progress') {
+                    handlePauseTaskAction(activeTask);
+                  } else {
+                    handleRunTaskAction(activeTask);
+                  }
+                }}
+              />
+            )}
+          </View>
+
+          {/* Subtasks Toggle Button (Shown if task has subtasks) */}
+          {activeSubtasks && activeSubtasks.length > 0 && (
+            <TouchableOpacity
+              activeOpacity={0.8}
               onPress={(e) => {
                 e.stopPropagation();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (activeTask.status === 'in_progress') {
-                  handlePauseTaskAction(activeTask);
-                } else {
-                  handleRunTaskAction(activeTask);
-                }
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setShowSubtasksInCard((prev) => !prev);
               }}
-              style={styles.circularTimerWrapper}
+              style={[styles.subtasksToggleBtn, isArabic && styles.rowRtl]}
             >
-              <CircularProgress
-                size={52}
-                strokeWidth={4.5}
-                progress={activeTaskProgress ?? 0}
+              <View style={[styles.subtasksToggleLeft, isArabic && styles.rowRtl]}>
+                <Ionicons name="list-outline" size={13} color="#000000" />
+                <Text style={styles.subtasksToggleText}>
+                  {isArabic ? 'المهام الفرعية' : 'Subtasks'}{' '}
+                  (
+                  {activeSubtasks.filter((s: any) => s.status === 'done').length}/
+                  {activeSubtasks.length})
+                </Text>
+              </View>
+              <Ionicons
+                name={showSubtasksInCard ? 'chevron-up' : 'chevron-down'}
+                size={13}
                 color="#000000"
-                unfilledColor="rgba(0, 0, 0, 0.16)"
-              >
-                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                  <Text
-                    style={[
-                      styles.circularTimeNumber,
-                      hasTimer && styles.circularTimerValue,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {hasTimer
-                      ? formatTime(timerValue)
-                      : activeTaskProgress !== null
-                      ? `${activeTaskProgress}%`
-                      : ''}
-                  </Text>
-                  <Ionicons
-                    name={activeTask.status === 'in_progress' ? 'pause' : 'play'}
-                    size={9}
-                    color="rgba(0, 0, 0, 0.85)"
-                    style={{ marginTop: 1 }}
-                  />
-                </View>
-              </CircularProgress>
+              />
             </TouchableOpacity>
+          )}
+
+          {/* Expandable Subtasks Checklist: constrained scroll so it NEVER pushes or overlays buttons */}
+          {showSubtasksInCard && activeSubtasks && activeSubtasks.length > 0 && (
+            <ScrollView
+              style={styles.subtasksScroll}
+              contentContainerStyle={styles.subtasksList}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {activeSubtasks.map((sub: any) => {
+                const isDone = sub.status === 'done';
+                return (
+                  <TouchableOpacity
+                    key={sub._id}
+                    activeOpacity={0.75}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleToggleSubtaskInCard(sub);
+                    }}
+                    style={[styles.subtaskItem, isArabic && styles.rowRtl]}
+                  >
+                    <Ionicons
+                      name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={14}
+                      color="#000000"
+                    />
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.subtaskItemText,
+                        isDone && styles.subtaskItemTextDone,
+                        isArabic && { textAlign: 'right' },
+                      ]}
+                    >
+                      {sub.text}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           )}
         </View>
 
-        {/* Horizontal progress bar — only rendered when the progress is real.
-            A count-up stopwatch has no end state, so it gets no bar at all
-            instead of a fabricated percentage. */}
-        {activeTaskProgress !== null && (
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[styles.progressBarFill, { width: `${activeTaskProgress}%` }]}
-            />
-          </View>
-        )}
-
-        {/* Subtasks Toggle Button (Shown if task has subtasks) */}
-        {activeSubtasks && activeSubtasks.length > 0 && (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={(e) => {
-              e.stopPropagation();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setShowSubtasksInCard((prev) => !prev);
-            }}
-            style={[styles.subtasksToggleBtn, isArabic && styles.rowRtl]}
-          >
-            <View style={[styles.subtasksToggleLeft, isArabic && styles.rowRtl]}>
-              <Ionicons name="list-outline" size={13} color="#000000" />
-              <Text style={styles.subtasksToggleText}>
-                {isArabic ? 'المهام الفرعية' : 'Subtasks'}{' '}
-                (
-                {activeSubtasks.filter((s: any) => s.status === 'done').length}/
-                {activeSubtasks.length})
-              </Text>
-            </View>
-            <Ionicons
-              name={showSubtasksInCard ? 'chevron-up' : 'chevron-down'}
-              size={13}
-              color="#000000"
-            />
-          </TouchableOpacity>
-        )}
-
-        {/* Expandable Subtasks Checklist (Closed as default) */}
-        {showSubtasksInCard && activeSubtasks && activeSubtasks.length > 0 && (
-          <View style={styles.subtasksList}>
-            {activeSubtasks.map((sub: any) => {
-              const isDone = sub.status === 'done';
-              return (
-                <TouchableOpacity
-                  key={sub._id}
-                  activeOpacity={0.75}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleToggleSubtaskInCard(sub);
-                  }}
-                  style={[styles.subtaskItem, isArabic && styles.rowRtl]}
-                >
-                  <Ionicons
-                    name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={17}
-                    color="#000000"
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.subtaskItemText,
-                      isDone && styles.subtaskItemTextDone,
-                      isArabic && { textAlign: 'right' },
-                    ]}
-                  >
-                    {sub.text}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Actions Row — Complete on the start edge, Pause/Resume on the end edge.
-            With no active task the run controls would be dead, so the card
-            offers the one action that is actually available. */}
-        </View>
+        {/* Zone 3: Footer Actions Row — Pinned strictly at bottom edge with flexShrink: 0 */}
         <View style={[styles.footerRow, isArabic && styles.rowRtl]}>
           {activeTask ? (
             <>
@@ -618,7 +518,6 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               </TouchableOpacity>
             </>
           ) : (
-            /* No active task: one working action instead of two dead ones. */
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={(e) => {
@@ -643,16 +542,27 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
 const styles = StyleSheet.create({
   card: {
     width: '100%',
+    height: '100%',
+    flex: 1,
     borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.12)',
-    backgroundColor: '#e63e00',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
     overflow: 'hidden',
     position: 'relative',
+  },
+  cardInner: {
+    flex: 1,
     justifyContent: 'space-between',
+    zIndex: 2,
+  },
+  middleSection: {
+    flex: 1,
+    minHeight: 0,
+    justifyContent: 'center',
+    marginVertical: 4,
   },
   rowRtl: {
     flexDirection: 'row-reverse',
@@ -661,7 +571,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 4,
+    flexShrink: 0,
   },
   taskBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
@@ -691,8 +602,6 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    // Light surface with a black glyph: a black icon on a dark translucent
-    // circle disappeared against the orange.
     backgroundColor: 'rgba(255, 255, 255, 0.62)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -701,30 +610,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 4,
     gap: 8,
-  },
-  circularTimerWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  circularTimeNumber: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    color: '#000000',
-    letterSpacing: -0.3,
-  },
-  circularTimerValue: {
-    fontSize: 11,
-    letterSpacing: -0.5,
   },
   labelsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 5,
+    gap: 5,
+    marginTop: 4,
   },
   labelPill: {
     flexDirection: 'row',
@@ -734,9 +628,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2.5,
     borderRadius: 10,
-    maxWidth: 140,
+    maxWidth: 130,
   },
-  // Light surface so a semantic colour (priority) stays readable on orange.
   labelPillStrong: {
     backgroundColor: 'rgba(255, 255, 255, 0.72)',
   },
@@ -745,6 +638,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000000',
   },
+  priorityTextOnly: {
+    fontSize: 9.5,
+    fontWeight: '900',
+  },
   subtasksToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -752,8 +649,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.10)',
     borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
     marginTop: 2,
   },
   subtasksToggleLeft: {
@@ -766,24 +663,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000000',
   },
+  subtasksScroll: {
+    maxHeight: 62,
+    marginBottom: 4,
+    flexShrink: 1,
+  },
   subtasksList: {
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    borderRadius: 14,
-    padding: 8,
-    gap: 5,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 5,
+    gap: 3.5,
   },
   subtaskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.30)',
-    borderRadius: 9,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   subtaskItemText: {
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#000000',
     flex: 1,
@@ -793,31 +694,18 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   taskTitle: {
-    fontSize: 17,
+    fontSize: 15.5,
     fontWeight: '900',
     color: '#000000',
     letterSpacing: -0.3,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   taskDesc: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: 'rgba(0, 0, 0, 0.75)',
     marginTop: 2,
-    lineHeight: 16,
-  },
-  progressBarContainer: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 3,
+    lineHeight: 14,
   },
   footerRow: {
     flexDirection: 'row',
@@ -826,7 +714,10 @@ const styles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 0, 0, 0.12)',
-    paddingTop: 10,
+    paddingTop: 8,
+    marginTop: 'auto',
+    flexShrink: 0,
+    zIndex: 10,
   },
   completeBtn: {
     backgroundColor: 'transparent',
@@ -836,44 +727,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   completeBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#000000',
   },
   pauseBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.4,
-    borderColor: '#000000',
-    paddingHorizontal: 12,
+    backgroundColor: '#000000',
+    paddingHorizontal: 16,
     paddingVertical: 7,
-    borderRadius: 14,
+    borderRadius: 20,
   },
   pauseBtnText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#000000',
-  },
-  priorityTextOnly: {
-    fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 0.3,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    alignSelf: 'center',
+    color: '#FFFFFF',
   },
   addTaskBtn: {
-    flex: 1,
+    backgroundColor: '#000000',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#000000',
-    paddingVertical: 9,
-    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    width: '100%',
   },
   addTaskBtnText: {
     fontSize: 12,
@@ -882,4 +764,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(ActiveTaskCard);
+export default ActiveTaskCard;

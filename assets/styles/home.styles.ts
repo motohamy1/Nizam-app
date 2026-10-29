@@ -2,12 +2,12 @@ import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet } from "react-native";
 
 export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false) => {
-  // Light register: the primary accent flips to Nizam orange; dark keeps lime.
+  // Accent comes from the home page upper widget's purple shimmer gradient.
   const isDark = colors.statusBarStyle === 'light-content';
-  const limeFill = isDark ? '#C8F135' : '#FD8B2D';
-  const limeMark = '#16270E';
-  const accentTintBg = isDark ? 'rgba(200, 241, 53, 0.16)' : 'rgba(253, 139, 45, 0.14)';
-  const accentTintBorder = isDark ? 'rgba(200, 241, 53, 0.32)' : 'rgba(253, 139, 45, 0.34)';
+  const accentFill = '#8E2CAC';
+  const accentMark = '#FFFFFF';
+  const accentTintBg = 'rgba(142, 44, 172, 0.16)';
+  const accentTintBorder = 'rgba(142, 44, 172, 0.34)';
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -100,45 +100,49 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingVertical: 4,
     },
     dateBarMonth: {
       fontSize: 17,
-      fontWeight: '700',
+      fontWeight: '800',
       color: colors.text,
       letterSpacing: -0.3,
     },
     dateBarChevron: {
-      marginTop: 2,
+      marginStart: 2,
     },
-    dateBarPlannerBtn: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
+    dateBarActions: {
+      flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 8,
+    },
+    dateBarResetBtn: {
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
-      backgroundColor: colors.primary + '18',
+      backgroundColor: colors.surfaceHigh,
       borderWidth: 1,
-      borderColor: colors.primary + '35',
+      borderColor: colors.border,
     },
-    dateBarPlannerBtnText: {
-      fontSize: 11,
+    dateBarResetText: {
+      fontSize: 12,
       fontWeight: '700',
-      color: colors.primary,
+      color: accentFill,
     },
-    dateBarReset: {
-      paddingHorizontal: 12,
+    dateBarPlannerBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
       backgroundColor: accentTintBg,
       borderWidth: 1,
       borderColor: accentTintBorder,
     },
-    dateBarResetText: {
+    dateBarPlannerBtnText: {
       fontSize: 12,
       fontWeight: '700',
-      color: limeFill,
+      color: accentFill,
     },
     dateBarStrip: {
       paddingHorizontal: 16,
@@ -154,11 +158,12 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       borderWidth: 1,
       borderColor: colors.statusBarStyle === 'light-content' ? 'rgba(255, 255, 255, 0.08)' : colors.border,
       gap: 4,
+      overflow: 'hidden',
     },
     dateBarDayActive: {
-      backgroundColor: limeFill,
-      borderColor: limeFill,
-      shadowColor: limeFill,
+      backgroundColor: '#FF9470',
+      borderColor: 'rgba(255, 255, 255, 0.50)',
+      shadowColor: '#FF9470',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 10,
@@ -170,7 +175,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       color: colors.textMuted,
     },
     dateBarWeekdayActive: {
-      color: limeMark,
+      color: '#141311',
       fontWeight: '800',
     },
     dateBarDayNum: {
@@ -179,7 +184,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       color: colors.text,
     },
     dateBarDayNumActive: {
-      color: limeMark,
+      color: '#141311',
       fontWeight: '900',
     },
     dateBarDot: {
@@ -188,7 +193,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       width: 4,
       height: 4,
       borderRadius: 2,
-      backgroundColor: limeFill,
+      backgroundColor: '#141311',
     },
 
     // Kanban Board
@@ -463,18 +468,18 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
     },
     emptyAction: {
       marginTop: 16,
-      backgroundColor: limeFill,
+      backgroundColor: accentFill,
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: colors.radii.md,
-      shadowColor: limeFill,
+      shadowColor: accentFill,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.35,
       shadowRadius: 8,
       elevation: 4,
     },
     emptyActionText: {
-      color: limeMark,
+      color: accentMark,
       fontSize: 14,
       fontWeight: "800",
     },

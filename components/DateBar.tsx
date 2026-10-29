@@ -4,8 +4,8 @@ import { useTranslation } from '@/utils/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, LayoutAnimation, NativeScrollEvent, NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import LivePress from './LivePress';
 
@@ -22,7 +22,9 @@ interface DateBarProps {
   isArabic?: boolean;
   taskCounts?: Map<number, number>;
   defaultCollapsed?: boolean;
-  tone?: 'default' | 'onLime';
+  tone?: 'default' | 'onLime' | 'purpleShimmer';
+  onActivePillLayout?: (layout: { pageX: number; pageY: number; width: number; height: number }) => void;
+  rightAccessory?: React.ReactNode;
 }
 
 const ITEM_WIDTH = 48;
@@ -45,12 +47,22 @@ const DateBar: React.FC<DateBarProps> = ({
   taskCounts,
   defaultCollapsed = false,
   tone = 'default',
+  onActivePillLayout,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const isOnLime = tone === 'onLime';
   const { language } = useAuth();
   const { t } = useTranslation(language);
   const flatListRef = useRef<FlatList>(null);
+  const activePillRef = useRef<any>(null);
+  const currentScrollXRef = useRef(0);
+  const lastActivePillRef = useRef<{
+    pageX: number;
+    pageY: number;
+    width: number;
+    height: number;
+    scrollX: number;
+  } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
@@ -95,6 +107,15 @@ const DateBar: React.FC<DateBarProps> = ({
     }, 5000);
   };
 
+  const measureActivePill = useCallback(() => {
+    if (!activePillRef.current || !onActivePillLayout) return;
+    activePillRef.current.measureInWindow((pageX: number, pageY: number, width: number, height: number) => {
+      if (width > 0 && height > 0) {
+        onActivePillLayout({ pageX, pageY, width, height });
+      }
+    });
+  }, [onActivePillLayout]);
+
   useEffect(() => {
     return () => {
       clearAutoReturnTimer();
@@ -110,11 +131,19 @@ const DateBar: React.FC<DateBarProps> = ({
           animated: true,
           viewPosition: 0.5,
         });
+        measureActivePill();
       }, 60);
 
       return () => clearTimeout(timer);
     }
-  }, [isCollapsed, selectedIndex, selectedMonth, selectedYear]);
+  }, [isCollapsed, selectedIndex, selectedMonth, selectedYear, measureActivePill]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      measureActivePill();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [selectedDate, isCollapsed, measureActivePill]);
 
   const isSelectedToday = startOfDay(selectedDate) === startOfDay(todayStart);
 
@@ -175,6 +204,14 @@ const DateBar: React.FC<DateBarProps> = ({
           },
         ]}
       >
+        {isActive && (
+          <View
+            ref={activePillRef}
+            onLayout={measureActivePill}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+        )}
         <Text
           style={[
             homeStyles.dateBarWeekday,
@@ -324,12 +361,14 @@ const DateBar: React.FC<DateBarProps> = ({
           }}
           onScrollEndDrag={() => {
             scheduleAutoReturn();
+            measureActivePill();
           }}
           onMomentumScrollBegin={() => {
             clearAutoReturnTimer();
           }}
           onMomentumScrollEnd={() => {
             scheduleAutoReturn();
+            measureActivePill();
           }}
           onScrollToIndexFailed={info => {
             setTimeout(() => {
@@ -353,10 +392,9 @@ const DateBar: React.FC<DateBarProps> = ({
           value={new Date(selectedDate)}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          themeVariant={isDarkMode ? 'dark' : 'light'}
           onChange={(event, date) => {
-            setShowDatePicker(Platform.OS === 'ios');
-            if (date && (Platform.OS === 'ios' || event.type === 'set')) {
+            setShowDatePicker(false);
+            if (date) {
               onSelectDate(startOfDay(date.getTime()));
             }
           }}
@@ -366,4 +404,4 @@ const DateBar: React.FC<DateBarProps> = ({
   );
 };
 
-export default DateBar;
+export default React.memo(DateBar);

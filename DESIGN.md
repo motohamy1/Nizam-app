@@ -42,22 +42,22 @@ colorsLight:
     lavender: "#6C38E9"
 typography:
   display:
-    fontFamily: System
+    fontFamily: "Archivo Black"
     fontSize: "32px"
     fontWeight: 700
     lineHeight: 1.15
   title:
-    fontFamily: System
+    fontFamily: "Archivo Black"
     fontSize: "20px"
     fontWeight: 600
     lineHeight: 1.25
   body:
-    fontFamily: System
+    fontFamily: "Archivo Black"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.6
   label:
-    fontFamily: System
+    fontFamily: "Archivo Black"
     fontSize: "12px"
     fontWeight: 600
     lineHeight: 1.3
@@ -146,7 +146,7 @@ Background is warm charcoal `#141518` in dark mode, never `#000000`. Text is `#F
 
 ## 3. Typography
 
-System fonts only (SF Pro on iOS, Roboto on Android). No Inter, no Google Fonts, no decorative faces.
+All typography across the application uses **Archivo Black** (`fontFamily: "Archivo Black"`).
 
 | Level | Size | Weight | Line | Use |
 |-------|------|--------|------|-----|
@@ -205,7 +205,7 @@ Strict multiples: 4, 8, 16, 24, 32, 48, 64. No 12px. No 6px spacing (radius only
 ### Do
 - Do use amber exclusively for CTAs and the active trace
 - Do use the spacing scale strictly (4/8/16/24/32/48/64)
-- Do use system fonts only
+- Do use Archivo Black font family consistently
 - Do use bordered surfaces, not shadow-only separation
 - Do keep body text at 65-75 characters per line
 - Do support RTL with mirrored active trace
@@ -218,7 +218,6 @@ Strict multiples: 4, 8, 16, 24, 32, 48, 64. No 12px. No 6px spacing (radius only
 - Don't use neomorphic opposing shadows
 - Don't introduce second accent colors
 - Don't use decorative gradients, glows, or pills
-- Don't use Google Fonts or decorative faces
 - Don't use 12px spacing
 - Don't reuse dark-register pastels as foreground in light mode — `#e5f19d` / `#dbd4fd` / `#defef9` / `#f6e5c9` on white are 1.07–1.41:1, i.e. invisible; use their ink twins
 - Don't pair a saturated ink fill with `secondaryText`/dark plum text — text on fills comes from `textOn()` (white on ink, near-black on pastel)

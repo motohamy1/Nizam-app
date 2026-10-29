@@ -1,11 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  type ScrollViewInstance,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,7 +21,6 @@ import { useOfflineMutation } from "@/hooks/useOfflineMutation";
 import { useGuardedSubmit } from "@/hooks/useSubmitGuard";
 import { useOfflineQuery } from "@/hooks/useOfflineQuery";
 import useTheme from "@/hooks/useTheme";
-import { modeColor } from "@/utils/colorUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/utils/i18n";
 import { getServerNow } from "@/utils/offlineStorage";
@@ -34,19 +32,19 @@ import { computeRepeatOccurrence, RepeatPeriod } from "@/utils/notifications";
 
 import {
   HomeTopWidget,
-  HomeFeatureStrip,
   FeatureSheet,
   HomeTasksWidget,
   HomeFeatureKey,
-  HomeFeatureDef,
   LIME_ACCENT,
 } from "@/components/home";
 
+import { CardSwap, CardSwapItem } from "@/components/CardSwap";
 import { ActiveTaskProvider } from "@/components/ActiveTaskContext";
 import ActionModal from "@/components/ActionModal";
 import ChecklistItemModal from "@/components/ChecklistItemModal";
 import ScreenGuide, { GuideTip } from "@/components/ScreenGuide";
 import TaskDetailModal from "@/components/TaskDetailModal";
+import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import TimerModal from "@/components/TimerModal";
 import { startUpdate, pauseUpdate } from '@/utils/timerActions';
 
@@ -62,7 +60,9 @@ import {
 
 import { api } from "../../convex/_generated/api";
 import { Id } from '../../convex/_generated/dataModel';
-import { getEffectiveTaskDay, startOfDay, isDayPastCutoff } from '@/utils/taskDateUtils';
+import { getEffectiveTaskDay, startOfDay } from '@/utils/taskDateUtils';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const months_en = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -123,10 +123,9 @@ const Index = () => {
   const [activeFeature, setActiveFeature] = useState<HomeFeatureKey | null>(null);
 
   const [todayStart] = useState(() => startOfDay(Date.now()));
-  const [now] = useState(() => Date.now());
   const [selectedDate, setSelectedDate] = useState(todayStart);
 
-  const scrollViewRef = useRef<ScrollViewInstance>(null);
+  const scrollViewRef = useRef<any>(null);
   const homeStyles = createHomeStyles(colors, isArabic);
   const { showGuide, dismissGuide } = useScreenGuide('home');
   useTaskTimers(todos, updateStatus, linkedChildren as any[], setTimerMutation, language);
@@ -134,13 +133,13 @@ const Index = () => {
   useDeadlineReminders(todos, language);
 
   const homeTips: GuideTip[] = isArabic ? [
-    { icon: 'add-circle-outline', title: 'أضف مهمة', description: 'اضغط على زر + في الزاوية لإضافة مهمة جديدة.', accentColor: '#dbd4fd' },
+    { icon: 'add-circle-outline', title: 'أضف مهمة', description: 'اضغط على زر + الدائري بالأسفل لإضافة مهمة جديدة بسرعة.', accentColor: '#dbd4fd' },
     { icon: 'timer-outline', title: 'مؤقت ذكي', description: 'اضغط على أيقونة الساعة لتحديد مدة المهمة وموعدها.', accentColor: '#defef9' },
-    { icon: 'hand-left-outline', title: 'الميزات السريعة', description: 'تصفح الميزات في الشريط الأوسط للوصول للقوائم والمواعيد.', accentColor: '#f6e5c9' },
+    { icon: 'hand-left-outline', title: 'الميزات السريعة', description: 'تصفح كروت CardSwap في المنتصف للوصول للقوائم والمواعيد.', accentColor: '#f6e5c9' },
   ] : [
-    { icon: 'add-circle-outline', title: 'Add a Task', description: 'Tap the floating + button in the bottom corner to add a task.', accentColor: '#dbd4fd' },
+    { icon: 'add-circle-outline', title: 'Add a Task', description: 'Tap the circular + button at the bottom to quickly create a task.', accentColor: '#dbd4fd' },
     { icon: 'timer-outline', title: 'Smart Timer', description: 'Tap the clock icon on any task to set a duration and due date.', accentColor: '#defef9' },
-    { icon: 'hand-left-outline', title: 'Quick Features', description: 'Scroll through the feature cards in the middle to open checklists & events.', accentColor: '#f6e5c9' },
+    { icon: 'hand-left-outline', title: 'Quick Features', description: 'Swipe through CardSwap cards in the center to access checklists & events.', accentColor: '#f6e5c9' },
   ];
 
   // Normalized Todos (Top-level tasks only)
@@ -198,8 +197,6 @@ const Index = () => {
       })
       .sort((a, b) => (a.startTime || a.date || 0) - (b.startTime || b.date || 0));
   }, [todos, todayStart]);
-
-  const isViewingToday = selectedDate === todayStart;
 
   // Monthly Overview Stats
   const { monthDoneCount, monthTotalCount, activeMonthlyGoals } = useMemo(() => {
@@ -320,7 +317,6 @@ const Index = () => {
     setEditingTaskSection(section);
   };
 
-  // Toggle task status from Checklist Card
   const handleToggleTaskStatus = (id: Id<"todos">, currentStatus: string) => {
     const nextStatus = currentStatus === 'done' ? 'not_started' : 'done';
     updateStatus({ id, status: nextStatus });
@@ -358,11 +354,6 @@ const Index = () => {
   const handleCompleteTask = (task: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     updateStatus({ id: task._id, status: 'done' });
-  };
-
-  const handleReopenTask = (task: any) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    updateStatus({ id: task._id, status: 'not_started' });
   };
 
   // Open Day Planner in tabs
@@ -531,41 +522,66 @@ const Index = () => {
     }
   };
 
-  // Feature strip definition
-  const featuresList: HomeFeatureDef[] = useMemo(() => [
+  // ─── CardSwap Items Definition for Other Features (All Lime Texture Color) ───
+  const swapFeaturesList: CardSwapItem[] = useMemo(() => [
     {
-      key: 'checklist',
+      id: 'checklist',
+      title: isArabic ? 'قائمة المهام' : "Today's Checklist",
+      subtitle: checklistTotalCount > 0 
+        ? (isArabic ? `${checklistDoneCount} من ${checklistTotalCount} مكتملة` : `${checklistDoneCount} of ${checklistTotalCount} completed`)
+        : (isArabic ? 'اضغط لإضافة عناصر للقائمة' : 'Tap to add checklist items'),
       icon: 'checkbox-outline',
-      title: isArabic ? 'قائمة المهام' : 'Checklist',
       badge: checklistTotalCount > 0 ? `${checklistDoneCount}/${checklistTotalCount}` : undefined,
-      accentColor: '#FD8B2D',
+      accentColor: '#D8F448',
+      textColor: '#141311',
+      gradientColors: ['#75960B', '#92B814', '#B6DF20', '#D8F448'] as const,
+      wireframe: false,
     },
     {
-      key: 'reminders',
+      id: 'reminders',
+      title: isArabic ? 'المواعيد والتذكيرات' : 'Upcoming Reminders',
+      subtitle: upcomingEvents.length > 0 
+        ? (isArabic ? `${upcomingEvents.length} مواعيد وتذكيرات قادمة` : `${upcomingEvents.length} upcoming events`)
+        : (isArabic ? 'لا توجد تذكيرات اليوم' : 'No reminders scheduled'),
       icon: 'notifications-outline',
-      title: isArabic ? 'التذكيرات' : 'Reminders',
       badge: upcomingEvents.length > 0 ? `${upcomingEvents.length}` : undefined,
-      accentColor: '#38BDF8',
+      accentColor: '#C7F037',
+      textColor: '#141311',
+      gradientColors: ['#638506', '#80A80C', '#A4D115', '#C7F037'] as const,
+      wireframe: false,
     },
     {
-      key: 'monthly',
+      id: 'monthly',
+      title: isArabic ? 'نظرة عامة على الشهر' : 'Monthly Overview',
+      subtitle: isArabic ? `${monthDoneCount} من ${monthTotalCount} مهام مكتملة` : `${monthDoneCount} of ${monthTotalCount} tasks done`,
       icon: 'calendar-outline',
-      title: isArabic ? 'نظرة شهرية' : 'Monthly',
-      accentColor: '#A78BFA',
+      badge: activeMonthlyGoals > 0 ? `${activeMonthlyGoals} ${isArabic ? 'أهداف' : 'goals'}` : undefined,
+      accentColor: '#BAE828',
+      textColor: '#141311',
+      gradientColors: ['#547503', '#6E9607', '#93C410', '#BAE828'] as const,
+      wireframe: false,
     },
     {
-      key: 'insights',
+      id: 'insights',
+      title: isArabic ? 'تحليلات ورؤى ذكية' : 'AI Insights & Wellbeing',
+      subtitle: isArabic ? 'رؤى مخصصة لتحسين إنتاجيتك' : 'Personalized productivity insights',
       icon: 'sparkles-outline',
-      title: isArabic ? 'تحليلات AI' : 'Insights',
-      accentColor: '#34D399',
+      accentColor: '#CFF642',
+      textColor: '#141311',
+      gradientColors: ['#6C8E0A', '#89B311', '#ACDB1C', '#CFF642'] as const,
+      wireframe: false,
     },
     {
-      key: 'timer',
-      icon: 'timer-outline',
+      id: 'timer',
       title: isArabic ? 'مؤقت التركيز' : 'Focus Timer',
-      accentColor: '#F472B6',
+      subtitle: isArabic ? 'جلسات تركيز بومودورو ذكية' : 'Smart Pomodoro focus blocks',
+      icon: 'timer-outline',
+      accentColor: '#C3EE33',
+      textColor: '#141311',
+      gradientColors: ['#5E7F08', '#78A00E', '#9ECB18', '#C3EE33'] as const,
+      wireframe: false,
     },
-  ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length]);
+  ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length, monthDoneCount, monthTotalCount, activeMonthlyGoals]);
 
   const handleSelectFeature = (key: HomeFeatureKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -597,7 +613,6 @@ const Index = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      {/* Device Status Bar settles inside the lime widget at the top */}
       <StatusBar style="dark" />
 
       {todos === undefined ? (
@@ -617,7 +632,7 @@ const Index = () => {
             nestedScrollEnabled={true}
             scrollEventThrottle={16}
           >
-            {/* 1. UPPER WIDGET (Lime Accent with rounded bottom corners, holds Header & DateBar) */}
+            {/* 1. UPPER WIDGET (Header & DateBar) */}
             <HomeTopWidget
               selectedDate={selectedDate}
               todayStart={todayStart}
@@ -628,14 +643,33 @@ const Index = () => {
               taskCounts={dayTaskCounts}
             />
 
-            {/* 2. THIRD SECTION (Transparent Horizontally Scrollable Feature Cards) */}
-            <HomeFeatureStrip
-              features={featuresList}
-              onSelectFeature={handleSelectFeature}
-              isArabic={isArabic}
-            />
+            {/* 2. OTHER FEATURES IN CARDSWAP COMPONENT UI (All Lime Textured Cards) */}
+            <View style={styles.cardSwapSection}>
+              <View style={[styles.sectionHeader, isArabic && styles.rowRtl]}>
+                <View style={[styles.sectionTitleGroup, isArabic && styles.rowRtl]}>
+                  <Ionicons name="apps-outline" size={17} color={colors.text} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    {isArabic ? 'الميزات والأدوات' : 'Features & Tools'}
+                  </Text>
+                </View>
+                <Text style={[styles.sectionHint, { color: isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)' }]}>
+                  {isArabic ? 'اسحب للتبديل • اضغط للفتح' : 'Swipe to swap • Tap to open'}
+                </Text>
+              </View>
 
-            {/* 3. LOWER WIDGET (Purple #8A2BE2 with rounded corners, holds 4-Task CardStack) */}
+              <CardSwap
+                items={swapFeaturesList}
+                width={Math.min(SCREEN_WIDTH - 56, 320)}
+                height={140}
+                cardDistance={16}
+                verticalDistance={8}
+                wireframe={false}
+                isArabic={isArabic}
+                onCardClick={(item) => handleSelectFeature(item.id as HomeFeatureKey)}
+              />
+            </View>
+
+            {/* 3. TASKS IN STACK CARDSWAP / CARDSTACK FAN APPEARANCE */}
             <HomeTasksWidget
               tasks={currentDayTasks}
               doneCount={currentDayDoneCount}
@@ -650,7 +684,7 @@ const Index = () => {
             />
           </ScrollView>
 
-          {/* 4. Floating Call-To-Action Button ("Add Task" in bottom right above tabs bar) */}
+          {/* Floating Call-To-Action Button — Fully Circular with Icon Only */}
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => {
@@ -659,14 +693,11 @@ const Index = () => {
             }}
             style={[
               styles.floatingCta,
-              isArabic ? { left: 20 } : { right: 20 },
-              { bottom: insets.bottom + 74 },
+              isArabic ? { left: 22 } : { right: 22 },
+              { bottom: insets.bottom + 76 },
             ]}
           >
-            <Ionicons name="add" size={20} color="#000000" />
-            <Text style={styles.floatingCtaText}>
-              {isArabic ? 'إضافة مهمة' : 'Add Task'}
-            </Text>
+            <Ionicons name="add" size={28} color="#000000" />
           </TouchableOpacity>
         </ActiveTaskProvider>
       )}
@@ -733,14 +764,15 @@ const Index = () => {
         )}
       </FeatureSheet>
 
-      {/* Task Creation & Edit Modals */}
-      <TaskDetailModal 
-        key={isTaskModalVisible ? `new-task-${selectedDate}` : 'new-task-closed'}
+      {/* Minimalist Task Creation Modal (Restored) */}
+      <QuickAddTaskModal
         visible={isTaskModalVisible}
         onClose={() => setIsTaskModalVisible(false)}
-        todoId={null}
         initialDate={selectedDate}
+        isArabic={isArabic}
       />
+
+      {/* Task Edit Modal (for existing tasks) */}
       <TaskDetailModal 
         key={editingTaskId ? `edit-task-${editingTaskId}` : 'edit-task-closed'}
         visible={editingTaskId !== null}
@@ -801,27 +833,51 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  cardSwapSection: {
+    marginTop: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+    width: '100%',
+  },
+  sectionHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    marginBottom: 6,
+  },
+  sectionTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  sectionTitle: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  sectionHint: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
   floatingCta: {
     position: 'absolute',
     backgroundColor: LIME_ACCENT,
-    borderRadius: 28,
-    flexDirection: 'row',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    gap: 6,
+    justifyContent: 'center',
     zIndex: 999,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 10,
-  },
-  floatingCtaText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -0.2,
   },
 });
 

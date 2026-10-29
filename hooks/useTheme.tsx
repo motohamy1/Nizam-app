@@ -96,6 +96,13 @@ export interface ColorScheme {
   };
 }
 
+/**
+ * Accent sampled from the home page upper widget's purple shimmer gradient.
+ * Used for active tabs, CTAs, confirmations and primary actions so the whole
+ * UI shares the widget's purple instead of the old lime chartreuse.
+ */
+export const UPPER_WIDGET_ACCENT = '#8E2CAC';
+
 const darkColors: ColorScheme = {
   bg: "#060805",              // Deep dark forest obsidian matching reference base
   surface: "#111510",         // Dark obsidian card surface with subtle olive undertone
@@ -103,10 +110,10 @@ const darkColors: ColorScheme = {
   text: "#FFFFFF",            // Crisp white text
   textMuted: "#8E9A86",       // Sophisticated muted olive-tinted neutral
   border: "#1E261A",          // Subtle border matching dark forest tones
-  primary: "#C8F135",         // Neon Chartreuse / Electric Lime from reference!
-  primaryText: "#0D1405",     // Deep forest ink on electric lime (>12:1 contrast)
-  secondary: "#B8F628",       // Saturated Lime accent
-  secondaryText: "#0D1405",   // Deep forest ink
+  primary: UPPER_WIDGET_ACCENT,      // Upper-widget purple — CTAs, active states, confirmations
+  primaryText: "#FFFFFF",            // White ink on the purple fill
+  secondary: UPPER_WIDGET_ACCENT,    // Same purple for secondary accent surfaces
+  secondaryText: "#0D1405",          // dark solid ink for pastel badge fills
   success: "#10B981",
   warning: "#FBBF24",
   danger: "#FB7185",
@@ -163,7 +170,7 @@ const darkColors: ColorScheme = {
       elevation: 10,
     },
     glow: {
-      shadowColor: "#C8F135",
+      shadowColor: UPPER_WIDGET_ACCENT,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 16,
@@ -194,10 +201,10 @@ const lightColors: ColorScheme = {
   textSecondary: "#66635E",   // secondary text — warm gray
   textMuted: "#8C8881",       // muted text / captions
   border: "#E7E2D8",          // soft warm border
-  primary: "#FD8B2D",         // Nizam ORANGE — primary brand (CTA, active states)
-  primaryText: "#231303",     // dark warm ink on orange fills (≈7:1)
-  secondary: "#149375",       // Nizam TEAL — secondary brand
-  secondaryText: "#20201C",   // dark warm ink used on pastel/pill fills
+  primary: UPPER_WIDGET_ACCENT,   // Upper-widget purple — CTAs, active states, confirmations
+  primaryText: "#FFFFFF",         // white ink on the purple fill
+  secondary: UPPER_WIDGET_ACCENT, // same purple for secondary accent surfaces
+  secondaryText: "#20201C",       // dark warm ink for pastel badge fills
   success: "#55B999",         // soft green — success / completion
   warning: "#FBC432",         // yellow — warnings / attention / categories
   danger: "#F06F63",          // coral — urgent / destructive / errors
@@ -253,7 +260,7 @@ const lightColors: ColorScheme = {
       elevation: 8,
     },
     glow: {
-      shadowColor: "#FD8B2D",
+      shadowColor: UPPER_WIDGET_ACCENT,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 16,

@@ -67,11 +67,23 @@ const ChecklistItemForm: React.FC<{
   onOpenTask?: (id: Id<'todos'>) => void;
   onDone: () => void;
 }> = ({ item, initialChildren, initialDate, candidateTasks, onOpenTask, onDone }) => {
-  const { colors, isDarkMode } = useTheme();
+  const theme = useTheme();
+  const colors = {
+    ...theme.colors,
+    bg: '#1C0A2A',
+    surface: '#1C0A2A',
+    surfaceHigh: '#290E3D',
+    text: '#FFFFFF',
+    textMuted: 'rgba(255, 255, 255, 0.70)',
+    border: 'rgba(142, 44, 172, 0.35)',
+    primary: '#FF9470',
+    primaryText: '#14081E',
+  };
+  const isDarkMode = true;
   const { userId, language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
-  const frame = createCardFrame(CARD_ACCENTS.rose, isDarkMode, colors.secondaryText);
+  const frame = createCardFrame({ pastel: '#FF9470', ink: '#14081E' }, isDarkMode, '#14081E');
   const { height: screenHeight } = useWindowDimensions();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const scrollViewRef = useRef<ScrollViewInstance>(null);
@@ -260,7 +272,7 @@ const ChecklistItemForm: React.FC<{
           <Text style={styles.modalTitle}>{headerTitle}</Text>
         </View>
         <TouchableOpacity onPress={onDone} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="close-circle" size={24} color={colors.textMuted} />
+          <Ionicons name="close-circle" size={24} color={frame.badgeFg} />
         </TouchableOpacity>
       </View>
 
@@ -277,7 +289,7 @@ const ChecklistItemForm: React.FC<{
             <TextInput
               style={styles.modalTextInput}
               placeholder={isArabic ? 'ماذا تريد أن تنجز؟...' : 'What needs doing?...'}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor="rgba(255, 255, 255, 0.40)"
               value={title}
               onChangeText={setTitle}
               autoFocus={!isEditing}
@@ -291,7 +303,7 @@ const ChecklistItemForm: React.FC<{
             <TextInput
               style={styles.modalNotesInput}
               placeholder={isArabic ? 'أضف ملاحظات لهذا العنصر...' : 'Add notes for this item...'}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor="rgba(255, 255, 255, 0.40)"
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -311,16 +323,16 @@ const ChecklistItemForm: React.FC<{
                     style={{
                       flexDirection: isArabic ? 'row-reverse' : 'row',
                       alignItems: 'center',
-                      backgroundColor: frame.washBg,
+                      backgroundColor: 'rgba(255, 148, 112, 0.16)',
                       borderRadius: 10,
                       paddingHorizontal: 10,
                       paddingVertical: 6,
                       gap: 6,
                     }}
                   >
-                    <Text style={{ color: frame.fg, fontSize: 13, fontWeight: '700' }}>#{tag}</Text>
+                    <Text style={{ color: '#FF9470', fontSize: 13, fontWeight: '700' }}>#{tag}</Text>
                     <TouchableOpacity onPress={() => setHashtags((prev) => prev.filter((x) => x !== tag))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                      <Ionicons name="close" size={14} color={frame.fg} />
+                      <Ionicons name="close" size={14} color="#FF9470" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -330,20 +342,20 @@ const ChecklistItemForm: React.FC<{
               style={{
                 flexDirection: isArabic ? 'row-reverse' : 'row',
                 alignItems: 'center',
-                backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+                backgroundColor: 'rgba(142, 44, 172, 0.12)',
                 borderRadius: 12,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
                 borderWidth: 1,
-                borderColor: colors.border,
+                borderColor: 'rgba(142, 44, 172, 0.35)',
                 gap: 8,
               }}
             >
-              <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: '700' }}>#</Text>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontWeight: '700' }}>#</Text>
               <TextInput
-                style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0, textAlign: isArabic ? 'right' : 'left' }}
+                style={{ flex: 1, fontSize: 14, color: '#FFFFFF', padding: 0, textAlign: isArabic ? 'right' : 'left' }}
                 placeholder={isArabic ? 'أضف وسمًا...' : 'Add a hashtag...'}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor="rgba(255, 255, 255, 0.40)"
                 value={newHashtag}
                 onChangeText={setNewHashtag}
                 onFocus={() => {
@@ -353,7 +365,7 @@ const ChecklistItemForm: React.FC<{
                 returnKeyType="done"
               />
               <TouchableOpacity onPress={() => addHashtag(newHashtag)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Ionicons name="add-circle" size={22} color={newHashtag.trim() ? frame.fg : colors.textMuted} />
+                <Ionicons name="add-circle" size={22} color={newHashtag.trim() ? '#FF9470' : 'rgba(255, 255, 255, 0.40)'} />
               </TouchableOpacity>
             </View>
           </View>
@@ -362,12 +374,18 @@ const ChecklistItemForm: React.FC<{
           <View style={styles.modalInputGroup}>
             <Text style={styles.modalInputLabel}>{isArabic ? 'ربط بمشروع' : 'Link to Project'}</Text>
             <TouchableOpacity
-              style={[styles.linkRow, { borderColor: link ? frame.border : colors.border, backgroundColor: link ? frame.washBg : 'transparent' }]}
+              style={[
+                styles.linkRow,
+                {
+                  borderColor: link ? '#FF9470' : 'rgba(142, 44, 172, 0.35)',
+                  backgroundColor: link ? 'rgba(255, 148, 112, 0.14)' : 'rgba(142, 44, 172, 0.12)',
+                },
+              ]}
               onPress={() => setShowProjectPicker(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name={link ? 'link' : 'link-outline'} size={18} color={link ? frame.fg : colors.textMuted} />
-              <Text style={[styles.linkRowText, { color: link ? colors.text : colors.textMuted }]}>
+              <Ionicons name={link ? 'link' : 'link-outline'} size={18} color={link ? '#FF9470' : 'rgba(255, 255, 255, 0.65)'} />
+              <Text style={[styles.linkRowText, { color: link ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' }]}>
                 {linkName || (isArabic ? 'اربط العنصر بمساحة أو مشروع' : 'Link this item to a space or project')}
               </Text>
               {link ? (
@@ -375,10 +393,10 @@ const ChecklistItemForm: React.FC<{
                   onPress={() => setLink(null)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                  <Ionicons name="close-circle" size={18} color="#FF9470" />
                 </TouchableOpacity>
               ) : (
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                <Ionicons name="chevron-forward" size={16} color="rgba(255, 255, 255, 0.65)" />
               )}
             </TouchableOpacity>
           </View>
@@ -387,40 +405,46 @@ const ChecklistItemForm: React.FC<{
           <View style={styles.modalInputGroup}>
             <Text style={styles.modalInputLabel}>{isArabic ? 'ربط بمهام' : 'Link Tasks'}</Text>
             <TouchableOpacity
-              style={[styles.linkRow, { borderColor: linkedIds.length > 0 ? frame.border : colors.border, backgroundColor: linkedIds.length > 0 ? frame.washBg : 'transparent' }]}
+              style={[
+                styles.linkRow,
+                {
+                  borderColor: linkedIds.length > 0 ? '#FF9470' : 'rgba(142, 44, 172, 0.35)',
+                  backgroundColor: linkedIds.length > 0 ? 'rgba(255, 148, 112, 0.14)' : 'rgba(142, 44, 172, 0.12)',
+                },
+              ]}
               onPress={() => {
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                 setShowTaskPicker((v) => !v);
               }}
               activeOpacity={0.8}
             >
-              <Ionicons name="git-branch-outline" size={18} color={linkedIds.length > 0 ? frame.fg : colors.textMuted} />
-              <Text style={[styles.linkRowText, { color: linkedIds.length > 0 ? colors.text : colors.textMuted }]}>
+              <Ionicons name="git-branch-outline" size={18} color={linkedIds.length > 0 ? '#FF9470' : 'rgba(255, 255, 255, 0.65)'} />
+              <Text style={[styles.linkRowText, { color: linkedIds.length > 0 ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' }]}>
                 {linkedIds.length > 0
                   ? (isArabic
                       ? `${linkedIds.length} ${t.linkedTasksWord}`
                       : `${linkedIds.length} linked task${linkedIds.length === 1 ? '' : 's'}`)
                   : (isArabic ? 'اجعل مهامًا مرتبطة تحت هذا العنصر' : 'Make tasks nested under this item')}
               </Text>
-              <Ionicons name={showTaskPicker ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+              <Ionicons name={showTaskPicker ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(255, 255, 255, 0.65)" />
             </TouchableOpacity>
 
             {showTaskPicker && (
-              <View style={[styles.taskPickerBox, { borderColor: colors.border }]}>
-                <Text style={[styles.taskPickerHint, { color: colors.textMuted }]}>
+              <View style={styles.taskPickerBox}>
+                <Text style={styles.taskPickerHint}>
                   {isArabic ? 'المهام المحددة ستصبح مهامًا فرعية لهذا العنصر.' : 'Selected tasks become subtasks of this checklist item.'}
                 </Text>
                 <TextInput
-                  style={[styles.taskSearchInput, { color: colors.text, borderColor: colors.border }]}
+                  style={styles.taskSearchInput}
                   placeholder={isArabic ? 'ابحث عن مهمة...' : 'Search tasks...'}
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor="rgba(255, 255, 255, 0.40)"
                   value={taskSearch}
                   onChangeText={setTaskSearch}
                   textAlign={isArabic ? 'right' : 'left'}
                 />
                 <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                   {availableTasks.length === 0 && (
-                    <Text style={{ fontSize: 13, color: colors.textMuted, paddingVertical: 12, textAlign: 'center' }}>
+                    <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.65)', paddingVertical: 12, textAlign: 'center' }}>
                       {isArabic ? 'لا توجد مهام متاحة' : 'No tasks available'}
                     </Text>
                   )}
@@ -434,9 +458,9 @@ const ChecklistItemForm: React.FC<{
                       <Ionicons
                         name={linkedIds.includes(task._id as string) ? 'checkbox' : 'square-outline'}
                         size={20}
-                        color={linkedIds.includes(task._id as string) ? frame.fg : colors.textMuted}
+                        color={linkedIds.includes(task._id as string) ? '#FF9470' : 'rgba(255, 255, 255, 0.65)'}
                       />
-                      <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, textAlign: isArabic ? 'right' : 'left' }} numberOfLines={1}>
+                      <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#FFFFFF', textAlign: isArabic ? 'right' : 'left' }} numberOfLines={1}>
                         {task.text}
                       </Text>
                     </TouchableOpacity>
@@ -449,22 +473,25 @@ const ChecklistItemForm: React.FC<{
               const meta = nameById.get(id);
               if (!meta) return null;
               return (
-                <View key={id} style={[styles.linkedTaskRow, { borderColor: colors.border }]}>
+                <View
+                  key={id}
+                  style={styles.linkedTaskRow}
+                >
                   <TouchableOpacity
-                    onPress={() => onOpenTask?.(id as Id<'todos'>)}
                     style={{ flex: 1, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}
+                    onPress={() => onOpenTask && onOpenTask(id as Id<'todos'>)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="git-commit-outline" size={15} color={frame.fg} />
+                    <Ionicons name="git-commit-outline" size={15} color="#FF9470" />
                     <Text
-                      style={{ flex: 1, fontSize: 13.5, fontWeight: '600', color: colors.text, textAlign: isArabic ? 'right' : 'left', textDecorationLine: meta.status === 'done' ? 'line-through' : 'none' }}
+                      style={{ flex: 1, fontSize: 13.5, fontWeight: '600', color: '#FFFFFF', textAlign: isArabic ? 'right' : 'left', textDecorationLine: meta.status === 'done' ? 'line-through' : 'none' }}
                       numberOfLines={1}
                     >
                       {meta.text}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => toggleLinked(id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                    <Ionicons name="close-circle" size={18} color="#FF9470" />
                   </TouchableOpacity>
                 </View>
               );
@@ -514,7 +541,19 @@ const ChecklistItemModal: React.FC<ChecklistItemModalProps> = ({
   candidateTasks,
   onOpenTask,
 }) => {
-  const { colors, isDarkMode } = useTheme();
+  const theme = useTheme();
+  const colors = {
+    ...theme.colors,
+    bg: '#1C0A2A',
+    surface: '#1C0A2A',
+    surfaceHigh: '#290E3D',
+    text: '#FFFFFF',
+    textMuted: 'rgba(255, 255, 255, 0.70)',
+    border: 'rgba(142, 44, 172, 0.35)',
+    primary: '#FF9470',
+    primaryText: '#14081E',
+  };
+  const isDarkMode = true;
   const { language } = useAuth();
   const { isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
@@ -550,7 +589,7 @@ const ChecklistItemModal: React.FC<ChecklistItemModalProps> = ({
             ) : (
               <View style={[styles.modalContent, { alignItems: 'center', justifyContent: 'center', minHeight: 220 }]}>
                 <View style={styles.modalDragHandle} />
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color="#FF9470" />
               </View>
             )}
           </TouchableWithoutFeedback>

@@ -1555,7 +1555,7 @@ const Planner = () => {
           accessibilityRole="button"
           accessibilityLabel={isArabic ? 'هدف جديد' : 'New Goal'}
         >
-          <Ionicons name="add" size={30} color="#101116" />
+          <Ionicons name="add" size={30} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     );

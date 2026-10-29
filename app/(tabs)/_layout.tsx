@@ -13,7 +13,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import useTheme from '@/hooks/useTheme';
+import useTheme, { UPPER_WIDGET_ACCENT } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
 import { textOn } from '@/utils/colorUtils';
@@ -21,8 +21,8 @@ import { textOn } from '@/utils/colorUtils';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // Colors & Dimensions matching reference
-const ACTIVE_ACCENT = '#C8F135';
-const LIGHT_ACTIVE_ACCENT = '#FD8B2D'; // Nizam orange — light-register primary active accent
+const ACTIVE_ACCENT = UPPER_WIDGET_ACCENT;
+const LIGHT_ACTIVE_ACCENT = UPPER_WIDGET_ACCENT; // same upper-widget purple in light register too
 const ACTIVE_INK = '#101116';
 const DOCK_HEIGHT = 60;
 const DOCK_CORNER = 26;
@@ -386,7 +386,7 @@ const DockTabButton = ({
       }}
       style={styles.slot}
     >
-      {/* Active Elevated State (Floating cream bubble nestled in the scoop) */}
+      {/* Active Elevated State (Floating purple bubble nestled in the scoop) */}
       <Animated.View
         style={[styles.activeBubble, bubbleColor ? { backgroundColor: bubbleColor } : null, activeAnimatedStyle]}
         pointerEvents={isActive ? 'auto' : 'none'}
@@ -452,8 +452,8 @@ const TabLayout = () => {
   const dockHeight = DOCK_HEIGHT + paddingBottom;
   const dockFill = isDarkMode ? '#111510' : '#FFFFFF';
   const dockStroke = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
-  // The floating dock bubble + punched icon knockout must share one color;
-  // dark uses the lime accent, light uses the Nizam orange primary.
+  // The floating dock bubble + punched icon knockout must share one color:
+  // the upper home widget's purple accent in both registers.
   const activeAccent = isDarkMode ? ACTIVE_ACCENT : LIGHT_ACTIVE_ACCENT;
   const activeInk = textOn(activeAccent, ACTIVE_INK);
   const inactiveColor = colors.textMuted;

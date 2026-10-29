@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
@@ -34,8 +35,8 @@ const PlannerDateBar: React.FC<PlannerDateBarProps> = ({
   const flatListRef = useRef<FlatList>(null);
 
   const isDark = colors.statusBarStyle === 'light-content';
-  const activeFill = isDark ? '#C8F135' : '#FD8B2D';
-  const activeInk = isDark ? '#16270E' : '#FFFFFF';
+  const activeFill = '#FF9470';
+  const activeInk = '#141311';
 
   const today = useMemo(() => new Date(), []);
   const isCurrentMonthAndYear = today.getFullYear() === year && today.getMonth() === month;
@@ -111,8 +112,8 @@ const PlannerDateBar: React.FC<PlannerDateBarProps> = ({
                 styles.dayCardActive,
                 {
                   backgroundColor: activeFill,
-                  borderColor: activeFill,
-                  shadowColor: activeFill,
+                  borderColor: 'rgba(255, 255, 255, 0.50)',
+                  shadowColor: '#FF9470',
                 },
               ]
             : [
@@ -124,6 +125,21 @@ const PlannerDateBar: React.FC<PlannerDateBarProps> = ({
               ],
         ]}
       >
+        {/* Active day background matches the task card (#FF9470) */}
+        {isActive && (
+          <>
+            <View
+              style={[StyleSheet.absoluteFill, { backgroundColor: '#FF9470' }]}
+            />
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.28)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.85, y: 0.4 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </>
+        )}
+
         <Text
           style={[
             styles.weekdayText,
@@ -287,7 +303,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
-  dayCardInactive: {},
+  dayCardInactive: {
+    borderColor: 'transparent',
+  },
   dayCardActive: {
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -311,4 +329,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PlannerDateBar;
+export default React.memo(PlannerDateBar);

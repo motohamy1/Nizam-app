@@ -71,26 +71,27 @@ export const createMonthCardFrame = (
   _isDarkMode: boolean = false,
   _colors?: ColorScheme
 ) => {
-  // All homepage non-checklist cards share the sleek dark obsidian background (#0c0c0e)
-  // and vibrant electric orange border (#ff5c16) matching the main accent color.
+  // All homepage cards inside FeatureSheet use the page's two signature colors:
+  // Royal purple (#1C0A2A / #8E2CAC) and coral peach (#FF9470).
   return {
-    cardBg: '#0c0c0e',
-    gradTop: '#141418',
-    gradBottom: '#0c0c0e',
-    cardBorder: '#ff5c16',
+    cardBg: '#1C0A2A',
+    gradTop: '#290E3D',
+    gradBottom: '#170623',
+    cardBorder: '#8E2CAC', // upper widget signature purple
     text: '#FFFFFF',
-    textMuted: 'rgba(255, 255, 255, 0.65)',
-    badgeBg: 'rgba(255, 92, 22, 0.16)',
-    badgeFg: '#ff5c16',
-    pillBg: 'rgba(255, 92, 22, 0.12)',
-    pillFg: '#ff5c16',
-    rowBg: 'rgba(255, 255, 255, 0.05)',
-    rowBorder: 'rgba(255, 92, 22, 0.22)',
-    accent: '#ff5c16',
-    footerBorder: 'rgba(255, 92, 22, 0.22)',
-    footerText: 'rgba(255, 255, 255, 0.85)',
-    ctaBg: '#ff5c16',
-    ctaFg: '#000000',
+    textMuted: 'rgba(255, 255, 255, 0.70)',
+    badgeBg: 'rgba(142, 44, 172, 0.30)', // purple badge bg
+    badgeFg: '#FF9470', // coral peach foreground
+    pillBg: 'rgba(255, 148, 112, 0.16)', // coral peach tint pill
+    pillFg: '#FF9470',
+    rowBg: 'rgba(142, 44, 172, 0.14)', // purple tint row background
+    rowBorder: 'rgba(142, 44, 172, 0.30)', // purple tint row border
+    accent: '#FF9470', // signature coral peach accent
+    accentSecondary: '#8E2CAC', // signature purple
+    footerBorder: 'rgba(142, 44, 172, 0.25)',
+    footerText: 'rgba(255, 255, 255, 0.88)',
+    ctaBg: '#FF9470',
+    ctaFg: '#14081E',
   };
 };
 
@@ -185,12 +186,10 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       height: '100%',
       minHeight: 270,
       justifyContent: 'space-between',
-      // Tight, directional shadow tinted to the card's own colour instead of a
-      // wide black halo: in a vertical stack a fat symmetric shadow turns the
-      // whole column into a pile of floating blobs.
-      shadowColor: '#ff5c16',
+      // Tight, directional shadow tinted to royal purple
+      shadowColor: '#8E2CAC',
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: isDarkMode ? 0.22 : 0.16,
+      shadowOpacity: isDarkMode ? 0.28 : 0.18,
       shadowRadius: 10,
       elevation: 6,
     },
@@ -298,34 +297,65 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       fontSize: 10,
       fontWeight: '700',
     },
-    checklistAddRow: {
+
+    // Card 2: Upcoming Reminders Specific Styles
+    upcomingScrollView: {
+      flex: 1,
+      marginVertical: 4,
+    },
+    upcomingScrollContent: {
+      gap: 6,
+      paddingVertical: 2,
+    },
+    upcomingItem: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 6,
-      borderRadius: 8,
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
       borderWidth: 1,
-      borderStyle: 'dashed',
-      marginTop: 4,
-      marginBottom: 2,
     },
-    checklistAddRowText: {
-      fontSize: 12,
+    upcomingItemLeft: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+      minWidth: 0,
+    },
+    upcomingIconBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    upcomingDetails: {
+      flex: 1,
+      minWidth: 0,
+    },
+    upcomingTitle: {
+      fontSize: 13,
       fontWeight: '600',
     },
-    priorityTag: {
+    upcomingTime: {
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 1,
+    },
+    upcomingTypeTag: {
       paddingHorizontal: 7,
-      paddingVertical: 2,
+      paddingVertical: 2.5,
       borderRadius: 6,
       marginLeft: 6,
     },
-    priorityTagText: {
-      fontSize: 11,
+    upcomingTypeTagText: {
+      fontSize: 10,
       fontWeight: '700',
+      textTransform: 'capitalize',
     },
 
-    // Card 2: Upcoming Events & Reminders Specific Styles
+    // UpcomingEventsCard dynamic rows
     eventScrollView: {
       flex: 1,
       marginVertical: 4,
@@ -335,124 +365,117 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       paddingVertical: 2,
     },
     eventRow: {
-      paddingVertical: 10,
-      paddingHorizontal: 12,
       borderRadius: 14,
       borderWidth: 1,
+      padding: 10,
+      gap: 6,
+      marginVertical: 2,
     },
     eventRowHeader: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 6,
-      gap: 8,
     },
     eventRowHeaderLeft: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 6,
-      flexShrink: 1,
-      minWidth: 0,
+      flex: 1,
     },
     eventRowHeaderRight: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 8,
-      flexShrink: 0,
+      gap: 6,
     },
     eventTimeChip: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
-      paddingHorizontal: 7,
+      paddingHorizontal: 8,
       paddingVertical: 3,
-      borderRadius: 7,
-      flexShrink: 0,
+      borderRadius: 8,
     },
     eventTimeText: {
       fontSize: 11,
       fontWeight: '700',
-      letterSpacing: -0.2,
     },
     eventTypeBadge: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
-      paddingHorizontal: 6,
-      paddingVertical: 2.5,
-      borderRadius: 6,
-      flexShrink: 0,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 8,
     },
     eventTypeBadgeText: {
       fontSize: 10,
       fontWeight: '700',
-      letterSpacing: -0.2,
+      textTransform: 'capitalize',
     },
     eventCheckCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 2,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
       alignItems: 'center',
       justifyContent: 'center',
     },
     eventBody: {
-      width: '100%',
       gap: 4,
-    },
-    eventInfo: {
-      flex: 1,
-      gap: 2,
     },
     eventTitle: {
       fontSize: 13.5,
       fontWeight: '700',
-      letterSpacing: -0.2,
-      lineHeight: 18,
-      textAlign: isArabic ? 'right' : 'left',
     },
     eventMeta: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 4,
-      marginTop: 2,
+      gap: 6,
     },
     eventMetaText: {
-      fontSize: 11,
+      fontSize: 11.5,
       fontWeight: '500',
-      lineHeight: 15,
-      textAlign: isArabic ? 'right' : 'left',
     },
     eventFooterMeta: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 4,
+      gap: 6,
+      marginTop: 2,
     },
     eventMetaTag: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
-      flexShrink: 1,
+      paddingHorizontal: 7,
+      paddingVertical: 2.5,
+      borderRadius: 6,
     },
     eventMetaTagText: {
-      fontSize: 11,
-      fontWeight: '500',
+      fontSize: 10.5,
+      fontWeight: '600',
     },
 
     // Card 3: Monthly Overview Specific Styles
-    monthlyStatsGrid: {
-      flexDirection: isArabic ? 'row-reverse' : 'row',
-      alignItems: 'center',
+    monthlyOverviewGrid: {
+      flex: 1,
+      justifyContent: 'center',
       gap: 10,
-      marginVertical: 10,
+      marginVertical: 4,
+    },
+    monthlyStatsGrid: {
+      flex: 1,
+      justifyContent: 'center',
+      gap: 10,
+      marginVertical: 4,
+    },
+    monthlyStatRow: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      gap: 8,
     },
     monthlyStatItem: {
       flex: 1,
-      padding: 12,
-      borderRadius: 14,
+      padding: 10,
+      borderRadius: 12,
       borderWidth: 1,
-      alignItems: isArabic ? 'flex-end' : 'flex-start',
+      justifyContent: 'space-between',
     },
     monthlyStatNumber: {
       fontSize: 22,
@@ -460,28 +483,27 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       letterSpacing: -0.5,
     },
     monthlyStatLabel: {
-      fontSize: 12,
-      fontWeight: '500',
+      fontSize: 11,
+      fontWeight: '600',
       marginTop: 2,
-      marginBottom: 6,
     },
     monthlyProgressBarContainer: {
-      width: '100%',
-      height: 5,
-      borderRadius: 3,
+      height: 4,
+      borderRadius: 2,
+      marginTop: 8,
       overflow: 'hidden',
     },
     monthlyProgressBarFill: {
       height: '100%',
-      borderRadius: 3,
+      borderRadius: 2,
     },
 
-    // Card 4: Productivity & Focus Specific Styles
+    // Card 4: Focus & Streak Specific Styles
     productivityRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 12,
-      marginVertical: 10,
+      gap: 10,
+      marginVertical: 4,
     },
     streakCard: {
       flex: 1,
@@ -493,11 +515,32 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       borderWidth: 1,
     },
     streakIconCircle: {
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38,
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    focusCenterContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginVertical: 4,
+    },
+    focusStatsRow: {
+      flexDirection: isArabic ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      width: '100%',
+    },
+    focusStreakBox: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 1,
     },
     streakNumber: {
       fontSize: 20,
@@ -593,28 +636,31 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       borderRadius: 5,
     },
 
-    // Event Management Modal
+    // Event Management Modal & Feature Modals (Unified purple & #FF9470 styling)
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      backgroundColor: 'rgba(0, 0, 0, 0.65)',
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: colors.surface,
+      backgroundColor: '#1C0A2A',
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
       paddingHorizontal: 20,
       paddingTop: 16,
       paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-      borderTopWidth: 1,
-      borderColor: colors.border,
+      borderTopWidth: 2,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: '#8E2CAC',
       maxHeight: '90%',
     },
     modalDragHandle: {
       width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: colors.border,
+      backgroundColor: '#FF9470',
+      opacity: 0.85,
       alignSelf: 'center',
       marginBottom: 16,
     },
@@ -627,7 +673,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalTitle: {
       fontSize: 19,
       fontWeight: '700',
-      color: colors.text,
+      color: '#FFFFFF',
       letterSpacing: -0.3,
     },
     modalForm: {
@@ -640,20 +686,20 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalInputLabel: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.textMuted,
+      color: 'rgba(255, 255, 255, 0.70)',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
     modalTextInput: {
       width: '100%',
-      backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
       fontSize: 15,
-      color: colors.text,
+      color: '#FFFFFF',
       textAlign: isArabic ? 'right' : 'left',
     },
     modalTypeRow: {
@@ -670,32 +716,33 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       paddingVertical: 10,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+      borderColor: 'rgba(142, 44, 172, 0.35)',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
     },
     modalTypeChipActive: {
-      borderColor: colors.secondary,
-      backgroundColor: `${colors.secondary}1F`,
+      borderColor: '#FF9470',
+      backgroundColor: 'rgba(255, 148, 112, 0.22)',
     },
     modalTypeChipText: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.textMuted,
+      color: 'rgba(255, 255, 255, 0.65)',
     },
     modalTypeChipTextActive: {
-      color: colors.text,
+      color: '#FF9470',
+      fontWeight: '800',
     },
     modalNotesInput: {
       width: '100%',
       minHeight: 84,
-      backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
       fontSize: 15,
-      color: colors.text,
+      color: '#FFFFFF',
       textAlign: isArabic ? 'right' : 'left',
       textAlignVertical: 'top',
     },
@@ -706,9 +753,9 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     },
     modalTimeBox: {
       flex: 1,
-      backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
@@ -719,7 +766,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalTimeBoxText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: '#FFFFFF',
     },
     modalActionRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -728,26 +775,30 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     },
     modalSaveBtn: {
       flex: 1,
-      backgroundColor: colors.primary,
+      backgroundColor: '#FF9470',
       borderRadius: 16,
       paddingVertical: 15,
       alignItems: 'center',
       justifyContent: 'center',
-      ...colors.shadows.sm,
+      shadowColor: '#FF9470',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 4,
     },
     modalSaveBtnText: {
       fontSize: 16,
       fontWeight: '800',
-      color: colors.primaryText,
+      color: '#14081E',
     },
     modalDeleteBtn: {
-      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(194, 43, 60, 0.08)',
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
       borderRadius: 16,
       paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(194, 43, 60, 0.30)',
+      borderColor: 'rgba(239, 68, 68, 0.35)',
     },
 
     // Checklist Item Modal
@@ -764,35 +815,42 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       gap: 10,
       width: '100%',
       borderWidth: 1,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
     },
     linkRowText: {
       flex: 1,
       fontSize: 14,
       fontWeight: '600',
+      color: '#FFFFFF',
       textAlign: isArabic ? 'right' : 'left',
     },
     taskPickerBox: {
       borderWidth: 1,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 14,
       padding: 12,
       gap: 10,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+      backgroundColor: 'rgba(142, 44, 172, 0.08)',
     },
     taskPickerHint: {
       fontSize: 11.5,
       fontWeight: '500',
+      color: 'rgba(255, 255, 255, 0.65)',
       textAlign: isArabic ? 'right' : 'left',
     },
     taskSearchInput: {
       borderWidth: 1,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 9,
       fontSize: 13.5,
-      backgroundColor: isDarkMode ? '#1E202E' : '#F8FAFC',
+      color: '#FFFFFF',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
     },
     taskPickerRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -805,10 +863,11 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       alignItems: 'center',
       gap: 8,
       borderWidth: 1,
+      borderColor: 'rgba(142, 44, 172, 0.35)',
       borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 9,
-      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+      backgroundColor: 'rgba(142, 44, 172, 0.12)',
     },
   });
 };

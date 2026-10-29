@@ -902,7 +902,7 @@ export default function AddScreen() {
         accessibilityRole="button"
         accessibilityLabel={isArabic ? 'إنشاء ملاحظة جديدة' : 'Create new note'}
       >
-        <Ionicons name="create-outline" size={26} color="#101116" />
+        <Ionicons name="create-outline" size={26} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* ─── Add/Change Custom Dynamic Hashtag Modal ─────────────────── */}

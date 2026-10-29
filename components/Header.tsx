@@ -10,7 +10,7 @@ import { useTranslation } from '@/utils/i18n'
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader'
 
 interface HeaderProps {
-  tone?: 'default' | 'onLime';
+  tone?: 'default' | 'onLime' | 'purpleShimmer';
 }
 
 const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
@@ -23,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
 
     const greeting = isArabic ? `مرحباً، ${userSettings?.name || t.guest}` : `Hi, ${userSettings?.name || 'Guest'}`;
     const isOnLime = tone === 'onLime';
+    const isPurpleShimmer = tone === 'purpleShimmer';
 
     return (
         <AnimatedWavyHeader
@@ -36,6 +37,13 @@ const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
                       style={[
                         homeStyles.headerGreeting,
                         isOnLime && { color: '#0E1208', fontWeight: '800' },
+                        isPurpleShimmer && {
+                          color: '#FFFFFF',
+                          fontWeight: '800',
+                          textShadowColor: 'rgba(0, 0, 0, 0.45)',
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                        },
                         isArabic && { textAlign: 'right' },
                       ]}
                     >
@@ -50,6 +58,12 @@ const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
                       isOnLime && {
                         backgroundColor: 'rgba(0, 0, 0, 0.08)',
                         borderColor: 'rgba(0, 0, 0, 0.12)',
+                        shadowOpacity: 0,
+                        elevation: 0,
+                      },
+                      isPurpleShimmer && {
+                        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+                        borderColor: 'rgba(255, 255, 255, 0.28)',
                         shadowOpacity: 0,
                         elevation: 0,
                       },
@@ -69,7 +83,7 @@ const Header: React.FC<HeaderProps> = ({ tone = 'default' }) => {
                     <Ionicons
                         name="notifications-outline"
                         size={20}
-                        color={isOnLime ? '#0E1208' : colors.text}
+                        color={isPurpleShimmer ? '#FFFFFF' : isOnLime ? '#0E1208' : colors.text}
                     />
                 </TouchableOpacity>
             </View>

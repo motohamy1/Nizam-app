@@ -872,7 +872,7 @@ export const createProjectsStyles = (colors: ColorScheme, isArabic: boolean = fa
     modalPrimaryBtnText: {
       fontSize: 16,
       fontWeight: '800',
-      color: '#16270E',
+      color: colors.primaryText,
     },
     modalSecondaryBtn: {
       padding: 14,

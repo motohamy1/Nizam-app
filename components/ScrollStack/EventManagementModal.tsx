@@ -57,7 +57,17 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   onSaveEvent,
   onDeleteEvent,
 }) => {
-  const { colors, isDarkMode } = useTheme();
+  const theme = useTheme();
+  const colors = {
+    ...theme.colors,
+    primary: '#FF9470',
+    primaryText: '#14081E',
+    border: 'rgba(142, 44, 172, 0.35)',
+    textMuted: 'rgba(255, 255, 255, 0.65)',
+    surface: 'rgba(142, 44, 172, 0.12)',
+    text: '#FFFFFF',
+  };
+  const isDarkMode = true;
   const { language } = useAuth();
   const { t, isArabic } = useTranslation(language);
   const styles = createScrollStackStyles(colors, isArabic, isDarkMode);
@@ -284,7 +294,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                   {headerTitle}
                 </Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={24} color={colors.textMuted} />
+                  <Ionicons name="close-circle" size={24} color="#FF9470" />
                 </TouchableOpacity>
               </View>
 
@@ -313,7 +323,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             <Ionicons
                               name={opt.icon as any}
                               size={15}
-                              color={active ? colors.text : colors.textMuted}
+                              color={active ? '#FF9470' : colors.textMuted}
                             />
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
                               {opt.label}
@@ -334,7 +344,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           ? (isArabic ? 'مثال: شرب الدواء' : 'e.g., Take the medication')
                           : (isArabic ? 'مثال: اجتماع فريق العمل' : 'e.g., Team Sync Meeting')
                       }
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor="rgba(255, 255, 255, 0.40)"
                       value={title}
                       onChangeText={setTitle}
                       ref={titleInputRef}
@@ -351,7 +361,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowDatePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                      <Ionicons name="calendar-outline" size={18} color="#FF9470" />
                       <Text style={styles.modalTimeBoxText}>{dateString}</Text>
                     </TouchableOpacity>
 
@@ -361,7 +371,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowTimePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="time-outline" size={18} color={colors.primary} />
+                      <Ionicons name="time-outline" size={18} color="#FF9470" />
                       <Text style={styles.modalTimeBoxText}>{timeString}</Text>
                     </TouchableOpacity>
                   </View>
@@ -401,10 +411,6 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         return (
                           <TouchableOpacity
                             key={opt.id}
-                            // NOTE: modalTypeChip has flex:1 (sized for the 2-3
-                            // chip type row). With 6 repeat chips that squeezes
-                            // each to 1/6 width and the label bursts out of the
-                            // chip — content-size them so flexWrap can do its job.
                             style={[styles.modalTypeChip, { flex: 0, paddingHorizontal: 12 }, active && styles.modalTypeChipActive]}
                             onPress={() => {
                               Haptics.selectionAsync();
@@ -416,7 +422,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                               <Ionicons
                                 name="repeat-outline"
                                 size={13}
-                                color={active ? colors.text : colors.textMuted}
+                                color={active ? '#FF9470' : colors.textMuted}
                               />
                             )}
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
@@ -439,7 +445,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           borderRadius: 14,
                           borderWidth: 1,
                           borderColor: colors.border,
-                          backgroundColor: isDarkMode ? colors.surface : colors.surface,
+                          backgroundColor: 'rgba(142, 44, 172, 0.12)',
                         }}
                       >
                         <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, flex: 1 }}>
@@ -454,11 +460,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: colors.primary + '18',
-                              borderWidth: 1, borderColor: colors.primary + '40',
+                              backgroundColor: 'rgba(255, 148, 112, 0.18)',
+                              borderWidth: 1, borderColor: 'rgba(255, 148, 112, 0.40)',
                             }}
                           >
-                            <Ionicons name="remove" size={18} color={colors.primary} />
+                            <Ionicons name="remove" size={18} color="#FF9470" />
                           </TouchableOpacity>
                           <TextInput
                             style={{
@@ -484,18 +490,18 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: colors.primary + '18',
-                              borderWidth: 1, borderColor: colors.primary + '40',
+                              backgroundColor: 'rgba(255, 148, 112, 0.18)',
+                              borderWidth: 1, borderColor: 'rgba(255, 148, 112, 0.40)',
                             }}
                           >
-                            <Ionicons name="add" size={18} color={colors.primary} />
+                            <Ionicons name="add" size={18} color="#FF9470" />
                           </TouchableOpacity>
                         </View>
                       </View>
                     )}
                   </View>
 
-                  {/* Location & Meeting Link (events only) */}
+                  {/* Optional: Location & Meeting Link */}
                   {itemType !== 'reminder' ? (
                     <>
                       <View style={styles.modalInputGroup}>
@@ -503,7 +509,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder={isArabic ? 'مثال: قاعة الاجتماعات أو العنوان' : 'e.g., Conference Room B'}
-                          placeholderTextColor={colors.textMuted}
+                          placeholderTextColor="rgba(255, 255, 255, 0.40)"
                           value={location}
                           onChangeText={setLocation}
                           ref={locationInputRef}
@@ -516,7 +522,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder="https://meet.google.com/..."
-                          placeholderTextColor={colors.textMuted}
+                          placeholderTextColor="rgba(255, 255, 255, 0.40)"
                           value={meetingLink}
                           onChangeText={setMeetingLink}
                           keyboardType="url"
@@ -534,7 +540,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                     <TextInput
                       style={styles.modalNotesInput}
                       placeholder={t.itemNotesPlaceholder}
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor="rgba(255, 255, 255, 0.40)"
                       value={notes}
                       onChangeText={setNotes}
                       ref={notesInputRef}
