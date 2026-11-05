@@ -469,7 +469,7 @@ const Planner = () => {
         />
 
         {/* ─── 2. Day / Date Wheel Section (Preserved) ─── */}
-        <View style={{ marginTop: 8 }}>
+        <View style={{ marginTop: 12 }}>
           <PlannerDateBar
             month={deckMonth}
             year={activeYear}
@@ -488,14 +488,14 @@ const Planner = () => {
             overflow: 'visible',
             alignItems: 'center',
             justifyContent: 'center',
-            marginTop: 14,
-            marginBottom: 28,
+            marginTop: 52,
+            marginBottom: 36,
           }}
         >
           <CardStack
             layout="deck"
             visible={4}
-            spread={0.62}
+            spread={0.48}
             depth={0.45}
             radius={24}
             cardHeight={260}

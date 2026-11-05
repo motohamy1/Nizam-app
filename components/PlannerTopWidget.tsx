@@ -36,7 +36,7 @@ export const PlannerTopWidget: React.FC<PlannerTopWidgetProps> = ({
         style={[
           styles.container,
           {
-            paddingTop: Math.max(insets.top + 8, Platform.OS === 'android' ? 24 : 12),
+            paddingTop: Math.max(insets.top + 6, Platform.OS === 'android' ? 24 : 10),
           },
         ]}
       >
@@ -57,13 +57,6 @@ export const PlannerTopWidget: React.FC<PlannerTopWidgetProps> = ({
           end={{ x: 0.9, y: 0.85 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* ─── Top Screen Title ─── */}
-        <View style={[styles.headerRow, isArabic && styles.rowReverse]}>
-          <Text style={styles.headerTitle}>
-            {isArabic ? 'المخطط' : 'Planner'}
-          </Text>
-        </View>
 
         {/* ─── Card 1: Upper Year Information Card (Transparent Background, No Month Labels) ─── */}
         <View style={styles.yearCardWrapper}>
