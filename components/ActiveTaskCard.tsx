@@ -10,7 +10,15 @@ import {
   Platform,
   StyleProp,
   ViewStyle,
+  Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -47,6 +55,8 @@ export interface ActiveTaskCardProps {
   cardColor?: string;
   cardBadgeLabel?: string;
   isArabic?: boolean;
+  isFirstTaskPrompt?: boolean;
+  isEmptySlot?: boolean;
   onRunTask: (task: TaskItem) => void;
   onPauseTask: (task: TaskItem) => void;
   onCompleteTask: (task: TaskItem) => void;
@@ -70,6 +80,8 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   cardColor = '#FF9470',
   cardBadgeLabel,
   isArabic = false,
+  isFirstTaskPrompt = false,
+  isEmptySlot = false,
   onRunTask,
   onPauseTask,
   onCompleteTask,
@@ -133,35 +145,101 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     }
   }, [activeTask?.status]);
 
-  const hasTimer = Boolean(
-    activeTask?.timerDuration ||
-      activeTask?.timerDirection === 'up' ||
-      activeTask?.timerStartedAt ||
-      activeTask?.timerAccumulated
-  );
+  const isRunningTask = activeTask?.status === 'in_progress';
+
+  // Smooth Reanimated transition for orb centering and expansion
+  const focusAnim = useSharedValue(isRunningTask ? 1 : 0);
+
+  useEffect(() => {
+    focusAnim.value = withTiming(isRunningTask ? 1 : 0, {
+      duration: 400,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+    });
+  }, [isRunningTask]);
+
+  const orbAnimatedStyle = useAnimatedStyle(() => {
+    // When running, scale orb ~2.36x (35% larger than previous 1.75x) and move to center
+    const scale = interpolate(focusAnim.value, [0, 1], [1, 2.36]);
+    // Move slightly leftwards (or rightwards in RTL) towards the center of card
+    const targetX = isArabic ? 100 : -100;
+    const translateX = interpolate(focusAnim.value, [0, 1], [0, targetX]);
+    const translateY = interpolate(focusAnim.value, [0, 1], [0, 42]);
+
+    return {
+      transform: [
+        { translateX },
+        { translateY },
+        { scale },
+      ],
+      zIndex: isRunningTask ? 20 : 1,
+    };
+  });
+
+  const taskInfoAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(focusAnim.value, [0, 1], [1, 0.45]);
+    return {
+      opacity,
+    };
+  });
+
   const isCountUp = activeTask?.timerDirection === 'up';
   const isCountDown = !isCountUp;
+  const hasTimer = Boolean(
+    activeTask?.timerDuration ||
+      isCountUp ||
+      activeTask?.timerStartTime ||
+      activeTask?.timeLeftAtPause
+  );
 
   let timerValue = 0;
   let activeTaskProgress: number | null = null;
 
   if (activeTask) {
-    const accumulated = activeTask.timerAccumulated || 0;
     const isRunning = activeTask.status === 'in_progress';
-    const runningElapsed = isRunning && activeTask.timerStartedAt ? Math.max(0, now - activeTask.timerStartedAt) : 0;
-    const totalElapsed = accumulated + runningElapsed;
+    const duration = activeTask.timerDuration || 0;
 
-    if (isCountUp) {
-      timerValue = totalElapsed;
-      activeTaskProgress = null;
-    } else if (activeTask.timerDuration) {
-      const duration = activeTask.timerDuration;
-      const remaining = Math.max(0, duration - totalElapsed);
-      timerValue = remaining;
-      activeTaskProgress = Math.min(100, Math.round((totalElapsed / duration) * 100));
+    if (isRunning && activeTask.timerStartTime) {
+      const elapsed = Math.max(0, now - activeTask.timerStartTime);
+      if (isCountUp) {
+        timerValue = elapsed;
+        activeTaskProgress = null;
+      } else if (duration > 0) {
+        timerValue = Math.max(0, duration - elapsed);
+        activeTaskProgress = Math.min(100, Math.round((elapsed / duration) * 100));
+      } else {
+        timerValue = elapsed;
+        activeTaskProgress = null;
+      }
+    } else if (activeTask.status === 'paused') {
+      const pausedVal = activeTask.timeLeftAtPause ?? 0;
+      if (isCountUp) {
+        timerValue = pausedVal;
+        activeTaskProgress = null;
+      } else if (duration > 0) {
+        timerValue = pausedVal > 0 ? pausedVal : duration;
+        const elapsed = Math.max(0, duration - timerValue);
+        activeTaskProgress = Math.min(100, Math.round((elapsed / duration) * 100));
+      } else {
+        timerValue = pausedVal;
+        activeTaskProgress = null;
+      }
     } else {
-      timerValue = totalElapsed;
-      activeTaskProgress = null;
+      // not_started or completed
+      if (isCountUp) {
+        timerValue = activeTask.status === 'completed' ? (activeTask.timeLeftAtPause ?? 0) : 0;
+        activeTaskProgress = activeTask.status === 'completed' ? 100 : null;
+      } else if (duration > 0) {
+        if (activeTask.status === 'completed') {
+          timerValue = 0;
+          activeTaskProgress = 100;
+        } else {
+          timerValue = duration;
+          activeTaskProgress = 0;
+        }
+      } else {
+        timerValue = 0;
+        activeTaskProgress = null;
+      }
     }
   }
 
@@ -220,6 +298,194 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
 
   const badgeText = cardBadgeLabel || (isArabic ? 'المهمة النشطة' : 'Active Task');
 
+  if (isEmptySlot) {
+    const guides = [
+      {
+        badge: isArabic ? 'خطوة ٢' : 'Step 2',
+        title: isArabic ? 'قسّم مهامك الكبيرة' : 'Break down big goals',
+        desc: isArabic
+          ? 'أضف مهام فرعية وحدد وقت تركيز لكل جزء'
+          : 'Add subtasks and pick countdown or stopwatch focus time',
+        icon: 'layers-outline' as const,
+      },
+      {
+        badge: isArabic ? 'خطوة ٣' : 'Step 3',
+        title: isArabic ? 'رتّب أولوياتك' : 'Prioritize your flow',
+        desc: isArabic
+          ? 'عيّن أولوية لكل مهمة واربطها بمشروع أو مجال'
+          : 'Assign high priority and connect tasks to projects',
+        icon: 'ribbon-outline' as const,
+      },
+      {
+        badge: isArabic ? 'خطوة ٤' : 'Step 4',
+        title: isArabic ? 'حافظ على استمراريتك' : 'Build your streak',
+        desc: isArabic
+          ? 'أكمل مهامك اليومية وشاهد تقدمك ينمو'
+          : 'Finish daily tasks to keep momentum and hit your goals',
+        icon: 'trophy-outline' as const,
+      },
+    ];
+
+    const guide = guides[(cardIndex - 1) % guides.length] || guides[0];
+
+    return (
+      <View style={[styles.card, { backgroundColor: cardColor }, style]}>
+        {/* Subtle noise/granules texture matching upper widget */}
+        <Image
+          source={require('@/assets/images/grain.png')}
+          resizeMode="repeat"
+          style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
+        />
+        <View style={styles.cardInner}>
+          <View style={styles.upperSection}>
+            <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
+              <View style={styles.taskBadge}>
+                <Text style={styles.taskBadgeText}>{guide.badge}</Text>
+              </View>
+              <View
+                style={[
+                  styles.statusPill,
+                  { backgroundColor: 'rgba(0, 0, 0, 0.15)' },
+                ]}
+              >
+                <Text style={[styles.statusPillText, { color: '#000000' }]}>
+                  {isArabic ? 'دليل' : 'Tip'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ marginTop: 14 }}>
+              <View
+                style={[
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 6,
+                  },
+                  isArabic && styles.rowRtl,
+                ]}
+              >
+                <Ionicons name={guide.icon} size={18} color="#000000" />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.taskTitle,
+                    { fontSize: 17, lineHeight: 22 },
+                    isArabic && { textAlign: 'right' },
+                  ]}
+                >
+                  {guide.title}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.taskDesc,
+                  { fontSize: 12, opacity: 0.82 },
+                  isArabic && { textAlign: 'right' },
+                ]}
+              >
+                {guide.desc}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.footerRow, isArabic && styles.rowRtl]}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onAddTask?.();
+              }}
+              style={[
+                styles.addTaskBtn,
+                { width: '100%', justifyContent: 'center' },
+              ]}
+            >
+              <Ionicons name="add-circle" size={17} color="#FFFFFF" />
+              <Text style={styles.addTaskBtnText}>
+                {isArabic ? 'إضافة مهمة جديدة' : 'Add Next Task'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (isFirstTaskPrompt || (!activeTask && cardIndex === 0)) {
+    return (
+      <View style={[styles.card, { backgroundColor: cardColor }, style]}>
+        {/* Subtle noise/granules texture matching upper widget */}
+        <Image
+          source={require('@/assets/images/grain.png')}
+          resizeMode="repeat"
+          style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
+        />
+        <View style={styles.cardInner}>
+          <View style={styles.upperSection}>
+            <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
+              <View style={styles.taskBadge}>
+                <Text style={styles.taskBadgeText}>
+                  {isArabic ? 'ابدأ يومك' : 'Start Your Day'}
+                </Text>
+              </View>
+              <View style={styles.statusPill}>
+                <Text style={styles.statusPillText}>
+                  {isArabic ? 'جاهز' : 'Ready'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ marginTop: 16 }}>
+              <Text
+                style={[
+                  styles.taskTitle,
+                  { fontSize: 20, lineHeight: 26 },
+                  isArabic && { textAlign: 'right' },
+                ]}
+              >
+                {isArabic
+                  ? 'أنشئ أول مهمة لك اليوم 🚀'
+                  : 'Create your first task for today 🚀'}
+              </Text>
+              <Text
+                style={[
+                  styles.taskDesc,
+                  { marginTop: 6, fontSize: 13, opacity: 0.8 },
+                  isArabic && { textAlign: 'right' },
+                ]}
+              >
+                {isArabic
+                  ? 'حدد هدفك الحالي وركز في إنجازه خطوة بخطوة'
+                  : 'Set your focus, choose a timer, and get things done step by step.'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.footerRow, isArabic && styles.rowRtl]}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onAddTask?.();
+              }}
+              style={[
+                styles.addTaskBtn,
+                { width: '100%', justifyContent: 'center' },
+              ]}
+            >
+              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+              <Text style={styles.addTaskBtnText}>
+                {isArabic ? 'إضافة أول مهمة' : 'Create First Task'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.card, { backgroundColor: cardColor }, style]}>
       {/* Background Color Fill */}
@@ -228,6 +494,13 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
           StyleSheet.absoluteFill,
           { backgroundColor: cardColor },
         ]}
+      />
+
+      {/* Subtle noise/granules texture matching upper widget */}
+      <Image
+        source={require('@/assets/images/grain.png')}
+        resizeMode="repeat"
+        style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
       />
 
       {/* Main Content Layout with Upper Content + Pinned Bottom Actions */}
@@ -270,110 +543,120 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
 
           {/* Title, Labels & Crystalloid Ball */}
           <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={() => {
-                if (!activeTask) return;
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onOpenDetail(activeTask._id);
-              }}
-              style={[
-                { flex: 1, minWidth: 0 },
-                isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
-              ]}
-            >
-              <Text
-                numberOfLines={showSubtasksInCard ? 1 : 2}
-                style={[styles.taskTitle, isArabic && { textAlign: 'right' }]}
+            <Animated.View style={[{ flex: 1, minWidth: 0 }, taskInfoAnimatedStyle]}>
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={() => {
+                  if (!activeTask) return;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onOpenDetail(activeTask._id);
+                }}
+                style={[
+                  { width: '100%' },
+                  isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
+                ]}
               >
-                {activeTask
-                  ? activeTask.text
-                  : isArabic
-                  ? 'لا توجد مهمة نشطة حالياً'
-                  : 'No active task selected'}
-              </Text>
-
-              {/* Only display description if user provided one and subtasks are closed */}
-              {activeTask?.description && !showSubtasksInCard ? (
                 <Text
-                  numberOfLines={1}
-                  style={[styles.taskDesc, isArabic && { textAlign: 'right' }]}
+                  numberOfLines={showSubtasksInCard ? 1 : 2}
+                  style={[styles.taskTitle, isArabic && { textAlign: 'right' }]}
                 >
-                  {activeTask.description}
+                  {activeTask
+                    ? activeTask.text
+                    : isArabic
+                    ? 'لا توجد مهمة نشطة حالياً'
+                    : 'No active task selected'}
                 </Text>
-              ) : null}
 
-              {/* Priority and linked goal / project / space labels */}
-              <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
-                {/* Priority label */}
-                {activeTask?.priority && (
-                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                    <Text style={[styles.priorityTextOnly, { color: '#000000' }]}>
-                      {getPriorityBadge(activeTask.priority).label}
-                    </Text>
-                  </View>
-                )}
+                {/* Only display description if user provided one and subtasks are closed */}
+                {activeTask?.description && !showSubtasksInCard ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.taskDesc, isArabic && { textAlign: 'right' }]}
+                  >
+                    {activeTask.description}
+                  </Text>
+                ) : null}
 
-                {/* Linked goal */}
-                {goalName && (
-                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                    <Ionicons name="flag" size={10} color="#000000" />
-                    <Text numberOfLines={1} style={styles.labelText}>
-                      {goalName}
-                    </Text>
-                  </View>
-                )}
+                {/* Priority and linked goal / project / space labels */}
+                <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
+                  {/* Priority label */}
+                  {activeTask?.priority && (
+                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                      <Text style={[styles.priorityTextOnly, { color: '#000000' }]}>
+                        {getPriorityBadge(activeTask.priority).label}
+                      </Text>
+                    </View>
+                  )}
 
-                {/* Linked project */}
-                {projectName && (
-                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                    <Ionicons name="folder-outline" size={10} color="#000000" />
-                    <Text numberOfLines={1} style={styles.labelText}>
-                      {projectName}
-                    </Text>
-                  </View>
-                )}
+                  {/* Linked goal */}
+                  {goalName && (
+                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                      <Ionicons name="flag" size={10} color="#000000" />
+                      <Text numberOfLines={1} style={styles.labelText}>
+                        {goalName}
+                      </Text>
+                    </View>
+                  )}
 
-                {/* Linked space / category */}
-                {categoryName && (
-                  <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                    <Ionicons name="grid-outline" size={10} color="#000000" />
-                    <Text numberOfLines={1} style={styles.labelText}>
-                      {categoryName}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
+                  {/* Linked project */}
+                  {projectName && (
+                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                      <Ionicons name="folder-outline" size={10} color="#000000" />
+                      <Text numberOfLines={1} style={styles.labelText}>
+                        {projectName}
+                      </Text>
+                    </View>
+                  )}
 
-            {/* Progress Indicator: Strictly Crystalloid Ball in all states (active, idle, or empty) */}
-            <CrystalizedBall
-              size={54}
-              preset="ember"
-              color="#FF6B35"
-              isRunning={activeTask?.status === 'in_progress'}
-              isCountDown={isCountDown}
-              timerLabel={
-                activeTask
-                  ? hasTimer
-                    ? formatTime(timerValue)
-                    : activeTaskProgress !== null
-                    ? `${activeTaskProgress}%`
+                  {/* Linked space / category */}
+                  {categoryName && (
+                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                      <Ionicons name="grid-outline" size={10} color="#000000" />
+                      <Text numberOfLines={1} style={styles.labelText}>
+                        {categoryName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Progress Indicator: Animated Hero Orb expanding and centering when active */}
+            <Animated.View style={orbAnimatedStyle}>
+              <CrystalizedBall
+                size={54}
+                preset="ember"
+                color="#FF6B35"
+                isRunning={activeTask?.status === 'in_progress'}
+                isCountDown={isCountDown}
+                timerDirection={activeTask?.timerDirection === 'up' ? 'up' : 'down'}
+                progress={
+                  !isCountUp && activeTaskProgress !== null
+                    ? activeTaskProgress / 100
+                    : undefined
+                }
+                timerLabel={
+                  activeTask
+                    ? hasTimer
+                      ? formatTime(timerValue)
+                      : activeTaskProgress !== null
+                      ? `${activeTaskProgress}%`
+                      : ''
                     : ''
-                  : ''
-              }
-              onPress={() => {
-                if (!activeTask) {
-                  onAddTask?.();
-                  return;
                 }
-                if (activeTask.status === 'in_progress') {
-                  handlePauseTaskAction(activeTask);
-                } else {
-                  handleRunTaskAction(activeTask);
-                }
-              }}
-            />
+                onPress={() => {
+                  if (!activeTask) {
+                    onAddTask?.();
+                    return;
+                  }
+                  if (activeTask.status === 'in_progress') {
+                    handlePauseTaskAction(activeTask);
+                  } else {
+                    handleRunTaskAction(activeTask);
+                  }
+                }}
+              />
+            </Animated.View>
           </View>
 
           {/* Subtasks Toggle Button (Shown if task has subtasks) */}

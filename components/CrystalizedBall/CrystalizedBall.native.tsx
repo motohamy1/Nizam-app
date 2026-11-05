@@ -44,6 +44,8 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
   style,
   isRunning = true,
   isCountDown = true,
+  timerDirection = 'down',
+  progress = 0,
   timerLabel,
   onPress,
 }) => {
@@ -366,10 +368,45 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
             strokeWidth={0.8}
             fill="none"
           />
+
+          {/* Interactive Progress Ring / Orbit Arc (strictly for countdown/progress) */}
+          {typeof progress === 'number' && !isNaN(progress) && timerDirection !== 'up' && (() => {
+            const ringR = sphereRadius - 1.2;
+            const circumference = 2 * Math.PI * ringR;
+            const validProgress = Math.min(1, Math.max(0, progress));
+            const strokeDashoffset = circumference * (1 - validProgress);
+
+            return (
+              <>
+                {/* Background Ring Track */}
+                <Circle
+                  cx={center}
+                  cy={center}
+                  r={ringR}
+                  stroke="rgba(0, 0, 0, 0.18)"
+                  strokeWidth={2.4}
+                  fill="none"
+                />
+                {/* Animated / Progress Arc */}
+                <Circle
+                  cx={center}
+                  cy={center}
+                  r={ringR}
+                  stroke={isRunning ? '#0B0F19' : primaryColor}
+                  strokeWidth={2.6}
+                  strokeDasharray={`${circumference} ${circumference}`}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="none"
+                  transform={`rotate(-90 ${center} ${center})`}
+                />
+              </>
+            );
+          })()}
         </Svg>
       </Animated.View>
 
-      {/* 6. Foreground Time & Play/Pause (CLEAN: NO EXTRA BACKGROUND) */}
+      {/* 6. Foreground Time & Play/Pause */}
       <View style={styles.overlayContent} pointerEvents="none">
         <View style={styles.timeOverlayContainer}>
           {Boolean(timerLabel) && (
@@ -407,16 +444,16 @@ const styles = StyleSheet.create({
   timeOverlayContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent', // STRICTLY NO EXTRA BACKGROUND
+    backgroundColor: 'transparent',
   },
   timerText: {
     fontSize: 10.5,
     fontWeight: '900',
     color: '#0B0F19',
-    letterSpacing: -0.4,
-    textShadowColor: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(255, 255, 255, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.5,
+    textShadowRadius: 2,
     marginBottom: 1,
   },
 });

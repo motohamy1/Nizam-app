@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -43,9 +42,8 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
   };
 
   return (
-    <LinearGradient
-      colors={[frame.gradTop, frame.gradBottom]}
-      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    <View
+      style={[styles.card, { backgroundColor: frame.cardBg, borderColor: 'transparent' }]}
     >
       {/* Header */}
       <TouchableOpacity 
@@ -80,7 +78,7 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
           <Text style={[styles.monthlyStatLabel, { color: frame.textMuted }]}>
             {completedTasks}/{totalTasks} {t.completed}
           </Text>
-          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : frame.pillBg }]}>
+          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: frame.pillBg }]}>
             <View 
               style={[
                 styles.monthlyProgressBarFill, 
@@ -94,7 +92,7 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
         <View style={[styles.monthlyStatItem, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}>
           <Text style={[styles.monthlyStatNumber, { color: frame.accent }]}>{activeGoalsCount}</Text>
           <Text style={[styles.monthlyStatLabel, { color: frame.textMuted }]}>{t.activeGoals}</Text>
-          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : frame.pillBg }]}>
+          <View style={[styles.monthlyProgressBarContainer, { backgroundColor: frame.pillBg }]}>
             <View 
               style={[
                 styles.monthlyProgressBarFill, 
@@ -107,18 +105,18 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
 
       {/* Footer */}
       <TouchableOpacity 
-        style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}
+        style={[styles.checklistStats, { borderTopColor: frame.footerBorder, marginTop: 8, paddingTop: 8 }]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
-        <View style={styles.footerActionBtn}>
-          <Ionicons name="calendar-outline" size={16} color={frame.footerText} />
-          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.tapToOpenPlanner}</Text>
+        <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="calendar-outline" size={16} color={frame.badgeFg} />
+          <Text style={{ fontSize: 12, fontWeight: '800', color: frame.text }}>{t.tapToOpenPlanner}</Text>
         </View>
 
-        <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={frame.text} />
+        <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={frame.badgeFg} />
       </TouchableOpacity>
-    </LinearGradient>
+    </View>
   );
 };
 

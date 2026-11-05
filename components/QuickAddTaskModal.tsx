@@ -11,6 +11,9 @@ import {
   ScrollView,
   LayoutAnimation,
   UIManager,
+  Keyboard,
+  KeyboardEvent,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -19,7 +22,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineMutation } from '@/hooks/useOfflineMutation';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
-import { useKeyboard } from '@/hooks/useKeyboard';
 import { useTranslation } from '@/utils/i18n';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -54,9 +56,63 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
   const insets = useSafeAreaInsets();
   const { userId, language } = useAuth();
   const { t } = useTranslation(language);
-  const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const inputRef = useRef<any>(null);
   const subtaskInputRef = useRef<any>(null);
+
+  // Dedicated keyboard event listeners for rock-solid keyboard avoidance on iOS & Android
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const handleKeyboardShow = (event: KeyboardEvent) => {
+      const height = event?.endCoordinates?.height ?? 0;
+      if (height > 0) {
+        setKeyboardHeight(height);
+        if (Platform.OS === 'ios' && event.duration && event.duration > 0) {
+          Animated.timing(keyboardHeightAnim, {
+            toValue: height,
+            duration: event.duration,
+            useNativeDriver: false,
+          }).start();
+        } else {
+          keyboardHeightAnim.setValue(height);
+        }
+      }
+    };
+
+    const handleKeyboardHide = (event?: KeyboardEvent) => {
+      setKeyboardHeight(0);
+      if (Platform.OS === 'ios' && event?.duration && event.duration > 0) {
+        Animated.timing(keyboardHeightAnim, {
+          toValue: 0,
+          duration: event.duration,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        keyboardHeightAnim.setValue(0);
+      }
+    };
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const subscriptions = [
+      Keyboard.addListener(showEvent, handleKeyboardShow),
+      Keyboard.addListener(hideEvent, handleKeyboardHide),
+    ];
+
+    if (Platform.OS === 'ios') {
+      subscriptions.push(
+        Keyboard.addListener('keyboardDidShow', handleKeyboardShow),
+        Keyboard.addListener('keyboardDidHide', handleKeyboardHide),
+        Keyboard.addListener('keyboardWillChangeFrame', handleKeyboardShow)
+      );
+    }
+
+    return () => {
+      subscriptions.forEach((sub) => sub.remove());
+    };
+  }, []);
 
   // Mutations
   const addTodoMutation = useOfflineMutation(api.todos.addTodo, 'todos:addTodo');
@@ -82,6 +138,8 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
   // Timer State
   const [timerDirection, setTimerDirection] = useState<'down' | 'up'>('down');
   const [timerMs, setTimerMs] = useState<number | null>(null);
+  const [customHours, setCustomHours] = useState('0');
+  const [customMinutes, setCustomMinutes] = useState('25');
 
   // Priority State
   const [priority, setPriority] = useState<string | undefined>(undefined);
@@ -108,6 +166,8 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
       setSelectedDate(initialDate || startOfDay(Date.now()));
       setTimerDirection('down');
       setTimerMs(null);
+      setCustomHours('0');
+      setCustomMinutes('25');
       setPriority(undefined);
       setSelectedCategoryId(undefined);
       setSelectedProjectId(defaultProjectId);
@@ -127,7 +187,6 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
 
   const toggleOption = (option: ActiveOptionType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveOption((prev) => (prev === option ? null : option));
   };
 
@@ -149,16 +208,13 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
     const trimmedTitle = title.trim();
     if (!trimmedTitle || !userId || isSubmitting) return;
 
+    Keyboard.dismiss();
+
     try {
       setIsSubmitting(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      const parsedSubtasks = subtasks.map((st) => ({
-        text: st,
-        isCompleted: false,
-      }));
-
-      await addTodoMutation({
+      const newTodoId = await addTodoMutation({
         userId,
         text: trimmedTitle,
         status: 'not_started',
@@ -170,8 +226,21 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
         goalId: selectedGoalId,
         timerDuration: timerMs || undefined,
         timerDirection: timerDirection,
-        subtasks: parsedSubtasks.length > 0 ? (parsedSubtasks as any) : undefined,
       });
+
+      // If user added subtasks in QuickAdd, create them linked to the new parent task
+      if (newTodoId && subtasks.length > 0) {
+        for (const st of subtasks) {
+          if (st.trim()) {
+            await addTodoMutation({
+              userId,
+              text: st.trim(),
+              status: 'not_started',
+              parentId: newTodoId as any,
+            });
+          }
+        }
+      }
 
       handleClose();
     } catch (error) {
@@ -181,6 +250,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
   };
 
   const handleClose = () => {
+    Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveOption(null);
     onClose();
@@ -208,12 +278,14 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
     return d.toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' });
   }, [selectedDate, isArabic, todayTs]);
 
-  const effectiveBottomMargin =
-    Platform.OS === 'ios'
-      ? keyboardHeight > 0
-        ? keyboardHeight + 8
-        : Math.max(insets.bottom, 16)
-      : Math.max(insets.bottom, 16);
+  const baseBottomMargin = Math.max(insets.bottom, 16);
+  const extraOffset = Platform.OS === 'ios' ? 8 : 12;
+
+  const animatedBottomMargin = keyboardHeightAnim.interpolate({
+    inputRange: [0, 50, 1000],
+    outputRange: [baseBottomMargin, 50 + extraOffset, 1000 + extraOffset],
+    extrapolate: 'clamp',
+  });
 
   if (!visible) return null;
 
@@ -229,14 +301,14 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
         {/* Backdrop tap to dismiss */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
 
-        {/* Floating Card Stack: Sits right on top of keyboard */}
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
+        {/* Floating Card Stack: Sits right on top of keyboard via Animated.View */}
+        <Animated.View
           style={[
             styles.floatingContainer,
-            { marginBottom: effectiveBottomMargin },
+            { marginBottom: animatedBottomMargin },
           ]}
         >
+          <Pressable onPress={(e) => e.stopPropagation()}>
           {/* ======================================================== */}
           {/* OPTION POP-UP: Animated panel above the main capsule */}
           {/* ======================================================== */}
@@ -417,34 +489,141 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                       </TouchableOpacity>
                     </View>
 
-                    {/* Presets if Countdown */}
+                    {/* Presets and Custom Input if Countdown */}
                     {timerDirection === 'down' && (
-                      <View style={[styles.chipsWrap, { marginTop: 10 }, isArabic && styles.rowRtl]}>
-                        {timerPresets.map((preset) => {
-                          const isActive = timerMs === preset.ms;
-                          return (
-                            <TouchableOpacity
-                              key={preset.label}
-                              onPress={() => {
-                                setTimerMs(isActive ? null : preset.ms);
-                                if (!isActive) toggleOption(null);
-                              }}
-                              style={[
-                                styles.popChip,
-                                isActive && styles.popChipActive,
-                              ]}
-                            >
-                              <Text
+                      <View style={{ marginTop: 10 }}>
+                        {/* Custom H:M Stepper / Inputs */}
+                        <View
+                          style={[
+                            {
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                              borderRadius: 14,
+                              paddingHorizontal: 12,
+                              paddingVertical: 8,
+                              marginBottom: 8,
+                            },
+                            isArabic && styles.rowRtl,
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '600',
+                              color: 'rgba(255, 255, 255, 0.75)',
+                            }}
+                          >
+                            {isArabic ? 'مدة مخصصة:' : 'Custom duration:'}
+                          </Text>
+
+                          <View
+                            style={[
+                              { flexDirection: 'row', alignItems: 'center', gap: 6 },
+                              isArabic && styles.rowRtl,
+                            ]}
+                          >
+                            {/* Hours Input */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <TextInput
+                                value={customHours}
+                                onChangeText={(text) => {
+                                  const clean = text.replace(/[^0-9]/g, '').slice(0, 2);
+                                  setCustomHours(clean);
+                                  const h = parseInt(clean || '0', 10);
+                                  const m = parseInt(customMinutes || '0', 10);
+                                  const total = (h * 60 + m) * 60 * 1000;
+                                  setTimerMs(total > 0 ? total : null);
+                                }}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                style={{
+                                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                  borderRadius: 8,
+                                  color: '#FFFFFF',
+                                  fontSize: 13,
+                                  fontWeight: '700',
+                                  textAlign: 'center',
+                                  width: 34,
+                                  height: 30,
+                                  paddingVertical: 0,
+                                }}
+                              />
+                              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginLeft: 3 }}>
+                                {isArabic ? 'س' : 'h'}
+                              </Text>
+                            </View>
+
+                            <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '900' }}>:</Text>
+
+                            {/* Minutes Input */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <TextInput
+                                value={customMinutes}
+                                onChangeText={(text) => {
+                                  const clean = text.replace(/[^0-9]/g, '').slice(0, 2);
+                                  setCustomMinutes(clean);
+                                  const h = parseInt(customHours || '0', 10);
+                                  const m = parseInt(clean || '0', 10);
+                                  const total = (h * 60 + m) * 60 * 1000;
+                                  setTimerMs(total > 0 ? total : null);
+                                }}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                style={{
+                                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                  borderRadius: 8,
+                                  color: '#FFFFFF',
+                                  fontSize: 13,
+                                  fontWeight: '700',
+                                  textAlign: 'center',
+                                  width: 34,
+                                  height: 30,
+                                  paddingVertical: 0,
+                                }}
+                              />
+                              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginLeft: 3 }}>
+                                {isArabic ? 'د' : 'm'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Presets Chips */}
+                        <View style={[styles.chipsWrap, isArabic && styles.rowRtl]}>
+                          {timerPresets.map((preset) => {
+                            const isActive = timerMs === preset.ms;
+                            return (
+                              <TouchableOpacity
+                                key={preset.label}
+                                onPress={() => {
+                                  if (isActive) {
+                                    setTimerMs(null);
+                                  } else {
+                                    setTimerMs(preset.ms);
+                                    const mins = Math.floor(preset.ms / 60000);
+                                    setCustomHours(Math.floor(mins / 60).toString());
+                                    setCustomMinutes((mins % 60).toString());
+                                  }
+                                }}
                                 style={[
-                                  styles.popChipText,
-                                  isActive && styles.popChipTextActive,
+                                  styles.popChip,
+                                  isActive && styles.popChipActive,
                                 ]}
                               >
-                                {preset.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
+                                <Text
+                                  style={[
+                                    styles.popChipText,
+                                    isActive && styles.popChipTextActive,
+                                  ]}
+                                >
+                                  {preset.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
                     )}
                   </View>
@@ -816,7 +995,8 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-        </Pressable>
+          </Pressable>
+        </Animated.View>
 
         {/* Custom Date Picker Modal */}
         {showDatePicker && (
@@ -1087,8 +1267,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitBtnReady: {
-    backgroundColor: '#92B814',
-    shadowColor: '#92B814',
+    backgroundColor: '#8E2CAC',
+    shadowColor: '#8E2CAC',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 6,

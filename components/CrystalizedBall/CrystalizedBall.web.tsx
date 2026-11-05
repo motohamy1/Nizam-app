@@ -8,6 +8,8 @@ export const CrystalizedBallWeb: React.FC<CrystalizedBallProps> = ({
   size = 54,
   timerLabel,
   isRunning = true,
+  timerDirection = 'down',
+  progress = 0,
   onPress,
   style,
   preset = 'ember',
@@ -65,47 +67,56 @@ export const CrystalizedBallWeb: React.FC<CrystalizedBallProps> = ({
         />
       )}
 
-      {/* Foreground Time & Play/Pause (CLEAN: NO EXTRA BACKGROUND) */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-          zIndex: 10,
-          backgroundColor: 'transparent', // STRICTLY NO EXTRA BACKGROUND
-        }}
-      >
-        {Boolean(timerLabel) && (
-          <span
-            style={{
-              fontSize: 10.5,
-              fontWeight: 900,
-              color: '#0B0F19',
-              letterSpacing: -0.4,
-              textShadow: '0 1px 2px rgba(255, 255, 255, 0.85)',
-              marginBottom: 1,
-            }}
-          >
-            {timerLabel}
-          </span>
-        )}
-        <span
+        {/* Foreground Time & Play/Pause */}
+        <div
           style={{
-            fontSize: Boolean(timerLabel) ? 8.5 : 12,
-            color: '#0B0F19',
-            textShadow: '0 1px 2px rgba(255, 255, 255, 0.85)',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: 10,
           }}
         >
-          {isRunning ? '❚❚' : '▶'}
-        </span>
-      </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'transparent',
+            }}
+          >
+            {Boolean(timerLabel) && (
+              <span
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 900,
+                  color: '#0B0F19',
+                  letterSpacing: -0.3,
+                  textShadow: '0 1px 2px rgba(255, 255, 255, 0.75)',
+                  marginBottom: 1,
+                }}
+              >
+                {timerLabel}
+              </span>
+            )}
+            <span
+              style={{
+                fontSize: Boolean(timerLabel) ? 8.5 : 12,
+                color: '#0B0F19',
+                textShadow: '0 1px 2px rgba(255, 255, 255, 0.75)',
+              }}
+            >
+              {isRunning ? '❚❚' : '▶'}
+            </span>
+          </div>
+        </div>
     </div>
   );
 };

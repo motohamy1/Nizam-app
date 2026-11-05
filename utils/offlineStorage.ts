@@ -21,11 +21,11 @@ export const setServerClock = (serverTime: number) => {
 export const getServerNow = () => Date.now() + clockOffsetMs;
 
 // ---------------------------------------------------------------------------
-// Pending optimistic overlays
+// Pending optimistic overlays & Deletion Tombstones
 // ---------------------------------------------------------------------------
 // When fresh Convex subscription data lands, `useOfflineQuery` replaces the
-// cache wholesale. Overlays let unacknowledged local mutations survive that
-// replacement until the server echoes the same state (or TTL expires).
+// cache wholesale. Overlays and tombstones ensure unacknowledged local mutations
+// and deletes survive that replacement until the server has processed them.
 interface OverlayEntry {
   patch: Record<string, any>;
   ts: number;
@@ -34,8 +34,27 @@ interface OverlayEntry {
 const OVERLAY_TTL_MS = 120000;
 const pendingOverlays: Record<string, OverlayEntry> = {};
 
+// Deletion tombstones: IDs deleted locally that must never be resurrected
+// by incoming server subscription snapshots until the delete syncs.
+const deletedIdsTombstone = new Set<string>();
+
+export const recordDeletedTombstone = (id: string) => {
+  if (!id) return;
+  deletedIdsTombstone.add(id);
+  clearPendingOverlay(id);
+};
+
+export const clearDeletedTombstone = (id: string) => {
+  deletedIdsTombstone.delete(id);
+};
+
+export const isDeletedTombstoned = (id: string): boolean => {
+  return deletedIdsTombstone.has(id);
+};
+
 export const setPendingOverlay = (id: string, patch: Record<string, any>) => {
   if (!id || id.startsWith('temp_')) return; // temp docs use pendingTempTodos
+  if (deletedIdsTombstone.has(id)) return;
   const prev = pendingOverlays[id];
   pendingOverlays[id] = { patch: { ...(prev?.patch || {}), ...patch }, ts: Date.now() };
 };
@@ -57,12 +76,13 @@ const liveOverlay = (id: string): OverlayEntry | undefined => {
 // Clear an overlay once the server has echoed the same values for its keys.
 export const reconcileOverlay = (item: any) => {
   if (!item?._id) return;
+  if (deletedIdsTombstone.has(item._id)) return;
   const o = pendingOverlays[item._id];
   if (!o) return;
-  const echoKeys = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration', 'projectId', 'categoryId', 'subCategoryId', 'goalId'];
-  const allMatch = echoKeys.every(
+  const patchKeys = Object.keys(o.patch);
+  const allMatch = patchKeys.every(
     (k) => o.patch[k] === undefined || item[k] === o.patch[k] ||
-      // normalize undefined vs null vs missing timer fields
+      // normalize undefined vs null vs missing fields
       (o.patch[k] === undefined && (item[k] === undefined || item[k] === null))
   );
   if (allMatch) delete pendingOverlays[item._id];
@@ -70,11 +90,12 @@ export const reconcileOverlay = (item: any) => {
 
 export const applyOverlay = (item: any) => {
   if (!item?._id) return item;
+  if (deletedIdsTombstone.has(item._id)) return null;
   const o = liveOverlay(item._id);
   return o ? { ...item, ...o.patch } : item;
 };
 
-export const hasOverlay = (id: string) => !!liveOverlay(id);
+export const hasOverlay = (id: string) => !deletedIdsTombstone.has(id) && !!liveOverlay(id);
 
 // ---------------------------------------------------------------------------
 // Pending locally-created (temp) documents
@@ -733,7 +754,28 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       if (!targetId) break;
 
       let capturedPatch: Record<string, any> | null = null;
-      const OVERLAY_KEYS = ['status', 'timerStartTime', 'timeLeftAtPause', 'completedAt', 'timerDuration', 'timerDirection', 'projectId', 'categoryId', 'subCategoryId', 'goalId'];
+      const OVERLAY_KEYS = [
+        'text',
+        'description',
+        'status',
+        'priority',
+        'dueDate',
+        'date',
+        'timerStartTime',
+        'timeLeftAtPause',
+        'completedAt',
+        'timerDuration',
+        'timerDirection',
+        'projectId',
+        'categoryId',
+        'subCategoryId',
+        'goalId',
+        'hashtags',
+        'repeatPeriod',
+        'repeatCount',
+        'location',
+        'meetingLink'
+      ];
 
       const patchTodo = (item: any) => {
         if (item._id !== targetId) return item;
@@ -842,9 +884,14 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
       const targetId = args.id || args.todoId;
       if (!targetId) break;
 
+      recordDeletedTombstone(targetId);
+
       updateMatchingCaches('CACHE_todos_', (list) => {
         if (!Array.isArray(list)) return list;
         // Delete target todo and any nested subtasks
+        list.forEach((t: any) => {
+          if (t?.parentId === targetId) recordDeletedTombstone(t._id);
+        });
         return list.filter((t: any) => t._id !== targetId && t.parentId !== targetId);
       });
 
@@ -860,6 +907,8 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
     case 'todos:deleteChecklistItem': {
       const targetId = args.id || args.todoId;
       if (!targetId) break;
+
+      recordDeletedTombstone(targetId);
 
       // The item disappears, but its linked tasks survive (server unlinks them).
       updateMatchingCaches('CACHE_todos_', (list) => {

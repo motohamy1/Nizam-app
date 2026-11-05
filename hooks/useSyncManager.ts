@@ -224,7 +224,14 @@ export function useSyncManager() {
         }
 
         try {
-          const result = await convex.mutation(mutationFn, preparedArgs);
+          // Wrap in an 8-second timeout so weak/stalled connections don't block the worker indefinitely
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Network request timed out')), 8000)
+          );
+          const result = await Promise.race([
+            convex.mutation(mutationFn, preparedArgs),
+            timeoutPromise,
+          ]);
           console.log(`Successfully synced mutation: ${item.mutationPath}`);
 
           if (result && typeof result === 'object' && typeof (result as any).serverTime === 'number') {

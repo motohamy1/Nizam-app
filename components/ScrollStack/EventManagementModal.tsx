@@ -1,42 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal,
+import {
+  Modal,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   TouchableWithoutFeedback,
+  ScrollView,
+  Platform,
   Alert,
-  findNodeHandle, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+  useWindowDimensions,
+  type ScrollViewInstance,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
-import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/utils/i18n';
+import { useAuth } from '@/hooks/useAuth';
 import { createScrollStackStyles } from '@/assets/styles/scrollStack.styles';
-import { Id } from '@/convex/_generated/dataModel';
 import { useKeyboard } from '@/hooks/useKeyboard';
-import { useWindowDimensions } from 'react-native';
+import { Id } from '@/convex/_generated/dataModel';
 
+export type EventData = EventManagementData;
 export type ManagedItemType = 'reminder' | 'meeting' | 'appointment';
 
-export type RepeatPeriodOption = 'none' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-
-export interface EventData {
+export interface EventManagementData {
   _id?: Id<"todos">;
+  id?: Id<"todos">;
   title: string;
+  type: 'reminder' | 'meeting' | 'appointment';
   date: number;
   startTime?: number;
   endTime?: number;
   location?: string;
   meetingLink?: string;
-  priority?: string;
-  type?: ManagedItemType;
   description?: string;
-  repeatPeriod?: RepeatPeriodOption;
+  priority?: string;
+  repeatPeriod?: 'none' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   repeatCount?: number;
 }
 
@@ -44,9 +45,9 @@ interface EventManagementModalProps {
   visible: boolean;
   onClose: () => void;
   initialDate?: number;
-  eventToEdit?: EventData | null;
-  onSaveEvent: (event: EventData) => Promise<void> | void;
-  onDeleteEvent?: (id: Id<"todos">) => Promise<void> | void;
+  eventToEdit?: EventManagementData | null;
+  onSaveEvent: (data: EventManagementData) => Promise<void>;
+  onDeleteEvent?: (id: Id<"todos">) => Promise<void>;
 }
 
 export const EventManagementModal: React.FC<EventManagementModalProps> = ({
@@ -60,12 +61,12 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   const theme = useTheme();
   const colors = {
     ...theme.colors,
-    primary: '#FF9470',
-    primaryText: '#14081E',
-    border: 'rgba(142, 44, 172, 0.35)',
-    textMuted: 'rgba(255, 255, 255, 0.65)',
-    surface: 'rgba(142, 44, 172, 0.12)',
-    text: '#FFFFFF',
+    primary: '#6D28D9',
+    primaryText: '#FFFFFF',
+    border: 'rgba(109, 40, 217, 0.22)',
+    textMuted: 'rgba(76, 29, 149, 0.75)',
+    surface: 'rgba(255, 255, 255, 0.45)',
+    text: '#4C1D95',
   };
   const isDarkMode = true;
   const { language } = useAuth();
@@ -78,190 +79,173 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   // Scroll the focused input above the keyboard inside the sheet. Android
   // fires the keyboard event late, hence the longer delay.
   const focusScroll = (input: any) => {
+    if (!input || !formScrollRef.current) return;
+    const delay = Platform.OS === 'android' ? 140 : 40;
     setTimeout(() => {
-      const responder: any = formScrollRef.current;
-      const nodeHandle = input ? findNodeHandle(input) : null;
-      if (!responder || !nodeHandle) return;
-      const method =
-        responder.scrollResponderScrollNativeHandleToKeyboard ||
-        responder.getScrollResponder?.()?.scrollResponderScrollNativeHandleToKeyboard;
-      if (typeof method === 'function') {
-        method.call(responder, nodeHandle, 80, true);
-      }
-    }, Platform.OS === 'ios' ? 150 : 400);
+      input.measureLayout(
+        formScrollRef.current as any,
+        (_left: number, top: number) => {
+          formScrollRef.current?.scrollTo({ y: Math.max(0, top - 24), animated: true });
+        },
+        () => {}
+      );
+    }, delay);
   };
-  const titleInputRef = useRef<TextInputInstance>(null);
-  const locationInputRef = useRef<TextInputInstance>(null);
-  const meetingLinkInputRef = useRef<TextInputInstance>(null);
-  const notesInputRef = useRef<TextInputInstance>(null);
-  const repeatCountInputRef = useRef<TextInputInstance>(null);
+
+  const titleInputRef = useRef<any>(null);
+  const locationInputRef = useRef<any>(null);
+  const meetingLinkInputRef = useRef<any>(null);
+  const notesInputRef = useRef<any>(null);
+  const repeatCountInputRef = useRef<any>(null);
 
   const [title, setTitle] = useState('');
-  const [itemType, setItemType] = useState<ManagedItemType>('reminder');
+  const [itemType, setItemType] = useState<'reminder' | 'meeting' | 'appointment'>('reminder');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date>(new Date());
   const [location, setLocation] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
   const [notes, setNotes] = useState('');
+  const [repeatPeriod, setRepeatPeriod] = useState<'none' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [repeatCount, setRepeatCount] = useState<number>(1);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const savingRef = useRef(false);
-  const [repeatPeriod, setRepeatPeriod] = useState<RepeatPeriodOption>('none');
-  const [repeatCount, setRepeatCount] = useState(1);
 
   useEffect(() => {
     if (eventToEdit) {
       setTitle(eventToEdit.title || '');
-      setItemType(
-        eventToEdit.type === 'meeting' || eventToEdit.type === 'appointment'
-          ? eventToEdit.type
-          : 'reminder'
-      );
-      setSelectedDate(new Date(eventToEdit.date || Date.now()));
-      setSelectedTime(new Date(eventToEdit.startTime || eventToEdit.date || Date.now()));
+      setItemType((eventToEdit.type as any) || 'reminder');
+      const baseDate = new Date(eventToEdit.startTime || eventToEdit.date);
+      setSelectedDate(baseDate);
+      setSelectedTime(baseDate);
       setLocation(eventToEdit.location || '');
       setMeetingLink(eventToEdit.meetingLink || '');
       setNotes(eventToEdit.description || '');
-      setRepeatPeriod(eventToEdit.repeatPeriod || 'none');
+      setRepeatPeriod((eventToEdit.repeatPeriod as any) || 'none');
       setRepeatCount(eventToEdit.repeatCount || 1);
     } else {
+      const baseDate = initialDate ? new Date(initialDate) : new Date();
       setTitle('');
       setItemType('reminder');
-      const baseDate = initialDate ? new Date(initialDate) : new Date();
       setSelectedDate(baseDate);
-      const defaultTime = new Date(Date.now() + 15 * 60 * 1000);
-      defaultTime.setMinutes(Math.ceil(defaultTime.getMinutes() / 5) * 5, 0, 0);
-      setSelectedTime(defaultTime);
+      setSelectedTime(baseDate);
       setLocation('');
       setMeetingLink('');
       setNotes('');
       setRepeatPeriod('none');
       setRepeatCount(1);
     }
+    setIsSaving(false);
   }, [eventToEdit, initialDate, visible]);
 
   const handleSave = async () => {
-    // Synchronous guard: a state flag alone is stale within the same tick, so
-    // two rapid taps could both run this handler (duplicate creates).
-    if (savingRef.current) return;
-    savingRef.current = true;
-    try {
-      await runSave();
-    } finally {
-      savingRef.current = false;
-    }
-  };
-
-  const runSave = async () => {
-    if (isSaving) return;
     if (!title.trim()) {
-      Alert.alert(t.missingFields, t.fillAll);
+      Alert.alert(isArabic ? 'تنبيه' : 'Warning', isArabic ? 'يرجى إدخال العنوان' : 'Please enter a title');
       return;
     }
 
     try {
       setIsSaving(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const eventDateObj = new Date(selectedDate);
-      eventDateObj.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-      const now = Date.now();
-      const isToday = new Date().toDateString() === new Date(selectedDate).toDateString();
+      const combinedDate = new Date(selectedDate);
+      combinedDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
 
-      // If user selected today's date and a time that has already passed today by more than 1 min:
-      // For a one-shot reminder, roll over to tomorrow so the user actually gets alerted at that time.
-      if (isToday && eventDateObj.getTime() < now - 60000 && repeatPeriod === 'none') {
-        eventDateObj.setDate(eventDateObj.getDate() + 1);
-      } else if (eventDateObj.getTime() <= now && eventDateObj.getTime() >= now - 60000) {
-        // If within 1 minute of now (user just clicked Save), schedule 5s in future so notification fires
-        eventDateObj.setTime(now + 5000);
-      }
-
-      const savedData: EventData = {
+      await onSaveEvent({
         _id: eventToEdit?._id,
+        id: eventToEdit?._id,
         title: title.trim(),
         type: itemType,
-        date: eventDateObj.getTime(),
-        startTime: eventDateObj.getTime(),
-        location: itemType === 'reminder' ? '' : location.trim(),
-        meetingLink: itemType === 'reminder' ? '' : meetingLink.trim(),
-        description: notes.trim(),
-        priority: 'High',
-        repeatPeriod: repeatPeriod === 'none' ? 'none' : repeatPeriod,
-        repeatCount: repeatPeriod === 'none' ? 1 : Math.max(1, Math.min(60, repeatCount || 1)),
-      };
+        date: combinedDate.getTime(),
+        startTime: combinedDate.getTime(),
+        location: location.trim() || undefined,
+        meetingLink: meetingLink.trim() || undefined,
+        description: notes.trim() || undefined,
+        repeatPeriod: repeatPeriod,
+        repeatCount: repeatPeriod !== 'none' ? repeatCount : undefined,
+      });
 
-      await onSaveEvent(savedData);
       onClose();
-    } catch (err) {
-      Alert.alert(t.error, t.saveFailed);
+    } catch {
+      Alert.alert(isArabic ? 'خطأ' : 'Error', isArabic ? 'فشل حفظ الموعد' : 'Failed to save event');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = () => {
-    if (!eventToEdit?._id || !onDeleteEvent) return;
-
+    const editId = eventToEdit?._id;
+    if (!editId || !onDeleteEvent) return;
     Alert.alert(
-      t.confirmDeleteTitle,
-      isArabic ? 'هل أنت متأكد من حذف هذا العنصر؟' : `Are you sure you want to delete this ${typeWord.toLowerCase()}?`,
+      isArabic ? 'حذف الموعد' : 'Delete Event',
+      isArabic ? 'هل أنت متأكد من حذف هذا الموعد؟' : 'Are you sure you want to delete this event?',
       [
         { text: t.cancel, style: 'cancel' },
         {
           text: t.delete,
           style: 'destructive',
           onPress: async () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            await onDeleteEvent(eventToEdit._id!);
-            onClose();
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              await onDeleteEvent(editId);
+              onClose();
+            } catch {
+              Alert.alert(isArabic ? 'خطأ' : 'Error', isArabic ? 'فشل الحذف' : 'Failed to delete');
+            }
           },
         },
       ]
     );
   };
 
-  const dateString = selectedDate.toLocaleDateString(
-    isArabic ? 'ar-SA' : 'en-US',
-    { month: 'short', day: 'numeric', year: 'numeric' }
-  );
-
-  const timeString = selectedTime.toLocaleTimeString(
-    isArabic ? 'ar-SA' : 'en-US',
-    { hour: '2-digit', minute: '2-digit' }
-  );
-
-  const typeWord =
-    itemType === 'reminder' ? t.typeReminder : itemType === 'meeting' ? t.typeMeeting : t.typeAppointment;
-
-  const headerTitle = eventToEdit
-    ? (isArabic ? `تعديل ${typeWord}` : `Edit ${typeWord}`)
-    : (isArabic ? `إضافة ${typeWord}` : `Add ${typeWord}`);
-
-  const typeOptions: { id: ManagedItemType; icon: string; label: string }[] = [
-    { id: 'reminder', icon: 'alarm-outline', label: t.typeReminder },
-    { id: 'meeting', icon: 'videocam-outline', label: t.typeMeeting },
-    { id: 'appointment', icon: 'calendar-outline', label: t.typeAppointment },
+  const typeOptions: { id: 'reminder' | 'meeting' | 'appointment'; label: string; icon: string }[] = [
+    { id: 'reminder', label: t.typeReminder, icon: 'alarm-outline' },
+    { id: 'meeting', label: t.typeMeeting, icon: 'videocam-outline' },
+    { id: 'appointment', label: t.typeAppointment, icon: 'calendar-outline' },
   ];
 
-  const repeatOptions: { id: RepeatPeriodOption; label: string }[] = [
-    { id: 'none', label: t.repeatOff },
-    { id: 'hourly', label: t.repeatHourly },
-    { id: 'daily', label: t.repeatDaily },
-    { id: 'weekly', label: t.repeatWeekly },
-    { id: 'monthly', label: t.repeatMonthly },
-    { id: 'yearly', label: t.repeatYearly },
+  const repeatOptions: { id: 'none' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly'; label: string }[] = [
+    { id: 'none', label: isArabic ? 'بدون تكرار' : 'None' },
+    { id: 'hourly', label: isArabic ? 'كل ساعة' : 'Hourly' },
+    { id: 'daily', label: isArabic ? 'يومياً' : 'Daily' },
+    { id: 'weekly', label: isArabic ? 'أسبوعياً' : 'Weekly' },
+    { id: 'monthly', label: isArabic ? 'شهرياً' : 'Monthly' },
+    { id: 'yearly', label: isArabic ? 'سنوياً' : 'Yearly' },
   ];
+
+  const dateString = selectedDate.toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const timeString = selectedTime.toLocaleTimeString(isArabic ? 'ar-SA' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const headerTitle = (() => {
+    if (eventToEdit) {
+      if (itemType === 'meeting') return isArabic ? 'تعديل اجتماع' : 'Edit Meeting';
+      if (itemType === 'appointment') return isArabic ? 'تعديل موعد' : 'Edit Appointment';
+      return isArabic ? 'تعديل تذكير' : 'Edit Reminder';
+    }
+    if (itemType === 'meeting') return isArabic ? 'اجتماع جديد' : 'New Meeting';
+    if (itemType === 'appointment') return isArabic ? 'موعد جديد' : 'New Appointment';
+    return isArabic ? 'تذكير جديد' : 'New Reminder';
+  })();
 
   const repeatSummary = (() => {
     if (repeatPeriod === 'none') return '';
-    const unit =
-      repeatPeriod === 'hourly' ? t.repeatHourly :
-      repeatPeriod === 'daily' ? t.repeatDaily :
-      repeatPeriod === 'weekly' ? t.repeatWeekly :
-      repeatPeriod === 'monthly' ? t.repeatMonthly : t.repeatYearly;
-    return `${t.repeatEvery} ${unit} × ${repeatCount} ${t.repeatTimes}`;
+    const unitLabel = (() => {
+      if (repeatPeriod === 'hourly') return t.repeatHourly;
+      if (repeatPeriod === 'daily') return t.repeatDaily;
+      if (repeatPeriod === 'weekly') return t.repeatWeekly;
+      if (repeatPeriod === 'monthly') return t.repeatMonthly;
+      if (repeatPeriod === 'yearly') return t.repeatYearly;
+      return '';
+    })();
+    return `${t.repeatEvery || 'Every'} ${unitLabel} × ${repeatCount || 1} ${t.repeatTimes || 'times'}`;
   })();
 
   return (
@@ -285,7 +269,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                 },
               ]}
             >
-              {/* Drag Handle */}
+              {/* Drag Handle in Violet */}
               <View style={styles.modalDragHandle} />
 
               {/* Header */}
@@ -294,7 +278,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                   {headerTitle}
                 </Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={24} color="#FF9470" />
+                  <Ionicons name="close-circle" size={24} color="#6D28D9" />
                 </TouchableOpacity>
               </View>
 
@@ -323,7 +307,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             <Ionicons
                               name={opt.icon as any}
                               size={15}
-                              color={active ? '#FF9470' : colors.textMuted}
+                              color={active ? '#FFFFFF' : '#4C1D95'}
                             />
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
                               {opt.label}
@@ -344,7 +328,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           ? (isArabic ? 'مثال: شرب الدواء' : 'e.g., Take the medication')
                           : (isArabic ? 'مثال: اجتماع فريق العمل' : 'e.g., Team Sync Meeting')
                       }
-                      placeholderTextColor="rgba(255, 255, 255, 0.40)"
+                      placeholderTextColor="rgba(76, 29, 149, 0.45)"
                       value={title}
                       onChangeText={setTitle}
                       ref={titleInputRef}
@@ -361,7 +345,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowDatePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="calendar-outline" size={18} color="#FF9470" />
+                      <Ionicons name="calendar-outline" size={18} color="#6D28D9" />
                       <Text style={styles.modalTimeBoxText}>{dateString}</Text>
                     </TouchableOpacity>
 
@@ -371,7 +355,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowTimePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="time-outline" size={18} color="#FF9470" />
+                      <Ionicons name="time-outline" size={18} color="#6D28D9" />
                       <Text style={styles.modalTimeBoxText}>{timeString}</Text>
                     </TouchableOpacity>
                   </View>
@@ -422,7 +406,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                               <Ionicons
                                 name="repeat-outline"
                                 size={13}
-                                color={active ? '#FF9470' : colors.textMuted}
+                                color={active ? '#FFFFFF' : '#4C1D95'}
                               />
                             )}
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
@@ -444,11 +428,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           paddingVertical: 10,
                           borderRadius: 14,
                           borderWidth: 1,
-                          borderColor: colors.border,
-                          backgroundColor: 'rgba(142, 44, 172, 0.12)',
+                          borderColor: 'rgba(109, 40, 217, 0.22)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.45)',
                         }}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#4C1D95', flex: 1 }}>
                           {repeatSummary}
                         </Text>
                         <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
@@ -460,16 +444,16 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: 'rgba(255, 148, 112, 0.18)',
-                              borderWidth: 1, borderColor: 'rgba(255, 148, 112, 0.40)',
+                              backgroundColor: 'rgba(109, 40, 217, 0.12)',
+                              borderWidth: 1, borderColor: 'rgba(109, 40, 217, 0.25)',
                             }}
                           >
-                            <Ionicons name="remove" size={18} color="#FF9470" />
+                            <Ionicons name="remove" size={18} color="#6D28D9" />
                           </TouchableOpacity>
                           <TextInput
                             style={{
                               minWidth: 44, textAlign: 'center', fontSize: 16, fontWeight: '800',
-                              color: colors.text, paddingVertical: 2,
+                              color: '#4C1D95', paddingVertical: 2,
                             }}
                             value={String(repeatCount)}
                             onChangeText={(v) => {
@@ -490,11 +474,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: 'rgba(255, 148, 112, 0.18)',
-                              borderWidth: 1, borderColor: 'rgba(255, 148, 112, 0.40)',
+                              backgroundColor: 'rgba(109, 40, 217, 0.12)',
+                              borderWidth: 1, borderColor: 'rgba(109, 40, 217, 0.25)',
                             }}
                           >
-                            <Ionicons name="add" size={18} color="#FF9470" />
+                            <Ionicons name="add" size={18} color="#6D28D9" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -509,7 +493,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder={isArabic ? 'مثال: قاعة الاجتماعات أو العنوان' : 'e.g., Conference Room B'}
-                          placeholderTextColor="rgba(255, 255, 255, 0.40)"
+                          placeholderTextColor="rgba(76, 29, 149, 0.45)"
                           value={location}
                           onChangeText={setLocation}
                           ref={locationInputRef}
@@ -522,7 +506,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder="https://meet.google.com/..."
-                          placeholderTextColor="rgba(255, 255, 255, 0.40)"
+                          placeholderTextColor="rgba(76, 29, 149, 0.45)"
                           value={meetingLink}
                           onChangeText={setMeetingLink}
                           keyboardType="url"
@@ -540,7 +524,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                     <TextInput
                       style={styles.modalNotesInput}
                       placeholder={t.itemNotesPlaceholder}
-                      placeholderTextColor="rgba(255, 255, 255, 0.40)"
+                      placeholderTextColor="rgba(76, 29, 149, 0.45)"
                       value={notes}
                       onChangeText={setNotes}
                       ref={notesInputRef}

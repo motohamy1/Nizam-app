@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView, PanResponder, LayoutAnimation
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -126,115 +125,99 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
     } else if (isReminder) {
       chipIcon = "alarm-outline";
       typeBadgeText = t.typeReminder;
-    } else {
-      typeBadgeText = t.typeEvent;
     }
 
-    const timeFormatted = formatTime(evt.startTime || evt.date);
-
     return (
-      <View 
-        key={evt._id} 
+      <View
+        key={evt._id}
         style={[
-          styles.eventRow, 
-          { backgroundColor: frame.rowBg, borderColor: frame.rowBorder },
-          isDone && { opacity: 0.65 }
+          styles.eventRow,
+          {
+            backgroundColor: frame.rowBg,
+            borderColor: frame.rowBorder,
+            opacity: isDone ? 0.6 : 1,
+          },
         ]}
       >
-        {/* Top Header Row of the Item: Time badge + Type badge on leading side, Checkbox + Details arrow on trailing side */}
-        <View style={styles.eventRowHeader}>
-          <TouchableOpacity
-            style={styles.eventRowHeaderLeft}
-            onPress={() => onOpenEventModal(evt)}
-            activeOpacity={0.7}
-          >
-            {/* Time Badge with dynamic type-aware icon */}
-            {timeFormatted ? (
+        <TouchableOpacity
+          onPress={() => onOpenEventModal(evt)}
+          activeOpacity={0.8}
+          style={{ gap: 4 }}
+        >
+          {/* Header Row: Time Chip + Type Badge + Action Check */}
+          <View style={[styles.eventRowHeader, isArabic ? { flexDirection: 'row-reverse' } : null]}>
+            <View style={[styles.eventRowHeaderLeft, isArabic ? { flexDirection: 'row-reverse' } : null]}>
               <View style={[styles.eventTimeChip, { backgroundColor: frame.pillBg }]}>
-                <Ionicons name={chipIcon as any} size={12} color={frame.text} />
+                <Ionicons name={chipIcon as any} size={12} color={frame.badgeFg} />
                 <Text style={[styles.eventTimeText, { color: frame.text }]}>
-                  {timeFormatted}
+                  {formatTime(evt.startTime || evt.date)}
+                </Text>
+              </View>
+
+              {typeBadgeText ? (
+                <View style={[styles.eventTypeBadge, { backgroundColor: frame.badgeBg }]}>
+                  <Text style={[styles.eventTypeBadgeText, { color: frame.badgeFg }]}>
+                    {typeBadgeText}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Check/Complete button */}
+            <TouchableOpacity
+              onPress={() => handleToggleDone(evt)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[
+                styles.eventCheckCircle,
+                {
+                  borderColor: isDone ? frame.accent : 'rgba(109, 40, 217, 0.40)',
+                  backgroundColor: isDone ? frame.accent : 'transparent',
+                },
+              ]}
+            >
+              {isDone && (
+                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Title & Notes */}
+          <View style={styles.eventBody}>
+            <Text
+              style={[
+                styles.eventTitle,
+                {
+                  color: frame.text,
+                  textAlign: isArabic ? 'right' : 'left',
+                  textDecorationLine: isDone ? 'line-through' : 'none',
+                },
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {evt.title}
+            </Text>
+
+            {evt.description ? (
+              <View style={[styles.eventMeta, isArabic ? { flexDirection: 'row-reverse' } : null]}>
+                <Ionicons name="document-text-outline" size={12} color={frame.badgeFg} style={{ flexShrink: 0 }} />
+                <Text
+                  style={[styles.eventMetaText, { color: frame.textMuted }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {evt.description}
                 </Text>
               </View>
             ) : null}
-
-            {/* Type badge */}
-            {typeBadgeText ? (
-              <View style={[styles.eventTypeBadge, { backgroundColor: frame.pillBg }]}>
-                <Text style={[styles.eventTypeBadgeText, { color: frame.text }]}>{typeBadgeText}</Text>
-              </View>
-            ) : null}
-          </TouchableOpacity>
-
-          <View style={styles.eventRowHeaderRight}>
-            {/* Manual done / restore circle */}
-            {onToggleDone ? (
-              <TouchableOpacity
-                onPress={() => handleToggleDone(evt)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={[
-                  styles.eventCheckCircle,
-                  {
-                    borderColor: isDone ? frame.accent : 'rgba(255, 255, 255, 0.40)',
-                    backgroundColor: isDone ? frame.accent : 'transparent',
-                  }
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={isDone ? (t.restoreEvent || 'Restore') : (t.markDone || 'Mark as done')}
-              >
-                {isDone && (
-                  <Ionicons name="checkmark" size={13} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
-            ) : null}
-
-            {/* Edit / Detail Icon */}
-            <TouchableOpacity
-              onPress={() => onOpenEventModal(evt)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ paddingLeft: 2 }}
-            >
-              <Ionicons 
-                name={isArabic ? "chevron-back" : "chevron-forward"} 
-                size={15} 
-                color={frame.textMuted} 
-              />
-            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Main Body: Title given 100% width and up to 2 lines so it never gets cut off */}
-        <TouchableOpacity
-          onPress={() => onOpenEventModal(evt)}
-          activeOpacity={0.7}
-          style={styles.eventBody}
-        >
-          <Text
-            style={[
-              styles.eventTitle, 
-              { color: frame.text }, 
-              isDone && { textDecorationLine: 'line-through', opacity: 0.55 }
-            ]}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {evt.title}
-          </Text>
-
-          {evt.description ? (
-            <View style={styles.eventMeta}>
-              <Ionicons name="document-text-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
-              <Text style={[styles.eventMetaText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
-                {evt.description}
-              </Text>
-            </View>
-          ) : null}
-
+          {/* Footer Metadata: Location, Meet Link, Repeat */}
           {(evt.location || evt.meetingLink || (evt.repeatPeriod && evt.repeatPeriod !== 'none')) ? (
-            <View style={styles.eventFooterMeta}>
+            <View style={[styles.eventFooterMeta, isArabic ? { flexDirection: 'row-reverse' } : null]}>
               {evt.location ? (
                 <View style={styles.eventMetaTag}>
-                  <Ionicons name="location-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
+                  <Ionicons name="location-outline" size={12} color={frame.badgeFg} style={{ flexShrink: 0 }} />
                   <Text style={[styles.eventMetaTagText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
                     {evt.location}
                   </Text>
@@ -243,16 +226,16 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
 
               {evt.meetingLink ? (
                 <View style={styles.eventMetaTag}>
-                  <Ionicons name="videocam-outline" size={12} color={frame.accent} style={{ flexShrink: 0 }} />
-                  <Text style={[styles.eventMetaTagText, { color: frame.accent, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
-                    {isArabic ? 'رابط الاجتماع' : 'Meeting Link'}
+                  <Ionicons name="videocam-outline" size={12} color={frame.badgeFg} style={{ flexShrink: 0 }} />
+                  <Text style={[styles.eventMetaTagText, { color: frame.badgeFg, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
+                    {isArabic ? 'انضم للاجتماع' : 'Join Meeting'}
                   </Text>
                 </View>
               ) : null}
 
               {evt.repeatPeriod && evt.repeatPeriod !== 'none' ? (
                 <View style={styles.eventMetaTag}>
-                  <Ionicons name="repeat-outline" size={12} color={frame.textMuted} style={{ flexShrink: 0 }} />
+                  <Ionicons name="repeat-outline" size={12} color={frame.badgeFg} style={{ flexShrink: 0 }} />
                   <Text style={[styles.eventMetaTagText, { color: frame.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
                     {`${t.repeatEvery || 'Every'} ${repeatUnitLabel(evt.repeatPeriod)} × ${evt.repeatCount || 1} ${t.repeatTimes || 'times'}`}
                   </Text>
@@ -266,9 +249,8 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
   };
 
   return (
-    <LinearGradient
-      colors={[frame.gradTop, frame.gradBottom]}
-      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }] }
+    <View
+      style={[styles.card, { backgroundColor: frame.cardBg, borderColor: 'transparent' }]}
     >
       {/* Header */}
       <TouchableOpacity 
@@ -292,16 +274,16 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
       </TouchableOpacity>
 
       {/* Body: Events list with Nested Scroll or Empty State */}
-      {upcoming.length === 0 && completed.length === 0 ? (
-        <View style={styles.emptyCardContent}>
+      {upcoming.length === 0 && completed.length === 0 ?
+        (        <View style={styles.emptyCardContent}>
           <Ionicons name="notifications-outline" size={28} color={frame.accent} />
           <Text style={[styles.emptyCardTitle, { color: frame.text }]}>{t.noUpcomingRemindersEvents}</Text>
           <TouchableOpacity 
-            style={[styles.emptyCardBtn, { backgroundColor: frame.pillBg, borderColor: frame.cardBorder }]} 
+            style={[styles.emptyCardBtn, { backgroundColor: frame.pillBg, borderColor: frame.rowBorder }]} 
             onPress={() => onOpenEventModal()}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={16} color={frame.text} />
+            <Ionicons name="add" size={16} color={frame.accent} />
             <Text style={[styles.emptyCardBtnText, { color: frame.text }]}>{t.addReminder}</Text>
           </TouchableOpacity>
         </View>
@@ -349,7 +331,7 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
                   }}
                 >
                   <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="checkmark-done-circle-outline" size={16} color={frame.text} />
+                    <Ionicons name="checkmark-done-circle-outline" size={16} color={frame.badgeFg} />
                     <Text style={{ fontSize: 12, fontWeight: '800', color: frame.text }}>
                       {t.eventCompleted} ({completed.length})
                     </Text>
@@ -363,7 +345,7 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
                     <Ionicons
                       name={showCompleted ? 'chevron-up' : 'chevron-down'}
                       size={14}
-                      color={frame.textMuted}
+                      color={frame.badgeFg}
                     />
                   </View>
                 </TouchableOpacity>
@@ -380,21 +362,35 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
       )}
 
       {/* Footer */}
-      <View style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}>
+      <View style={[styles.checklistStats, { borderTopColor: frame.footerBorder, marginTop: 6, paddingTop: 8 }]}>
         <TouchableOpacity 
-          style={styles.footerActionBtn}
+          style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}
           onPress={() => onOpenEventModal()}
           activeOpacity={0.7}
         >
-          <Ionicons name="create-outline" size={16} color={frame.footerText} />
-          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.quickEdit}</Text>
+          <Ionicons name="create-outline" size={16} color={frame.badgeFg} />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: frame.text }}>{t.quickEdit}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => onOpenEventModal()}>
-          <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>{t.addReminder} +</Text>
+        <TouchableOpacity 
+          onPress={() => onOpenEventModal()}
+          style={{
+            flexDirection: isArabic ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: frame.pillBg,
+            paddingHorizontal: 10,
+            paddingVertical: 4.5,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: frame.rowBorder,
+          }}
+        >
+          <Ionicons name="add" size={14} color={frame.badgeFg} />
+          <Text style={{ color: frame.text, fontWeight: '800', fontSize: 11.5 }}>{t.addReminder}</Text>
         </TouchableOpacity>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 

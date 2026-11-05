@@ -76,8 +76,8 @@ function RootLayoutContent() {
     }
   }, [language, t, isLoading, isFirstLaunch]);
 
-  // Still checking storage and offline-first initialization
-  if (isLoading || isFirstLaunch === null || migrationInProgress) return null;
+  // Still checking storage and auth
+  if (isLoading || isFirstLaunch === null) return null;
 
   if (isFirstLaunch) {
     return (

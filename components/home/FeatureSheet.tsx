@@ -11,16 +11,20 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const SHEET_PURPLE_BG = '#1C0A2A';
-export const SHEET_CORAL_ACCENT = '#FF9470';
-export const SHEET_PURPLE_BORDER = '#8E2CAC';
+export const SHEET_SURFACE_DARK = '#1C0A2A';
+export const SHEET_SURFACE_BORDER = 'rgba(201, 166, 242, 0.25)';
+export const SHEET_TEXT_TITLE = '#FFFFFF';
+export const SHEET_TEXT_MUTED = 'rgba(255, 255, 255, 0.70)';
+export const SHEET_VIOLET_PRIMARY = '#A855F7';
+export const SHEET_VIOLET_LIGHT = 'rgba(168, 85, 247, 0.18)';
+export const SHEET_VIOLET_BORDER = 'rgba(168, 85, 247, 0.35)';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FeatureSheetProps {
   visible: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   isArabic?: boolean;
   children: React.ReactNode;
 }
@@ -42,7 +46,7 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Transparent backdrop: Tapping the free space above closes the widget without adding any dark overlay */}
+        {/* Transparent backdrop: No darkening layer covering the upper screen */}
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
@@ -55,37 +59,40 @@ export const FeatureSheet: React.FC<FeatureSheetProps> = ({
             },
           ]}
         >
-          {/* Grab Handle matching page accent #FF9470 */}
-          <View style={styles.grabHandle} />
-
-          {/* Header Row */}
+          {/* Top Bar: Centered Grab Handle + Violet Close Button */}
           <View
             style={[
-              styles.headerRow,
+              styles.topBar,
               isArabic && { flexDirection: 'row-reverse' },
             ]}
           >
-            <Text
-              style={[
-                styles.titleText,
-                isArabic && { textAlign: 'right' },
-              ]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
+            {title ? (
+              <Text
+                style={[
+                  styles.titleText,
+                  isArabic && { textAlign: 'right' },
+                ]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+            ) : (
+              <View style={styles.topBarSpacer} />
+            )}
+
+            {!title && <View style={styles.grabHandle} />}
 
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={onClose}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={18} color={SHEET_CORAL_ACCENT} />
+              <Ionicons name="close" size={18} color={SHEET_VIOLET_PRIMARY} />
             </TouchableOpacity>
           </View>
 
-          {/* Body Content */}
+          {/* Body Content - Aligns naturally from top in normal upper position */}
           <View style={styles.content}>{children}</View>
         </View>
       </View>
@@ -97,53 +104,51 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.40)',
+    backgroundColor: 'transparent', // STRICTLY NO EXTRA DARKENING LAYER OVER SCREEN
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
   },
   sheetContainer: {
-    backgroundColor: SHEET_PURPLE_BG,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    borderTopWidth: 2,
+    backgroundColor: SHEET_SURFACE_DARK,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderTopWidth: 1.5,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: SHEET_PURPLE_BORDER,
-    maxHeight: SCREEN_HEIGHT * 0.84,
-    minHeight: SCREEN_HEIGHT * 0.50,
-    shadowColor: '#3B0E4C',
-    shadowOffset: { width: 0, height: -8 },
+    borderColor: SHEET_SURFACE_BORDER,
+    maxHeight: Math.min(SCREEN_HEIGHT * 0.75, 560),
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 24,
+    shadowRadius: 16,
+    elevation: 20,
     overflow: 'hidden',
-    display: 'flex',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  topBarSpacer: {
+    width: 32,
+    height: 32,
   },
   grabHandle: {
     width: 42,
     height: 4.5,
-    borderRadius: 3,
-    backgroundColor: SHEET_CORAL_ACCENT,
-    opacity: 0.85,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.30)',
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(142, 44, 172, 0.25)',
   },
   titleText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
-    color: '#FFFFFF',
+    color: SHEET_TEXT_TITLE,
     flex: 1,
   },
   closeButton: {
@@ -152,14 +157,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 148, 112, 0.15)',
+    backgroundColor: SHEET_VIOLET_LIGHT,
     borderWidth: 1,
-    borderColor: 'rgba(255, 148, 112, 0.35)',
+    borderColor: SHEET_VIOLET_BORDER,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 14,
+    paddingTop: 0,
+    paddingBottom: 8,
+    backgroundColor: SHEET_SURFACE_DARK,
+    justifyContent: 'flex-start',
   },
 });
 

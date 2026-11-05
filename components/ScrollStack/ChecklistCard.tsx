@@ -62,7 +62,6 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   const frame = createMonthCardFrame(palette, isDarkMode, colors);
 
   const displayTasks = tasks.length > 0 ? tasks : [];
-  const primaryTask = displayTasks[0];
   const pendingCount = Math.max(0, totalCount - doneCount);
 
   const handleToggle = (task: ChecklistTaskItem) => {
@@ -79,14 +78,13 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
   };
 
   return (
-    <LinearGradient
-      colors={[frame.gradTop, frame.gradBottom]}
-      style={[styles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    <View
+      style={[styles.card, { backgroundColor: frame.cardBg, borderColor: 'transparent' }]}
     >
       {/* 1. Header Row */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          {/* Rounded square checkmark badge matching Reminders and Events card */}
+          {/* Rounded square checkmark badge in violet/purple */}
           <View
             style={{
               width: 36,
@@ -120,7 +118,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           </View>
         </View>
 
-        {/* Options / Action button */}
+        {/* Options / Action button in violet */}
         {onQuickManage && (
           <TouchableOpacity
             style={{
@@ -155,7 +153,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       {/* 2. Checklist Items List / Rows */}
       {displayTasks.length > 0 ? (
         <ScrollView
-          style={{ maxHeight: 96, marginTop: 4 }}
+          style={{ maxHeight: 180, marginTop: 4 }}
           contentContainerStyle={{ gap: 6 }}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
@@ -191,14 +189,14 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                     height: 20,
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: item.status === 'done' ? frame.accent : 'rgba(255, 255, 255, 0.40)',
+                    borderColor: item.status === 'done' ? frame.accent : 'rgba(109, 40, 217, 0.40)',
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: item.status === 'done' ? frame.accent : 'transparent',
                   }}
                 >
                   {item.status === 'done' && (
-                    <Ionicons name="checkmark" size={13} color="#14081E" />
+                    <Ionicons name="checkmark" size={13} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
 
@@ -306,7 +304,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                 height: 20,
                 borderRadius: 6,
                 borderWidth: 2,
-                borderColor: 'rgba(255, 255, 255, 0.40)',
+                borderColor: 'rgba(109, 40, 217, 0.40)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -349,13 +347,13 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* 3. Add Checklist Item Dashed Button */}
+      {/* 3. Add Checklist Item Dashed Action Button in Violet/Purple */}
       <TouchableOpacity
         style={{
           width: '100%',
           borderWidth: 1.6,
           borderStyle: 'dashed',
-          borderColor: 'rgba(255, 148, 112, 0.45)',
+          borderColor: 'rgba(109, 40, 217, 0.40)',
           borderRadius: 16,
           paddingVertical: 8,
           flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -363,7 +361,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           justifyContent: 'center',
           gap: 6,
           marginTop: 7,
-          backgroundColor: 'rgba(255, 148, 112, 0.08)',
+          backgroundColor: 'rgba(109, 40, 217, 0.10)',
         }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -381,7 +379,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       <View
         style={{
           borderTopWidth: 1,
-          borderTopColor: 'rgba(142, 44, 172, 0.25)',
+          borderTopColor: frame.footerBorder,
           flexDirection: isArabic ? 'row-reverse' : 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -485,7 +483,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           </View>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 

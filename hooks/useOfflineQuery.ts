@@ -1,4 +1,14 @@
-import { applyOverlay, getCacheKey, getPendingTempTodosForCacheKey, hasPendingTemp, memoryCache, reconcileOverlay, removeTempEntry, subscribeToCache } from '@/utils/offlineStorage';
+import {
+  applyOverlay,
+  getCacheKey,
+  getPendingTempTodosForCacheKey,
+  hasPendingTemp,
+  isDeletedTombstoned,
+  memoryCache,
+  reconcileOverlay,
+  removeTempEntry,
+  subscribeToCache
+} from '@/utils/offlineStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { useQuery } from 'convex/react';
@@ -89,20 +99,23 @@ function withPendingState(cacheKey: string, data: any): any {
   if (data === undefined || data === null) return data;
 
   if (Array.isArray(data)) {
-    // Drop unregistered temp docs baked into a persisted snapshot (stale after
-    // a restart) — only temps still tracked by the pending registry may render.
+    // Drop unregistered temp docs and locally tombstoned (deleted) docs
     const fresh = data.filter((item: any) => {
       const id = item?._id;
+      if (!id) return false;
+      if (isDeletedTombstoned(id)) return false;
       return !(typeof id === 'string' && id.startsWith('temp_') && !hasPendingTemp(id));
     });
 
-    const merged = fresh.map((item: any) => {
-      if (item && typeof item === 'object') {
-        reconcileOverlay(item);
-        return applyOverlay(item);
-      }
-      return item;
-    });
+    const merged = fresh
+      .map((item: any) => {
+        if (item && typeof item === 'object') {
+          reconcileOverlay(item);
+          return applyOverlay(item);
+        }
+        return item;
+      })
+      .filter(Boolean); // remove tombstoned/null items
 
     const seen = new Set(merged.map((i: any) => i?._id));
     // A server doc carrying localId === tempId IS this temp doc, already

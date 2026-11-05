@@ -522,7 +522,7 @@ const Index = () => {
     }
   };
 
-  // ─── CardSwap Items Definition for Other Features (All Lime Texture Color) ───
+  // ─── CardSwap Items Definition for Other Features (Upper Widget Royal Purple) ───
   const swapFeaturesList: CardSwapItem[] = useMemo(() => [
     {
       id: 'checklist',
@@ -532,9 +532,14 @@ const Index = () => {
         : (isArabic ? 'اضغط لإضافة عناصر للقائمة' : 'Tap to add checklist items'),
       icon: 'checkbox-outline',
       badge: checklistTotalCount > 0 ? `${checklistDoneCount}/${checklistTotalCount}` : undefined,
-      accentColor: '#D8F448',
-      textColor: '#141311',
-      gradientColors: ['#75960B', '#92B814', '#B6DF20', '#D8F448'] as const,
+      accentColor: '#8E2CAC',
+      backgroundColor: '#3B0E4C',
+      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
+      textureSource: require('@/assets/images/purple-shimmer.jpg'),
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+      iconColor: '#FFFFFF',
+      textColor: '#FFFFFF',
+      subtextColor: 'rgba(255, 255, 255, 0.85)',
       wireframe: false,
     },
     {
@@ -545,9 +550,14 @@ const Index = () => {
         : (isArabic ? 'لا توجد تذكيرات اليوم' : 'No reminders scheduled'),
       icon: 'notifications-outline',
       badge: upcomingEvents.length > 0 ? `${upcomingEvents.length}` : undefined,
-      accentColor: '#C7F037',
-      textColor: '#141311',
-      gradientColors: ['#638506', '#80A80C', '#A4D115', '#C7F037'] as const,
+      accentColor: '#8E2CAC',
+      backgroundColor: '#3B0E4C',
+      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
+      textureSource: require('@/assets/images/purple-shimmer.jpg'),
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+      iconColor: '#FFFFFF',
+      textColor: '#FFFFFF',
+      subtextColor: 'rgba(255, 255, 255, 0.85)',
       wireframe: false,
     },
     {
@@ -556,9 +566,14 @@ const Index = () => {
       subtitle: isArabic ? `${monthDoneCount} من ${monthTotalCount} مهام مكتملة` : `${monthDoneCount} of ${monthTotalCount} tasks done`,
       icon: 'calendar-outline',
       badge: activeMonthlyGoals > 0 ? `${activeMonthlyGoals} ${isArabic ? 'أهداف' : 'goals'}` : undefined,
-      accentColor: '#BAE828',
-      textColor: '#141311',
-      gradientColors: ['#547503', '#6E9607', '#93C410', '#BAE828'] as const,
+      accentColor: '#8E2CAC',
+      backgroundColor: '#3B0E4C',
+      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
+      textureSource: require('@/assets/images/purple-shimmer.jpg'),
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+      iconColor: '#FFFFFF',
+      textColor: '#FFFFFF',
+      subtextColor: 'rgba(255, 255, 255, 0.85)',
       wireframe: false,
     },
     {
@@ -566,9 +581,14 @@ const Index = () => {
       title: isArabic ? 'تحليلات ورؤى ذكية' : 'AI Insights & Wellbeing',
       subtitle: isArabic ? 'رؤى مخصصة لتحسين إنتاجيتك' : 'Personalized productivity insights',
       icon: 'sparkles-outline',
-      accentColor: '#CFF642',
-      textColor: '#141311',
-      gradientColors: ['#6C8E0A', '#89B311', '#ACDB1C', '#CFF642'] as const,
+      accentColor: '#8E2CAC',
+      backgroundColor: '#3B0E4C',
+      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
+      textureSource: require('@/assets/images/purple-shimmer.jpg'),
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+      iconColor: '#FFFFFF',
+      textColor: '#FFFFFF',
+      subtextColor: 'rgba(255, 255, 255, 0.85)',
       wireframe: false,
     },
     {
@@ -576,9 +596,14 @@ const Index = () => {
       title: isArabic ? 'مؤقت التركيز' : 'Focus Timer',
       subtitle: isArabic ? 'جلسات تركيز بومودورو ذكية' : 'Smart Pomodoro focus blocks',
       icon: 'timer-outline',
-      accentColor: '#C3EE33',
-      textColor: '#141311',
-      gradientColors: ['#5E7F08', '#78A00E', '#9ECB18', '#C3EE33'] as const,
+      accentColor: '#8E2CAC',
+      backgroundColor: '#3B0E4C',
+      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
+      textureSource: require('@/assets/images/purple-shimmer.jpg'),
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+      iconColor: '#FFFFFF',
+      textColor: '#FFFFFF',
+      subtextColor: 'rgba(255, 255, 255, 0.85)',
       wireframe: false,
     },
   ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length, monthDoneCount, monthTotalCount, activeMonthlyGoals]);
@@ -643,7 +668,7 @@ const Index = () => {
               taskCounts={dayTaskCounts}
             />
 
-            {/* 2. OTHER FEATURES IN CARDSWAP COMPONENT UI (All Lime Textured Cards) */}
+            {/* 2. OTHER FEATURES IN CARDSWAP COMPONENT UI (Upper Widget Royal Purple) */}
             <View style={styles.cardSwapSection}>
               <View style={[styles.sectionHeader, isArabic && styles.rowRtl]}>
                 <View style={[styles.sectionTitleGroup, isArabic && styles.rowRtl]}>
@@ -706,7 +731,6 @@ const Index = () => {
       <FeatureSheet
         visible={activeFeature !== null}
         onClose={() => setActiveFeature(null)}
-        title={featureSheetTitle}
         isArabic={isArabic}
       >
         {activeFeature === 'checklist' && (

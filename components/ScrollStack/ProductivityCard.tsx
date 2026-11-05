@@ -55,21 +55,21 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
       </View>
 
       {/* Body: Streak and Focus Launcher */}
-      <View style={styles.productivityRow}>
+      <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', gap: 10, marginVertical: 8 }}>
         {/* Streak Counter Box */}
-        <View style={[styles.streakCard, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder }]}>
-          <View style={[styles.streakIconCircle, { backgroundColor: frame.accent }]}>
+        <View style={{ flex: 1, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 14, borderWidth: 1, backgroundColor: frame.rowBg, borderColor: frame.rowBorder }}>
+          <View style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: frame.accent }}>
             <Ionicons name="flame" size={22} color="#FFFFFF" />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
-            <Text style={[styles.streakNumber, { color: frame.text }]}>{streakDays}</Text>
-            <Text style={[styles.streakLabel, { color: frame.textMuted }]}>{t.dailyStreak}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: frame.text }}>{streakDays}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: frame.textMuted }}>{t.dailyStreak}</Text>
           </View>
         </View>
 
         {/* Start Focus Button */}
         <TouchableOpacity
-          style={[styles.focusActionBtn, { backgroundColor: frame.ctaBg }]}
+          style={{ flex: 1, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 10, borderRadius: 14, backgroundColor: frame.ctaBg }}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             onStartFocus();
@@ -77,18 +77,18 @@ export const ProductivityCard: React.FC<ProductivityCardProps> = ({
           activeOpacity={0.8}
         >
           <Ionicons name="timer-outline" size={18} color={frame.ctaFg} />
-          <Text style={[styles.focusActionBtnText, { color: frame.ctaFg }]}>{t.startFocus}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: frame.ctaFg }}>{t.startFocus}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Footer */}
-      <View style={[styles.cardFooter, { borderTopColor: frame.footerBorder }]}>
-        <View style={styles.footerActionBtn}>
+      <View style={[styles.checklistStats, { borderTopColor: frame.footerBorder, marginTop: 4, paddingTop: 8 }]}>
+        <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
           <Ionicons name="trophy-outline" size={16} color={frame.footerText} />
-          <Text style={[styles.footerActionText, { color: frame.footerText }]}>{t.statistics}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: frame.footerText }}>{t.statistics}</Text>
         </View>
 
-        <Text style={[styles.footerHintText, { color: frame.text, fontWeight: '700' }]}>Deep Focus Mode</Text>
+        <Text style={{ fontSize: 11, color: frame.text, fontWeight: '700' }}>Deep Focus Mode</Text>
       </View>
     </LinearGradient>
   );

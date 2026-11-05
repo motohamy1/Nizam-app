@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/utils/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -35,21 +34,14 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
   const streak = insights?.consistencyStreak ?? 0;
   const neglectedCount = insights?.neglectedTopics?.length ?? 0;
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return colors.success;
-    if (score >= 60) return colors.warning;
-    return colors.danger;
-  };
-
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
   };
 
   return (
-    <LinearGradient
-      colors={[frame.gradTop, frame.gradBottom]}
-      style={[baseStyles.card, { borderColor: frame.cardBorder, overflow: 'hidden' }]}
+    <View
+      style={[baseStyles.card, { backgroundColor: frame.cardBg, borderColor: 'transparent' }]}
     >
       {/* Header */}
       <TouchableOpacity
@@ -84,19 +76,19 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
         activeOpacity={0.85}
       >
         <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
-          <View style={[styles.miniDot, { backgroundColor: getScoreColor(productivity) }]} />
+          <View style={[styles.miniDot, { backgroundColor: frame.badgeFg }]} />
           <Text style={[styles.metricVal, { color: frame.text }]}>{productivity}%</Text>
           <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'إنتاجية' : 'Productivity'}</Text>
         </View>
 
         <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
-          <View style={[styles.miniDot, { backgroundColor: getScoreColor(balance) }]} />
+          <View style={[styles.miniDot, { backgroundColor: frame.badgeFg }]} />
           <Text style={[styles.metricVal, { color: frame.text }]}>{balance}%</Text>
           <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'توازن' : 'Balance'}</Text>
         </View>
 
         <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
-          <View style={[styles.miniDot, { backgroundColor: colors.warning }]} />
+          <View style={[styles.miniDot, { backgroundColor: frame.badgeFg }]} />
           <Text style={[styles.metricVal, { color: frame.text }]}>{streak}d</Text>
           <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'استمرار' : 'Streak'}</Text>
         </View>
@@ -111,11 +103,11 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
             styles.alertBanner,
             {
               backgroundColor: frame.pillBg,
-              borderColor: frame.cardBorder,
+              borderColor: frame.rowBorder,
             },
           ]}
         >
-          <Ionicons name="alert-circle-outline" size={16} color={frame.text} />
+          <Ionicons name="alert-circle-outline" size={16} color={frame.badgeFg} />
           <Text style={[styles.alertText, { color: frame.text }]} numberOfLines={1}>
             {neglectedCount} {isArabic ? 'مجالات تحتاج إلى انتباه اليوم' : 'areas need attention today'}
           </Text>
@@ -128,11 +120,11 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
             styles.alertBanner,
             {
               backgroundColor: frame.pillBg,
-              borderColor: frame.cardBorder,
+              borderColor: frame.rowBorder,
             },
           ]}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color={frame.accent} />
+          <Ionicons name="checkmark-circle-outline" size={16} color={frame.badgeFg} />
           <Text style={[styles.alertText, { color: frame.text }]} numberOfLines={1}>
             {isArabic ? 'كل مجالات التركيز متوازنة بشكل ممتاز' : 'All focus topics are on track'}
           </Text>
@@ -141,22 +133,22 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
 
       {/* Footer */}
       <TouchableOpacity 
-        style={[baseStyles.cardFooter, { borderTopColor: frame.footerBorder }]}
+        style={[baseStyles.checklistStats, { borderTopColor: frame.footerBorder, marginTop: 8, paddingTop: 8 }]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
-        <View style={baseStyles.footerActionBtn}>
-          <Ionicons name="arrow-forward" size={14} color={frame.footerText} />
-          <Text style={[baseStyles.footerActionText, { color: frame.footerText }]}>
+        <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="arrow-forward" size={14} color={frame.badgeFg} />
+          <Text style={{ fontSize: 12, fontWeight: '800', color: frame.text }}>
             {isArabic ? 'عرض التقرير الكامل ورادار التركيز' : 'View Full Insights & Radar'}
           </Text>
         </View>
 
-        <Text style={[baseStyles.footerHintText, { color: frame.text, fontWeight: '700' }]}>
+        <Text style={{ color: frame.badgeFg, fontWeight: '800', fontSize: 11.5 }}>
           {isArabic ? 'تحديث يومي' : 'Daily Sync'}
         </Text>
       </TouchableOpacity>
-    </LinearGradient>
+    </View>
   );
 };
 

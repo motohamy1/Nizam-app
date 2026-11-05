@@ -64,83 +64,101 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
 
   const handleOpenTask = onOpenDetail || onEditTask || (() => {});
 
-  // 4 Default / Placeholder tasks shown when user has fewer than 4 tasks
-  // Ensures the fan stack always displays 4 full cards exactly like the reference UI
-  const sampleTasks: TaskItem[] = useMemo(() => [
-    {
-      _id: 'sample_task_1' as Id<'todos'>,
-      text: isArabic ? 'إضافة مهمة جديدة لليوم' : 'Add your first task for today',
-      description: isArabic ? 'اضغط هنا أو على الزر بالأسفل لإنشاء مهمة' : 'Tap here or on the button below to create a task',
-      status: 'not_started',
-      priority: 'High',
-    },
-    {
-      _id: 'sample_task_2' as Id<'todos'>,
-      text: isArabic ? 'جلسة تركيز بومودورو' : 'Deep Focus Sprint',
-      description: isArabic ? 'جلسة عمل مركزة لمدة ٢٥ دقيقة بدون مقاطعة' : '25-minute distraction-free focus block',
-      status: 'not_started',
-      priority: 'Medium',
-      timerDuration: 25 * 60 * 1000,
-      timerDirection: 'down',
-    },
-    {
-      _id: 'sample_task_3' as Id<'todos'>,
-      text: isArabic ? 'مراجعة أولويات اليوم' : 'Daily Priorities Review',
-      description: isArabic ? 'حدد أهم أولوياتك لتحقيق أهدافك' : 'Identify your top needle-moving priorities',
-      status: 'not_started',
-      priority: 'Low',
-    },
-    {
-      _id: 'sample_task_4' as Id<'todos'>,
-      text: isArabic ? 'تنظيم المشاريع والمساحات' : 'Organize Spaces & Projects',
-      description: isArabic ? 'قسّم مهامك بحسب مجالات عملك وحياتك' : 'Group work, health, and personal growth',
-      status: 'not_started',
-      priority: 'Low',
-    },
-  ], [isArabic]);
-
-  // Combine real user tasks with placeholders to ensure exactly 4 cards in the stack
+  // Extract only real user tasks
   const safeTasks = useMemo(() => {
     return (Array.isArray(tasks) ? tasks : []).filter(
-      (t): t is TaskItem => Boolean(t && t._id)
+      (t): t is TaskItem => Boolean(t && t._id && !String(t._id).startsWith('sample_'))
     );
   }, [tasks]);
 
-  const stackTasks = useMemo(() => {
-    const userSlice = safeTasks.slice(0, 4);
-    if (userSlice.length >= 4) return userSlice;
-    const needed = 4 - userSlice.length;
-    const placeholders = sampleTasks.slice(0, needed);
-    return [...userSlice, ...placeholders];
-  }, [safeTasks, sampleTasks]);
-
-  // Generate 4 distinct cards for the CardStack all sharing the unified #FF9470 color
+  // Generate 4 distinct cards for the CardStack:
+  // - If 0 user tasks: Card 0 is the First Task CTA; Cards 1, 2, 3 are border-only wireframes.
+  // - If 1-3 user tasks: Cards 0..N-1 are real user task cards; remaining cards are border-only wireframes.
+  // - If 4+ user tasks: All 4 cards are real user tasks.
   const cards = useMemo(() => {
-    return stackTasks.map((task, index) => {
-      const isPlaceholder = String(task._id).startsWith('sample_');
+    const userSlice = safeTasks.slice(0, 4);
 
+    return [0, 1, 2, 3].map((slotIndex) => {
+      if (userSlice.length === 0) {
+        if (slotIndex === 0) {
+          return (
+            <ActiveTaskCard
+              key="first_task_prompt"
+              task={null}
+              isFirstTaskPrompt={true}
+              cardColor={TASK_UNIFIED_COLOR}
+              isArabic={isArabic}
+              onRunTask={() => {}}
+              onPauseTask={() => {}}
+              onCompleteTask={() => {}}
+              onOpenDetail={() => {}}
+              onAddTask={onAddTask}
+              style={{ width: '100%', height: '100%' }}
+            />
+          );
+        }
+        return (
+          <ActiveTaskCard
+            key={`empty_slot_${slotIndex}`}
+            task={null}
+            isEmptySlot={true}
+            cardIndex={slotIndex}
+            cardColor={TASK_UNIFIED_COLOR}
+            isArabic={isArabic}
+            onRunTask={() => {}}
+            onPauseTask={() => {}}
+            onCompleteTask={() => {}}
+            onOpenDetail={() => {}}
+            onAddTask={onAddTask}
+            style={{ width: '100%', height: '100%' }}
+          />
+        );
+      }
+
+      if (slotIndex < userSlice.length) {
+        const task = userSlice[slotIndex];
+        return (
+          <ActiveTaskCard
+            key={String(task._id)}
+            task={task}
+            cardIndex={slotIndex}
+            cardColor={TASK_UNIFIED_COLOR}
+            cardBadgeLabel={
+              slotIndex === 0
+                ? isArabic ? 'المهمة النشطة' : 'Active Task'
+                : `${isArabic ? 'مهمة' : 'Task'} #${slotIndex + 1}`
+            }
+            isArabic={isArabic}
+            onRunTask={() => onRunTask(task)}
+            onPauseTask={() => onPauseTask(task)}
+            onCompleteTask={() => onCompleteTask(task)}
+            onOpenDetail={() => handleOpenTask(task._id)}
+            onAddTask={onAddTask}
+            style={{ width: '100%', height: '100%' }}
+          />
+        );
+      }
+
+      // Remaining slot behind real user tasks
       return (
         <ActiveTaskCard
-          key={String(task._id)}
-          task={task}
+          key={`empty_slot_${slotIndex}`}
+          task={null}
+          isEmptySlot={true}
+          cardIndex={slotIndex}
           cardColor={TASK_UNIFIED_COLOR}
-          cardBadgeLabel={
-            index === 0
-              ? isArabic ? 'المهمة النشطة' : 'Active Task'
-              : `${isArabic ? 'مهمة' : 'Task'} #${index + 1}`
-          }
           isArabic={isArabic}
-          onRunTask={isPlaceholder ? onAddTask : () => onRunTask(task)}
-          onPauseTask={isPlaceholder ? onAddTask : () => onPauseTask(task)}
-          onCompleteTask={isPlaceholder ? onAddTask : () => onCompleteTask(task)}
-          onOpenDetail={isPlaceholder ? onAddTask : () => handleOpenTask(task._id)}
+          onRunTask={() => {}}
+          onPauseTask={() => {}}
+          onCompleteTask={() => {}}
+          onOpenDetail={() => {}}
           onAddTask={onAddTask}
           style={{ width: '100%', height: '100%' }}
         />
       );
     });
   }, [
-    stackTasks,
+    safeTasks,
     isArabic,
     onRunTask,
     onPauseTask,

@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import useTheme from '@/hooks/useTheme';
 
 export interface CardSwapItem {
   id: string;
@@ -48,13 +49,13 @@ export interface CardSwapRef {
   prev: () => void;
 }
 
-// Warm terracotta to parchment paper palette with richer contrast at the top
-const DEFAULT_PALETTE = ['#8C4934', '#B36D3F', '#DFB57E', '#E4BD88'];
+// Royal purple shimmer palette matching the upper widget
+const DEFAULT_PALETTE = ['#3B0E4C', '#4A125E', '#5D1974', '#70208C'];
 const DEFAULT_GRADIENTS: readonly (readonly [string, string, ...string[]])[] = [
-  ['#8C4934', '#BC7E52', '#E8C394', '#F6E9C2'],
-  ['#87402C', '#B97447', '#E4BC87', '#F7EBC6'],
-  ['#823A26', '#B36D3F', '#DFB57E', '#F5E5BE'],
-  ['#7C3420', '#AC6637', '#DAAD74', '#F3E1B6'],
+  ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'],
+  ['#431056', '#6E218B', '#9730B8', '#5A1770'],
+  ['#380B48', '#5E1878', '#8627A5', '#4D1263'],
+  ['#48145E', '#752494', '#9E35C0', '#601A78'],
 ];
 
 const UPPER_WIDGET_PURPLE = '#8E2CAC';
@@ -131,7 +132,7 @@ export const CardSwap = React.forwardRef<CardSwapRef, CardSwapProps>(({
     setOrder((prev) => {
       if (prev.length <= 1) return prev;
       const next = [...prev];
-      const front = next.shift()!;
+      const front = next.shift()!!;
       next.push(front);
       onSwapChange?.(next[0]);
       return next;
@@ -143,7 +144,7 @@ export const CardSwap = React.forwardRef<CardSwapRef, CardSwapProps>(({
     setOrder((prev) => {
       if (prev.length <= 1) return prev;
       const next = [...prev];
-      const back = next.pop()!;
+      const back = next.pop()!!;
       next.unshift(back);
       onSwapChange?.(next[0]);
       return next;
@@ -245,6 +246,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
   draggable,
   isArabic,
 }) => {
+  const { isDarkMode } = useTheme();
   // Target transforms for this slot
   const targetX = slot * cardDistance;
   const targetY = -slot * verticalDistance;
@@ -265,17 +267,21 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
   const prevSlotRef = useRef(slot);
   const isFlingingRef = useRef(false);
 
-  // Wireframe / glassmorphic purple styling
+  // Wireframe / glassmorphic translucent styling
   const isWireframe = item.wireframe ?? wireframe ?? false;
 
   const cardBg =
     item.backgroundColor !== undefined
       ? item.backgroundColor
       : isWireframe
-      ? 'transparent'
+      ? (isDarkMode ? 'rgba(142, 44, 172, 0.08)' : 'rgba(142, 44, 172, 0.05)')
       : (item.gradientColors ? item.gradientColors[0] : DEFAULT_PALETTE[itemIndex % DEFAULT_PALETTE.length]);
 
-  const isTransparent = cardBg === 'transparent' || cardBg === 'rgba(0,0,0,0)';
+  const isTransparent =
+    isWireframe ||
+    cardBg === 'transparent' ||
+    cardBg === 'rgba(0,0,0,0)' ||
+    (typeof cardBg === 'string' && cardBg.startsWith('rgba('));
 
   const gradient =
     !isTransparent && item.gradientColors
@@ -285,12 +291,17 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
   const isLight = !isWireframe && !isTransparent && isLightColor(cardBg);
 
   const textColor =
-    item.textColor || (isWireframe || isTransparent ? '#FFFFFF' : isLight ? '#20120A' : '#FFFFFF');
+    item.textColor ||
+    (isWireframe || isTransparent
+      ? (isDarkMode ? '#FFFFFF' : '#14081E')
+      : isLight
+      ? '#20120A'
+      : '#FFFFFF');
 
   const subtextColor =
     item.subtextColor ||
     (isWireframe || isTransparent
-      ? 'rgba(255, 255, 255, 0.75)'
+      ? (isDarkMode ? 'rgba(255, 255, 255, 0.72)' : 'rgba(20, 8, 30, 0.65)')
       : isLight
       ? 'rgba(32, 18, 10, 0.74)'
       : 'rgba(255, 255, 255, 0.90)');
@@ -309,33 +320,38 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
 
   const iconBg =
     isWireframe || isTransparent
-      ? 'rgba(142, 44, 172, 0.12)'
+      ? (isDarkMode ? 'rgba(142, 44, 172, 0.18)' : 'rgba(142, 44, 172, 0.10)')
       : isLight
       ? 'rgba(255, 255, 255, 0.45)'
-      : 'rgba(255, 255, 255, 0.22)';
+      : 'rgba(255, 255, 255, 0.16)';
 
   const iconBorder =
     item.borderColor
       ? `${item.borderColor}55`
       : isWireframe || isTransparent
-      ? 'rgba(142, 44, 172, 0.45)'
+      ? 'rgba(142, 44, 172, 0.35)'
       : isLight
       ? 'rgba(255, 255, 255, 0.65)'
-      : 'rgba(255, 255, 255, 0.32)';
+      : 'rgba(255, 255, 255, 0.30)';
 
   const badgeBg =
     isWireframe || isTransparent
-      ? 'rgba(142, 44, 172, 0.22)'
+      ? (isDarkMode ? 'rgba(142, 44, 172, 0.22)' : 'rgba(142, 44, 172, 0.12)')
       : isLight
       ? 'rgba(32, 18, 10, 0.12)'
-      : 'rgba(255, 255, 255, 0.24)';
+      : 'rgba(255, 255, 255, 0.20)';
 
   const badgeText =
     isWireframe || isTransparent ? UPPER_WIDGET_PURPLE : textColor;
 
+  const tapActionColor =
+    isWireframe || isTransparent
+      ? (isDarkMode ? '#C084FC' : UPPER_WIDGET_PURPLE)
+      : textColor;
+
   const indicatorLineColor =
     isWireframe || isTransparent
-      ? 'rgba(142, 44, 172, 0.45)'
+      ? UPPER_WIDGET_PURPLE
       : isLight
       ? 'rgba(32, 18, 10, 0.30)'
       : 'rgba(255, 255, 255, 0.48)';
@@ -437,7 +453,6 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
   const animatedStyle = useAnimatedStyle(() => {
     const currentX = animX.value + dragX.value;
     const currentY = animY.value + dragY.value;
-    const skewRad = (animSkew.value * Math.PI) / 180;
 
     return {
       zIndex: animZIndex.value,
@@ -466,69 +481,91 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
             backgroundColor: cardBg,
             borderColor: cardBorder,
           },
+          isTransparent && {
+            shadowColor: 'transparent',
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 0,
+          },
           animatedStyle,
         ]}
       >
         <TouchableOpacity
           activeOpacity={0.88}
           delayPressIn={0}
-          onPress={onPress}
+          onPress={isFront ? onPress : undefined}
           style={[styles.cardInner, { backgroundColor: cardBg }]}
         >
           {gradient && (
             <LinearGradient
               colors={gradient as any}
-              locations={gradient.length === 4 ? [0, 0.32, 0.68, 1] : undefined}
+              locations={gradient.length === 4 ? [0, 0.35, 0.72, 1] : undefined}
               start={{ x: 0, y: 0 }}
               end={{ x: 0.85, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
           )}
 
-          {/* Paper texture only if explicitly provided, or when not wireframe/transparent */}
+          {/* Texture overlay (e.g. purple shimmer matching upper widget) */}
           {(!isWireframe && !isTransparent && item.textureSource) && (
             <Image
               source={item.textureSource}
               contentFit="cover"
-              style={[StyleSheet.absoluteFill, { opacity: 0.58 }]}
+              style={[StyleSheet.absoluteFill, { opacity: 0.38 }]}
             />
           )}
 
-          {/* Top Row: Icon + Title + Badge */}
-          <View style={[styles.cardHeader, isArabic && { flexDirection: 'row-reverse' }]}>
-            <View style={[styles.iconCircle, { backgroundColor: iconBg, borderColor: iconBorder }]}>
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={iconColor}
-              />
-            </View>
+          {/* Soft specular sheen overlay matching upper widget */}
+          {(!isWireframe && !isTransparent) && (
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.14)', 'rgba(206, 126, 237, 0.08)', 'transparent']}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.85, y: 0.85 }}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
 
-            <View style={[styles.titleContainer, isArabic && { alignItems: 'flex-end' }]}>
-              <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>
-                {item.title}
-              </Text>
-              {!!item.subtitle && (
-                <Text style={[styles.cardSubtitle, { color: subtextColor }]} numberOfLines={1}>
-                  {item.subtitle}
-                </Text>
-              )}
-            </View>
+          {/* For transparent / translucent cards, only render inner content on the front card so stacked back cards don't collide */}
+          {(!isTransparent || isFront) && (
+            <>
+              {/* Top Row: Icon + Title + Badge */}
+              <View style={[styles.cardHeader, isArabic && { flexDirection: 'row-reverse' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: iconBg, borderColor: iconBorder }]}>
+                  <Ionicons
+                    name={item.icon}
+                    size={22}
+                    color={iconColor}
+                  />
+                </View>
 
-            {!!item.badge && (
-              <View style={[styles.badgePill, { backgroundColor: badgeBg }]}>
-                <Text style={[styles.badgeText, { color: badgeText }]}>{item.badge}</Text>
+                <View style={[styles.titleContainer, isArabic && { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  {!!item.subtitle && (
+                    <Text style={[styles.cardSubtitle, { color: subtextColor }]} numberOfLines={1}>
+                      {item.subtitle}
+                    </Text>
+                  )}
+                </View>
+
+                {!!item.badge && (
+                  <View style={[styles.badgePill, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.badgeText, { color: badgeText }]}>{item.badge}</Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
 
-          {/* Bottom Row: Action prompt */}
-          <View style={[styles.cardFooter, isArabic && { flexDirection: 'row-reverse' }]}>
-            <Text style={[styles.tapActionText, { color: textColor }]}>
-              {isArabic ? 'اضغط للعرض ↗' : 'Tap to open ↗'}
-            </Text>
-            <View style={[styles.cardIndicatorLine, { backgroundColor: indicatorLineColor }]} />
-          </View>
+              {/* Bottom Row: Action prompt */}
+              <View style={[styles.cardFooter, isArabic && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.tapActionText, { color: tapActionColor }]}>
+                  {isArabic ? 'اضغط للعرض ↗' : 'Tap to open ↗'}
+                </Text>
+                <View style={[styles.cardIndicatorLine, { backgroundColor: indicatorLineColor }]} />
+              </View>
+            </>
+          )}
 
           {/* Natural depth shading for cards underneath, smoothly animated (non-transparent only) */}
           {!isTransparent && (
@@ -537,7 +574,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
               style={[
                 StyleSheet.absoluteFill,
                 {
-                  backgroundColor: isWireframe ? '#0E0716' : '#1E0E06',
+                  backgroundColor: isWireframe ? '#0E0716' : '#1E0629',
                   borderRadius: 22,
                 },
                 shadeAnimatedStyle,
@@ -566,8 +603,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1.5,
     overflow: 'hidden',
-    shadowColor: '#3B0E4C',
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: '#2B0839',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 8,

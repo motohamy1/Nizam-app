@@ -521,16 +521,18 @@ const StackCardItem: React.FC<StackCardItemProps> = ({
       >
         {children}
 
-        {/* Realistic darkness shade overlay for cards underneath */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            styles.shadeOverlay,
-            { borderRadius: settings.radius },
-            shadeAnimatedStyle,
-          ]}
-        />
+        {/* Realistic darkness shade overlay for cards underneath (only applied if card has content/non-empty) */}
+        {!Boolean((children as any)?.props?.isEmptySlot) && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              styles.shadeOverlay,
+              { borderRadius: settings.radius },
+              shadeAnimatedStyle,
+            ]}
+          />
+        )}
       </View>
     </View>
   );
