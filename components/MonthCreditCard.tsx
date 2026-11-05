@@ -45,6 +45,37 @@ export const MONTH_PALETTES: MonthPalette[] = [
 export const getMonthPalette = (index: number): MonthPalette =>
   MONTH_PALETTES[index % MONTH_PALETTES.length];
 
+// Unified light palette matching the Planner overview textured light container (#FAF8F5)
+export const UNIFIED_MONTH_PALETTES: MonthPalette[] = [
+  // 0: Jan
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#E27D5F', graphicType: 'halfCircles' },
+  // 1: Feb
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#E8A590', graphicType: 'sunRays' },
+  // 2: Mar
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#D97706', graphicType: 'stripes' },
+  // 3: Apr
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#EA580C', graphicType: 'rings' },
+  // 4: May
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#C2410C', graphicType: 'bauhaus' },
+  // 5: Jun
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#E27D5F', graphicType: 'dualDiscs' },
+  // 6: Jul
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#E8A590', graphicType: 'curves' },
+  // 7: Aug
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#FF9470', graphicType: 'waves' },
+  // 8: Sep
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#D97706', graphicType: 'dualDiscs' },
+  // 9: Oct
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#EA580C', graphicType: 'sunRays' },
+  // 10: Nov
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#C2410C', graphicType: 'halfCircles' },
+  // 11: Dec
+  { bg: '#FAF8F5', ink: '#1E1B18', accent: '#FF9470', accentSecondary: '#E27D5F', graphicType: 'bauhaus' },
+];
+
+export const getUnifiedMonthPalette = (index: number): MonthPalette =>
+  UNIFIED_MONTH_PALETTES[index % UNIFIED_MONTH_PALETTES.length];
+
 /**
  * Shared Bauhaus-style artwork renderer for any palette (month or year cards).
  * Drawn centered inside the card, purely decorative (pointerEvents none).
@@ -153,6 +184,8 @@ interface MonthCreditCardProps {
   tasksLabel: string;
   emptyLabel: string;
   onPress: () => void;
+  style?: any;
+  cardStyle?: any;
 }
 
 const MonthCreditCard: React.FC<MonthCreditCardProps> = ({
@@ -170,16 +203,19 @@ const MonthCreditCard: React.FC<MonthCreditCardProps> = ({
   tasksLabel,
   emptyLabel,
   onPress,
+  style,
+  cardStyle,
 }) => {
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, style]}>
       <LivePress
         style={[
           styles.cardBody,
           { backgroundColor: palette.bg },
           isFocused ? styles.cardFocusedShadow : styles.cardStackedShadow,
+          cardStyle,
         ]}
         activeOpacity={0.92}
         onPress={onPress}

@@ -28,7 +28,9 @@ import type { GuideTip } from '@/components/ScreenGuide';
 import { LIST_TYPE_COLORS } from '@/utils/magicColors';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { ScrollStack, WheelPicker } from '@/components/ScrollStack';
-import MonthCreditCard, { getMonthPalette, MONTH_PALETTES } from '@/components/MonthCreditCard';
+import MonthCreditCard, { getMonthPalette, MONTH_PALETTES, getUnifiedMonthPalette } from '@/components/MonthCreditCard';
+import { PlannerTopWidget } from '@/components/PlannerTopWidget';
+import { CardStack } from '@/components/CardStack';
 import LivePress from '@/components/LivePress';
 import DayTimelineSchedule from '@/components/DayTimelineSchedule';
 import TaskDetailModal from '@/components/TaskDetailModal';
@@ -168,6 +170,15 @@ const Planner = () => {
   const years = useMemo(() => [currentYear - 1, currentYear, currentYear + 1, currentYear + 2], [currentYear]);
   const currentMonth = new Date().getMonth();
   const [deckMonth, setDeckMonth] = useState(currentMonth);
+
+  const orderedMonthIndices = useMemo(() => {
+    const startMonth = activeYear === currentYear ? currentMonth : 0;
+    const list: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      list.push((startMonth + i) % 12);
+    }
+    return list;
+  }, [activeYear, currentYear, currentMonth]);
   const [isYearModalVisible, setYearModalVisible] = useState(false);
   const [openedFromMainWheel, setOpenedFromMainWheel] = useState(false);
 
@@ -439,298 +450,91 @@ const Planner = () => {
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 6 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, paddingTop: 0 }}
       >
-        {/* ─── Current Year Combo Card (Dynamic Background by Active/Current Month) ─── */}
-        {(() => {
-          const activeMonthIndex = selectedMonth !== null ? selectedMonth : deckMonth;
-          const activeMonthPalette = getMonthPalette(activeMonthIndex);
-          const activeMonthName = months[activeMonthIndex];
-
-          return (
-            <View style={{ paddingHorizontal: 16, marginTop: 4, marginBottom: 12 }}>
-              <LivePress
-                pressScale={0.97}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setYearModalVisible(true);
-                }}
-                style={{
-                  flexDirection: isArabic ? 'row-reverse' : 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  backgroundColor: activeMonthPalette.bg,
-                  borderRadius: 20,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  borderWidth: 1.5,
-                  borderColor: activeMonthPalette.ink + '20',
-                  shadowColor: activeMonthPalette.ink,
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.18,
-                  shadowRadius: 12,
-                  elevation: 4,
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}
-              >
-                <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 12 }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: activeMonthPalette.ink + '15',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      borderColor: activeMonthPalette.ink + '22',
-                    }}
-                  >
-                    <Ionicons name="calendar" size={22} color={activeMonthPalette.accent} />
-                  </View>
-                  <View>
-                    <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-                      <Text
-                        style={{
-                          fontSize: 22,
-                          fontWeight: '900',
-                          color: activeMonthPalette.ink,
-                          letterSpacing: -0.4,
-                        }}
-                      >
-                        {activeYear}
-                      </Text>
-
-                      {/* Active Month Indicator Pill */}
-                      <View
-                        style={{
-                          flexDirection: isArabic ? 'row-reverse' : 'row',
-                          alignItems: 'center',
-                          gap: 4.5,
-                          paddingHorizontal: 8,
-                          paddingVertical: 2.5,
-                          borderRadius: 8,
-                          backgroundColor: activeMonthPalette.ink + '16',
-                        }}
-                      >
-                        <View
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 3,
-                            backgroundColor: activeMonthPalette.accent,
-                          }}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: '800',
-                            color: activeMonthPalette.ink,
-                          }}
-                        >
-                          {activeMonthName}
-                        </Text>
-                      </View>
-
-                      {/* Current Year Badge */}
-                      {activeYear === currentYear && (
-                        <View
-                          style={{
-                            paddingHorizontal: 7,
-                            paddingVertical: 2.5,
-                            borderRadius: 8,
-                            backgroundColor: activeMonthPalette.ink + '14',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: '800',
-                              color: activeMonthPalette.ink,
-                              opacity: 0.9,
-                            }}
-                          >
-                            {isArabic ? 'السنة الحالية' : 'Current Year'}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: '600',
-                        color: activeMonthPalette.ink,
-                        opacity: 0.75,
-                        marginTop: 3,
-                      }}
-                    >
-                      {isArabic
-                        ? `شهر ${activeMonthName} • اضغط لاختيار أو تغيير السنة`
-                        : `${activeMonthName} • Tap to switch year`}
-                    </Text>
-                  </View>
-                </View>
-
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 11,
-                    backgroundColor: activeMonthPalette.ink + '14',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={18}
-                    color={activeMonthPalette.ink}
-                    style={{ opacity: 0.85 }}
-                  />
-                </View>
-              </LivePress>
-            </View>
-          );
-        })()}
-
-        {/* ─── Year focus capsules: Goals & To-dos (left) | Achievements (right) ─── */}
-        {(() => {
-          const py = yearPalettes[Math.max(0, years.indexOf(activeYear))] ?? getMonthPalette(0);
-          const ach = isDarkMode
-            ? { bg: '#e63e00', ink: '#FFFFFF', accent: '#FFFFFF', shadow: '#e63e00' }
-            : { bg: '#e63e00', ink: '#FFFFFF', accent: '#FFFFFF', shadow: '#e63e00' };
-          const cardBase: any = {
-            flex: 1,
-            height: 140,
-            borderRadius: 22,
-            padding: 16,
-            justifyContent: 'space-between',
-            shadowOpacity: 0.22,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 5,
-          };
-          return (
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 4, paddingHorizontal: 16 }}>
-              {/* Goals & To-dos — wears the focused year's palette */}
-              <LivePress
-                style={[cardBase, { backgroundColor: py.bg, shadowColor: py.ink }]}
-                pressScale={0.96}
-                onPress={() => router.push({
-                  pathname: '/year-section',
-                  params: { kind: 'goals', year: String(activeYear) },
-                })}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: py.ink + '15', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="flag-outline" size={20} color={py.accent} />
-                  </View>
-                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: py.ink + '12', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={py.ink} style={{ opacity: 0.8 }} />
-                  </View>
-                </View>
-                <View>
-                  <Text style={{ fontSize: 15, fontWeight: '900', letterSpacing: -0.2, color: py.ink }} numberOfLines={1}>
-                    {isArabic ? 'الأهداف والمهام' : 'Goals & To-dos'}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: py.ink + '18' }}>
-                      <Text style={{ fontSize: 9.5, fontWeight: '800', color: py.ink, letterSpacing: 0.3 }}>
-                        {isArabic ? 'قريبًا' : 'SOON'}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: py.ink, opacity: 0.75 }} numberOfLines={1}>
-                      {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
-                    </Text>
-                  </View>
-                </View>
-              </LivePress>
-
-              {/* Achievements — vibrant gold / orange palette */}
-              <LivePress
-                style={[cardBase, { backgroundColor: ach.bg, shadowColor: ach.shadow }]}
-                pressScale={0.96}
-                onPress={() => router.push({
-                  pathname: '/year-section',
-                  params: { kind: 'achievements', year: String(activeYear) },
-                })}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255, 255, 255, 0.22)', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="trophy" size={20} color={ach.accent} />
-                  </View>
-                  <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.18)', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={15} color={ach.ink} style={{ opacity: 0.9 }} />
-                  </View>
-                </View>
-                <View>
-                  <Text style={{ fontSize: 15, fontWeight: '900', letterSpacing: -0.2, color: ach.ink }} numberOfLines={1}>
-                    {isArabic ? 'الإنجازات' : 'Achievements'}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255, 255, 255, 0.22)' }}>
-                      <Text style={{ fontSize: 9.5, fontWeight: '800', color: ach.ink, letterSpacing: 0.3 }}>
-                        {isArabic ? 'قريبًا' : 'SOON'}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: ach.ink, opacity: 0.85 }} numberOfLines={1}>
-                      {isArabic ? 'اضغط للاكتشاف' : 'Tap to discover'}
-                    </Text>
-                  </View>
-                </View>
-              </LivePress>
-            </View>
-          );
-        })()}
-
-        {/* ─── Day / Date Wheel (above the months card) ─── */}
-        <PlannerDateBar
-          month={deckMonth}
-          year={activeYear}
-          todos={todos}
-          onSelectDay={handleSelectDayFromWheel}
-          selectedDay={selectedDay}
+        {/* ─── 1. Continuous Top Object (Status Bar Immersed, Textured Granules, 3 Cards) ─── */}
+        <PlannerTopWidget
+          activeYear={activeYear}
+          currentYear={currentYear}
+          onOpenYearModal={() => setYearModalVisible(true)}
+          onPressGoals={() => router.push({
+            pathname: '/year-section',
+            params: { kind: 'goals', year: String(activeYear) },
+          })}
+          onPressAchievements={() => router.push({
+            pathname: '/year-section',
+            params: { kind: 'achievements', year: String(activeYear) },
+          })}
           isArabic={isArabic}
         />
 
-        {/* ─── Horizontal Rolodex Deck (Months Card) ─── */}
-        <ScrollStack
-          isArabic={isArabic}
-          labels={months}
-          initialIndex={currentMonth}
-          palettes={MONTH_PALETTES}
-          axis="horizontal"
-          sideCardVariant="capsule"
-          cardInset={screenWidth * 0.032 + 14.98}
-          autoReturnIndex={currentMonth}
-          autoReturnDelay={5000}
-          onCardChange={(idx) => setDeckMonth(idx)}
-          style={{ marginTop: 10, marginBottom: 28 }}
+        {/* ─── 2. Day / Date Wheel Section (Preserved) ─── */}
+        <View style={{ marginTop: 8 }}>
+          <PlannerDateBar
+            month={deckMonth}
+            year={activeYear}
+            todos={todos}
+            onSelectDay={handleSelectDayFromWheel}
+            selectedDay={selectedDay}
+            isArabic={isArabic}
+          />
+        </View>
+
+        {/* ─── 3. Stacked Month Cards (CardStack Deck, Unified Light Palette) ─── */}
+        <View
+          style={{
+            zIndex: 10,
+            elevation: Platform.OS === 'android' ? 20 : undefined,
+            overflow: 'visible',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 14,
+            marginBottom: 28,
+          }}
         >
-          {months.map((monthName, idx) => {
-            const monthTasks = getTasksForMonth(idx);
-            const completedMonthTasks = monthTasks.filter((task) => task.status === 'done').length;
-            return (
-              <MonthCreditCard
-                key={monthName}
-                month={monthName}
-                monthIndex={idx}
-                year={activeYear}
-                taskCount={monthTasks.length}
-                completionRate={monthTasks.length > 0 ? Math.round((completedMonthTasks / monthTasks.length) * 100) : 0}
-                isCurrent={idx === currentMonth && activeYear === currentYear}
-                isArabic={isArabic}
-                palette={getMonthPalette(idx)}
-                currentLabel={t.current}
-                tasksLabel={monthTasks.length === 1 ? t.task : t.tasksThisMonth}
-                emptyLabel={t.empty}
-                onPress={() => setSelectedMonth(idx)}
-              />
-            );
-          })}
-        </ScrollStack>
+          <CardStack
+            layout="deck"
+            visible={4}
+            spread={0.62}
+            depth={0.45}
+            radius={24}
+            cardHeight={260}
+            cardWidth={Math.min(screenWidth - 44, 340)}
+            peek={26}
+            tilt={18}
+            threshold={75}
+            isRTL={isArabic}
+            autoResetToTop={false}
+            onChange={(newTopIdx) => {
+              const actualMonthIdx = orderedMonthIndices[newTopIdx];
+              if (actualMonthIdx !== undefined) {
+                setDeckMonth(actualMonthIdx);
+              }
+            }}
+            cards={orderedMonthIndices.map((idx) => {
+              const monthName = months[idx];
+              const monthTasks = getTasksForMonth(idx);
+              const completedMonthTasks = monthTasks.filter((task) => task.status === 'done').length;
+              return (
+                <MonthCreditCard
+                  key={monthName}
+                  month={monthName}
+                  monthIndex={idx}
+                  year={activeYear}
+                  taskCount={monthTasks.length}
+                  completionRate={monthTasks.length > 0 ? Math.round((completedMonthTasks / monthTasks.length) * 100) : 0}
+                  isCurrent={idx === currentMonth && activeYear === currentYear}
+                  isArabic={isArabic}
+                  palette={getUnifiedMonthPalette(idx)}
+                  currentLabel={t.current}
+                  tasksLabel={monthTasks.length === 1 ? t.task : t.tasksThisMonth}
+                  emptyLabel={t.empty}
+                  onPress={() => setSelectedMonth(idx)}
+                />
+              );
+            })}
+          />
+        </View>
 
         {/* ─── Year Selection Menu Modal ─── */}
         <Modal
@@ -2194,80 +1998,77 @@ const Planner = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
 
-      <StatusBar style={colors.statusBarStyle === "light-content" ? "light" : "dark"} />
-      <SafeAreaView style={styles.safeArea}>
-        <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
-          <View style={[styles.header, { paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
-            {selectedMonth === null ? (
-              <View style={[{ flex: 1, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center' }]}>
-                <Text style={styles.headerTitle}>{t.planner}</Text>
-              </View>
-            ) : selectedDay === null ? (
-              <>
-                <LivePress
-                  style={styles.headerBackBtn}
-                  onPress={() => setSelectedMonth(null)}
-                  pressScale={0.96}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Ionicons name={isArabic ? "chevron-forward" : "chevron-back"} size={20} color={colors.text} />
-                  <Text style={styles.headerBackText}>{isArabic ? 'الشهور' : 'All Months'}</Text>
-                </LivePress>
-                <View style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 10,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>{activeYear}</Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <LivePress
-                  style={styles.headerBackBtn}
-                  onPress={handleGoBack}
-                  pressScale={0.96}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Ionicons name={isArabic ? "chevron-forward" : "chevron-back"} size={20} color={colors.text} />
-                  <Text style={styles.headerBackText}>
-                    {isFromHome ? (isArabic ? 'الرئيسية' : 'Home') : months[selectedMonth!]}
-                  </Text>
-                </LivePress>
-                <LivePress
-                  onPress={() => {
-                    if (isFromHome) {
-                      router.replace('/(tabs)');
-                    } else {
-                      resetAll();
-                    }
-                  }}
-                  style={styles.headerActionBtn}
-                  pressScale={0.96}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="close" size={22} color={colors.text} />
-                </LivePress>
-              </>
-            )}
+      <StatusBar style={selectedMonth === null ? "dark" : (colors.statusBarStyle === "light-content" ? "light" : "dark")} />
+
+      {selectedMonth === null ? (
+        <View style={{ flex: 1, backgroundColor: colors.bg }}>
+          {renderMonthGrid()}
+        </View>
+      ) : (
+        <SafeAreaView style={styles.safeArea}>
+          <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
+            <View style={[styles.header, { paddingBottom: 4 }, isArabic && { flexDirection: 'row-reverse' }]}>
+              {selectedDay === null ? (
+                <>
+                  <LivePress
+                    style={styles.headerBackBtn}
+                    onPress={() => setSelectedMonth(null)}
+                    pressScale={0.96}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <Ionicons name={isArabic ? "chevron-forward" : "chevron-back"} size={20} color={colors.text} />
+                    <Text style={styles.headerBackText}>{isArabic ? 'الشهور' : 'All Months'}</Text>
+                  </LivePress>
+                  <View style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>{activeYear}</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <LivePress
+                    style={styles.headerBackBtn}
+                    onPress={handleGoBack}
+                    pressScale={0.96}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <Ionicons name={isArabic ? "chevron-forward" : "chevron-back"} size={20} color={colors.text} />
+                    <Text style={styles.headerBackText}>
+                      {isFromHome ? (isArabic ? 'الرئيسية' : 'Home') : months[selectedMonth!]}
+                    </Text>
+                  </LivePress>
+                  <LivePress
+                    onPress={() => {
+                      if (isFromHome) {
+                        router.replace('/(tabs)');
+                      } else {
+                        resetAll();
+                      }
+                    }}
+                    style={styles.headerActionBtn}
+                    pressScale={0.96}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={22} color={colors.text} />
+                  </LivePress>
+                </>
+              )}
+            </View>
+          </AnimatedWavyHeader>
+          
+          <View style={{ flex: 1 }} {...dayViewPanResponder.panHandlers}>
+            {selectedDay === null
+              ? renderDayGrid(selectedMonth)
+              : renderSpecificDayView(selectedDay, selectedMonth, activeYear)}
           </View>
-        </AnimatedWavyHeader>
-        
-        {selectedMonth === null ? (
-            renderMonthGrid()
-        ) : selectedDay === null ? (
-            <View style={{ flex: 1 }} {...dayViewPanResponder.panHandlers}>
-              {renderDayGrid(selectedMonth)}
-            </View>
-        ) : (
-            <View style={{ flex: 1 }} {...dayViewPanResponder.panHandlers}>
-              {renderSpecificDayView(selectedDay, selectedMonth, activeYear)}
-            </View>
-        )}
-      </SafeAreaView>
+        </SafeAreaView>
+      )}
 
       <ScreenGuide visible={showGuide} tips={plannerTips} onDismiss={dismissGuide} isArabic={isArabic} />
 
