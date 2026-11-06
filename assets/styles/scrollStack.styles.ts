@@ -69,31 +69,31 @@ export const createMonthCardFrame = (
   _isDarkMode: boolean = false,
   _colors?: ColorScheme
 ) => {
-  const surfaceDark = '#1C0A2A'; // deep royal obsidian violet
-  const surfaceBorder = 'rgba(201, 166, 242, 0.25)';
-  const violetPrimary = '#A855F7'; // vibrant violet/purple
-  const violetActive = '#C084FC';
-  const violetLight = 'rgba(168, 85, 247, 0.18)';
-  const violetBorder = 'rgba(168, 85, 247, 0.35)';
+  const surfaceCream = '#FAF8F5'; // warm creamy off-white matching planner top widget
+  const surfaceBorder = 'rgba(30, 27, 24, 0.08)';
+  const inkDark = '#1E1B18';
+  const inkMuted = 'rgba(30, 27, 24, 0.70)';
+  const warmBadgeBg = 'rgba(30, 27, 24, 0.06)';
+  const warmBorder = 'rgba(30, 27, 24, 0.12)';
 
   return {
-    cardBg: surfaceDark,
-    gradTop: '#240E36',
-    gradBottom: surfaceDark,
+    cardBg: surfaceCream,
+    gradTop: '#FAF8F5',
+    gradBottom: '#F5F2EB',
     cardBorder: surfaceBorder,
-    text: '#FFFFFF',
-    textMuted: 'rgba(255, 255, 255, 0.70)',
-    badgeBg: violetLight,
-    badgeFg: '#E9D5FF',
-    pillBg: violetLight,
-    pillFg: '#E9D5FF',
-    rowBg: 'rgba(255, 255, 255, 0.07)', // clean frosted layer over deep violet
-    rowBorder: 'rgba(255, 255, 255, 0.12)',
-    accent: violetPrimary,
-    accentSecondary: violetActive,
-    footerBorder: surfaceBorder,
-    footerText: '#E9D5FF',
-    ctaBg: violetPrimary,
+    text: inkDark,
+    textMuted: inkMuted,
+    badgeBg: warmBadgeBg,
+    badgeFg: inkDark,
+    pillBg: warmBadgeBg,
+    pillFg: inkDark,
+    rowBg: 'rgba(255, 255, 255, 0.70)', // crisp frosted paper row
+    rowBorder: warmBorder,
+    accent: inkDark,
+    accentSecondary: '#524B45',
+    footerBorder: warmBorder,
+    footerText: inkDark,
+    ctaBg: inkDark,
     ctaFg: '#FFFFFF',
   };
 };
@@ -181,16 +181,16 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     card: {
       borderRadius: 28,
       borderWidth: 1,
-      borderColor: 'rgba(201, 166, 242, 0.25)',
+      borderColor: 'rgba(30, 27, 24, 0.08)',
       paddingHorizontal: 12,
       paddingVertical: 12,
       justifyContent: 'flex-start',
-      backgroundColor: '#1C0A2A',
-      shadowColor: '#000000',
+      backgroundColor: '#FAF8F5',
+      shadowColor: '#1E1B18',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.08,
       shadowRadius: 10,
-      elevation: 6,
+      elevation: 4,
     },
     cardHeader: {
       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -507,7 +507,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: '#1C0A2A', // Deep royal obsidian violet contrasting against task cards
+      backgroundColor: '#FAF8F5', // Warm creamy off-white matching planner top widget
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
       paddingHorizontal: 20,
@@ -516,19 +516,19 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       borderTopWidth: 1.5,
       borderLeftWidth: 1,
       borderRightWidth: 1,
-      borderColor: 'rgba(201, 166, 242, 0.25)',
-      shadowColor: '#000000',
+      borderColor: 'rgba(30, 27, 24, 0.08)',
+      shadowColor: '#1E1B18',
       shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.35,
+      shadowOpacity: 0.12,
       shadowRadius: 16,
-      elevation: 20,
+      elevation: 12,
       maxHeight: '90%',
     },
     modalDragHandle: {
       width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: 'rgba(255, 255, 255, 0.35)',
+      backgroundColor: 'rgba(30, 27, 24, 0.22)',
       alignSelf: 'center',
       marginBottom: 16,
     },
@@ -541,7 +541,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalTitle: {
       fontSize: 19,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: '#1E1B18',
       letterSpacing: -0.3,
     },
     modalForm: {
@@ -554,20 +554,20 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalInputLabel: {
       fontSize: 12,
       fontWeight: '700',
-      color: 'rgba(255, 255, 255, 0.85)',
+      color: '#1E1B18',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
     modalTextInput: {
       width: '100%',
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'rgba(255, 255, 255, 0.90)',
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.16)',
+      borderColor: 'rgba(30, 27, 24, 0.12)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
       fontSize: 15,
-      color: '#FFFFFF',
+      color: '#1E1B18',
       textAlign: isArabic ? 'right' : 'left',
     },
     modalTypeRow: {
@@ -584,17 +584,17 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
       paddingVertical: 10,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: 'rgba(168, 85, 247, 0.30)',
-      backgroundColor: 'rgba(168, 85, 247, 0.15)',
+      borderColor: 'rgba(30, 27, 24, 0.12)',
+      backgroundColor: 'rgba(30, 27, 24, 0.05)',
     },
     modalTypeChipActive: {
-      borderColor: '#A855F7',
-      backgroundColor: '#A855F7',
+      borderColor: '#1E1B18',
+      backgroundColor: '#1E1B18',
     },
     modalTypeChipText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#E9D5FF',
+      color: '#1E1B18',
     },
     modalTypeChipTextActive: {
       color: '#FFFFFF',
@@ -603,14 +603,14 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalNotesInput: {
       width: '100%',
       minHeight: 84,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'rgba(255, 255, 255, 0.90)',
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.16)',
+      borderColor: 'rgba(30, 27, 24, 0.12)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
       fontSize: 15,
-      color: '#FFFFFF',
+      color: '#1E1B18',
       textAlign: isArabic ? 'right' : 'left',
       textAlignVertical: 'top',
     },
@@ -621,9 +621,9 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     },
     modalTimeBox: {
       flex: 1,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'rgba(255, 255, 255, 0.90)',
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.16)',
+      borderColor: 'rgba(30, 27, 24, 0.12)',
       borderRadius: 14,
       paddingHorizontal: 14,
       paddingVertical: 12,
@@ -634,7 +634,7 @@ export const createScrollStackStyles = (colors: ColorScheme, isArabic: boolean =
     modalTimeBoxText: {
       fontSize: 14,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: '#1E1B18',
     },
     modalActionRow: {
       flexDirection: isArabic ? 'row-reverse' : 'row',

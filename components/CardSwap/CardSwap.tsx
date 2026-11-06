@@ -295,7 +295,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
     (isWireframe || isTransparent
       ? (isDarkMode ? '#FFFFFF' : '#14081E')
       : isLight
-      ? '#20120A'
+      ? '#B85000'
       : '#FFFFFF');
 
   const subtextColor =
@@ -303,7 +303,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
     (isWireframe || isTransparent
       ? (isDarkMode ? 'rgba(255, 255, 255, 0.72)' : 'rgba(20, 8, 30, 0.65)')
       : isLight
-      ? 'rgba(32, 18, 10, 0.74)'
+      ? 'rgba(184, 80, 0, 0.82)'
       : 'rgba(255, 255, 255, 0.90)');
 
   const cardBorder =
@@ -338,7 +338,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
     isWireframe || isTransparent
       ? (isDarkMode ? 'rgba(142, 44, 172, 0.22)' : 'rgba(142, 44, 172, 0.12)')
       : isLight
-      ? 'rgba(32, 18, 10, 0.12)'
+      ? 'rgba(184, 80, 0, 0.12)'
       : 'rgba(255, 255, 255, 0.20)';
 
   const badgeText =
@@ -353,7 +353,7 @@ const CardSwapItemView: React.FC<CardSwapItemViewProps> = ({
     isWireframe || isTransparent
       ? UPPER_WIDGET_PURPLE
       : isLight
-      ? 'rgba(32, 18, 10, 0.30)'
+      ? 'rgba(184, 80, 0, 0.35)'
       : 'rgba(255, 255, 255, 0.48)';
 
   // Handle slot transition changes smoothly with ZERO delay

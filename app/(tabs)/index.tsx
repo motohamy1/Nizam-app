@@ -522,7 +522,7 @@ const Index = () => {
     }
   };
 
-  // ─── CardSwap Items Definition for Other Features (Upper Widget Royal Purple) ───
+  // ─── CardSwap Items Definition for Other Features (Warm Creamy Off-White #FAF8F5) ───
   const swapFeaturesList: CardSwapItem[] = useMemo(() => [
     {
       id: 'checklist',
@@ -532,14 +532,14 @@ const Index = () => {
         : (isArabic ? 'اضغط لإضافة عناصر للقائمة' : 'Tap to add checklist items'),
       icon: 'checkbox-outline',
       badge: checklistTotalCount > 0 ? `${checklistDoneCount}/${checklistTotalCount}` : undefined,
-      accentColor: '#8E2CAC',
-      backgroundColor: '#3B0E4C',
-      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
-      textureSource: require('@/assets/images/purple-shimmer.jpg'),
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-      iconColor: '#FFFFFF',
-      textColor: '#FFFFFF',
-      subtextColor: 'rgba(255, 255, 255, 0.85)',
+      accentColor: '#B85000',
+      backgroundColor: '#FAF8F5',
+      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      textureSource: require('@/assets/images/grain.png'),
+      borderColor: 'rgba(184, 80, 0, 0.16)',
+      iconColor: '#B85000',
+      textColor: '#B85000',
+      subtextColor: 'rgba(184, 80, 0, 0.82)',
       wireframe: false,
     },
     {
@@ -550,14 +550,14 @@ const Index = () => {
         : (isArabic ? 'لا توجد تذكيرات اليوم' : 'No reminders scheduled'),
       icon: 'notifications-outline',
       badge: upcomingEvents.length > 0 ? `${upcomingEvents.length}` : undefined,
-      accentColor: '#8E2CAC',
-      backgroundColor: '#3B0E4C',
-      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
-      textureSource: require('@/assets/images/purple-shimmer.jpg'),
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-      iconColor: '#FFFFFF',
-      textColor: '#FFFFFF',
-      subtextColor: 'rgba(255, 255, 255, 0.85)',
+      accentColor: '#B85000',
+      backgroundColor: '#FAF8F5',
+      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      textureSource: require('@/assets/images/grain.png'),
+      borderColor: 'rgba(184, 80, 0, 0.16)',
+      iconColor: '#B85000',
+      textColor: '#B85000',
+      subtextColor: 'rgba(184, 80, 0, 0.82)',
       wireframe: false,
     },
     {
@@ -566,14 +566,14 @@ const Index = () => {
       subtitle: isArabic ? `${monthDoneCount} من ${monthTotalCount} مهام مكتملة` : `${monthDoneCount} of ${monthTotalCount} tasks done`,
       icon: 'calendar-outline',
       badge: activeMonthlyGoals > 0 ? `${activeMonthlyGoals} ${isArabic ? 'أهداف' : 'goals'}` : undefined,
-      accentColor: '#8E2CAC',
-      backgroundColor: '#3B0E4C',
-      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
-      textureSource: require('@/assets/images/purple-shimmer.jpg'),
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-      iconColor: '#FFFFFF',
-      textColor: '#FFFFFF',
-      subtextColor: 'rgba(255, 255, 255, 0.85)',
+      accentColor: '#B85000',
+      backgroundColor: '#FAF8F5',
+      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      textureSource: require('@/assets/images/grain.png'),
+      borderColor: 'rgba(184, 80, 0, 0.16)',
+      iconColor: '#B85000',
+      textColor: '#B85000',
+      subtextColor: 'rgba(184, 80, 0, 0.82)',
       wireframe: false,
     },
     {
@@ -581,14 +581,14 @@ const Index = () => {
       title: isArabic ? 'تحليلات ورؤى ذكية' : 'AI Insights & Wellbeing',
       subtitle: isArabic ? 'رؤى مخصصة لتحسين إنتاجيتك' : 'Personalized productivity insights',
       icon: 'sparkles-outline',
-      accentColor: '#8E2CAC',
-      backgroundColor: '#3B0E4C',
-      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
-      textureSource: require('@/assets/images/purple-shimmer.jpg'),
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-      iconColor: '#FFFFFF',
-      textColor: '#FFFFFF',
-      subtextColor: 'rgba(255, 255, 255, 0.85)',
+      accentColor: '#B85000',
+      backgroundColor: '#FAF8F5',
+      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      textureSource: require('@/assets/images/grain.png'),
+      borderColor: 'rgba(184, 80, 0, 0.16)',
+      iconColor: '#B85000',
+      textColor: '#B85000',
+      subtextColor: 'rgba(184, 80, 0, 0.82)',
       wireframe: false,
     },
     {
@@ -596,14 +596,14 @@ const Index = () => {
       title: isArabic ? 'مؤقت التركيز' : 'Focus Timer',
       subtitle: isArabic ? 'جلسات تركيز بومودورو ذكية' : 'Smart Pomodoro focus blocks',
       icon: 'timer-outline',
-      accentColor: '#8E2CAC',
-      backgroundColor: '#3B0E4C',
-      gradientColors: ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const,
-      textureSource: require('@/assets/images/purple-shimmer.jpg'),
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-      iconColor: '#FFFFFF',
-      textColor: '#FFFFFF',
-      subtextColor: 'rgba(255, 255, 255, 0.85)',
+      accentColor: '#B85000',
+      backgroundColor: '#FAF8F5',
+      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      textureSource: require('@/assets/images/grain.png'),
+      borderColor: 'rgba(184, 80, 0, 0.16)',
+      iconColor: '#B85000',
+      textColor: '#B85000',
+      subtextColor: 'rgba(184, 80, 0, 0.82)',
       wireframe: false,
     },
   ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length, monthDoneCount, monthTotalCount, activeMonthlyGoals]);
@@ -672,8 +672,8 @@ const Index = () => {
             <View style={styles.cardSwapSection}>
               <View style={[styles.sectionHeader, isArabic && styles.rowRtl]}>
                 <View style={[styles.sectionTitleGroup, isArabic && styles.rowRtl]}>
-                  <Ionicons name="apps-outline" size={17} color={colors.text} />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  <Ionicons name="apps-outline" size={17} color={isDarkMode ? '#C084FC' : '#7C3AED'} />
+                  <Text style={[styles.sectionTitle, { color: isDarkMode ? '#C084FC' : '#7C3AED' }]}>
                     {isArabic ? 'الميزات والأدوات' : 'Features & Tools'}
                   </Text>
                 </View>
