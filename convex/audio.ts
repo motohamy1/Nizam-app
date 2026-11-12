@@ -26,24 +26,40 @@ export const getAudioUrl = query({
   },
 });
 
+async function resolveNoteDoc(ctx: any, noteId: string) {
+  try {
+    const direct = await ctx.db.get(noteId as Id<"todos">);
+    if (direct) return direct;
+  } catch (_) {}
+
+  if (typeof noteId === "string") {
+    const byLocalId = await ctx.db
+      .query("todos")
+      .withIndex("by_local_id", (q: any) => q.eq("localId", noteId))
+      .first();
+    if (byLocalId) return byLocalId;
+  }
+  return null;
+}
+
 /**
  * Attach an uploaded audio storage file and its metadata to a note (todos table).
  */
 export const attachAudioToNote = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
     storageId: v.id("_storage"),
     duration: v.number(),
     mimeType: v.optional(v.string()),
     fileSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.noteId);
+    const existing = await resolveNoteDoc(ctx, args.noteId);
     if (!existing) {
-      throw new Error("Note not found");
+      throw new Error(`Note not found: ${args.noteId}`);
     }
 
-    await ctx.db.patch(args.noteId, {
+    await ctx.db.patch(existing._id, {
       audioStorageId: args.storageId,
       audioDuration: args.duration,
       audioMimeType: args.mimeType || "audio/m4a",
@@ -52,7 +68,7 @@ export const attachAudioToNote = mutation({
       transcriptError: undefined,
     });
 
-    return { success: true };
+    return { success: true, noteId: existing._id };
   },
 });
 
@@ -61,17 +77,17 @@ export const attachAudioToNote = mutation({
  */
 export const removeAudioFromNote = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
   },
   handler: async (ctx, args) => {
-    const note = await ctx.db.get(args.noteId);
+    const note = await resolveNoteDoc(ctx, args.noteId);
     if (!note) return { success: false };
 
     if (note.audioStorageId) {
       await ctx.storage.delete(note.audioStorageId);
     }
 
-    await ctx.db.patch(args.noteId, {
+    await ctx.db.patch(note._id, {
       audioStorageId: undefined,
       audioDuration: undefined,
       audioMimeType: undefined,
@@ -91,7 +107,7 @@ export const removeAudioFromNote = mutation({
  */
 export const updateTranscriptStatus = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
     transcript: v.optional(v.string()),
     transcriptLanguage: v.optional(v.string()),
     status: v.union(
@@ -104,12 +120,15 @@ export const updateTranscriptStatus = mutation({
     error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.noteId, {
-      transcript: args.transcript,
-      transcriptLanguage: args.transcriptLanguage,
-      transcriptStatus: args.status,
-      transcriptError: args.error,
-    });
+    const note = await resolveNoteDoc(ctx, args.noteId);
+    if (note) {
+      await ctx.db.patch(note._id, {
+        transcript: args.transcript,
+        transcriptLanguage: args.transcriptLanguage,
+        transcriptStatus: args.status,
+        transcriptError: args.error,
+      });
+    }
   },
 });
 
@@ -118,7 +137,7 @@ export const updateTranscriptStatus = mutation({
  */
 export const transcribeAudio = action({
   args: {
-    noteId: v.optional(v.id("todos")),
+    noteId: v.optional(v.union(v.id("todos"), v.string())),
     storageId: v.id("_storage"),
     languageHint: v.optional(v.string()),
   },
@@ -154,15 +173,15 @@ export const transcribeAudio = action({
             formData.append("file", audioBlob, "recording.m4a");
             formData.append("model", modelName);
             formData.append("response_format", "verbose_json");
+            formData.append("temperature", "0");
             // Bilingual priming prompt: ensures Whisper transcribes Arabic and English side-by-side without translating
             formData.append(
               "prompt",
               "Voice dictation in Arabic and English. Transcribe verbatim, seamlessly supporting code-switching, English technical terms, product names, and natural Arabic speech."
             );
-            // Do not force strict language if auto or mixed is desired
-            if (args.languageHint && args.languageHint !== "auto" && args.languageHint !== "mixed") {
-              // Only append if explicitly a single language
-              // If user is speaking mixed Arabic & English, omitting language lets Whisper auto-detect code-switching
+            // Language hint
+            if (args.languageHint === "ar" || args.languageHint === "en") {
+              formData.append("language", args.languageHint);
             }
 
             const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
@@ -175,8 +194,23 @@ export const transcribeAudio = action({
 
             if (groqRes.ok) {
               const data = (await groqRes.json()) as any;
-              transcript = data.text || "";
               detectedLanguage = data.language || detectedLanguage;
+              if (Array.isArray(data.segments) && data.segments.length > 0) {
+                // Filter out background noise, non-speech segments, and hallucinations
+                const speechSegments = data.segments.filter((s: any) => {
+                  const noSpeech = typeof s.no_speech_prob === 'number' ? s.no_speech_prob : 0;
+                  const avgLogProb = typeof s.avg_logprob === 'number' ? s.avg_logprob : 0;
+                  if (noSpeech > 0.65 && avgLogProb < -1.0) return false;
+                  return (s.text || "").trim().length > 0;
+                });
+                if (speechSegments.length > 0) {
+                  transcript = speechSegments.map((s: any) => s.text.trim()).join(" ").trim();
+                } else {
+                  transcript = (data.text || "").trim();
+                }
+              } else {
+                transcript = (data.text || "").trim();
+              }
             } else {
               console.warn(`Groq STT model ${modelName} failed, trying next:`, await groqRes.text());
             }
@@ -212,6 +246,10 @@ export const transcribeAudio = action({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                generationConfig: {
+                  temperature: 0.0,
+                  thinkingConfig: { thinkingBudget: 0 },
+                },
                 contents: [
                   {
                     parts: [
@@ -230,7 +268,18 @@ export const transcribeAudio = action({
 
             if (geminiRes.ok) {
               const data = (await geminiRes.json()) as any;
-              let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+              const candidate = data.candidates?.[0];
+              const parts = candidate?.content?.parts;
+              let rawText = "";
+              if (Array.isArray(parts)) {
+                rawText = parts
+                  .filter((p: any) => !p.thought)
+                  .map((p: any) => p.text || "")
+                  .join("")
+                  .trim();
+              } else if (parts?.[0]?.text) {
+                rawText = parts[0].text.trim();
+              }
               rawText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
               if (rawText) {
                 transcript = rawText;

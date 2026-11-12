@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { taskStatusValidator } from "./schema";
 import { insertWithLocalId } from "./idempotency";
 
@@ -54,9 +54,20 @@ export const getLinkedChildren = query({
 });
 
 export const getById = query({
-  args: { id: v.id("todos") },
+  args: { id: v.union(v.id("todos"), v.string()) },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    try {
+      const doc = await ctx.db.get(args.id as Id<"todos">);
+      if (doc) return doc;
+    } catch (_) {}
+    if (typeof args.id === "string") {
+      const byLocalId = await ctx.db
+        .query("todos")
+        .withIndex("by_local_id", (q) => q.eq("localId", args.id))
+        .first();
+      if (byLocalId) return byLocalId;
+    }
+    return null;
   },
 });
 
@@ -324,7 +335,7 @@ export const setTimer = mutation({
       ...(args.duration !== undefined && { timerDuration: args.duration }),
       ...(args.duration !== undefined && newTimeLeftAtPause !== undefined && { timeLeftAtPause: newTimeLeftAtPause }),
       ...(args.timerDirection !== undefined && { timerDirection: args.timerDirection }),
-      ...(args.dueDate !== undefined && { dueDate: args.dueDate }),
+      ...(args.dueDate !== undefined ? { dueDate: args.dueDate } : ('dueDate' in args ? { dueDate: undefined } : {})),
       ...(args.date !== undefined && { date: args.date })
     });
   },

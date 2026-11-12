@@ -10,20 +10,14 @@ import {
   Platform,
   StyleProp,
   ViewStyle,
+  Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-  interpolate,
-} from 'react-native-reanimated';
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import CrystalizedBall from './CrystalizedBall';
+import CardParticleField from './CardParticleField';
 import { useActiveTask } from './ActiveTaskContext';
 import type { TaskItem } from './ActiveTaskContext';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
@@ -51,8 +45,10 @@ const formatTime = (ms: number) => {
 const asDoc = (value: any): any =>
   value && !Array.isArray(value) && typeof value === 'object' ? value : null;
 
-export const TASK_DARK_VIOLET = '#5B21B6';
-export const TASK_GOLD_ORANGE = '#B85000';
+export const TASK_BG_COLOR = '#AFE607';
+export const TASK_TEXT_COLOR = '#0E0E0B';
+export const TASK_DARK_VIOLET = TASK_TEXT_COLOR; // Backward-compatible alias
+export const TASK_GOLD_ORANGE = TASK_TEXT_COLOR; // Backward-compatible alias
 
 export interface ActiveTaskCardProps {
   task?: TaskItem | null;
@@ -64,6 +60,7 @@ export interface ActiveTaskCardProps {
   onRunTask: (task: TaskItem) => void;
   onPauseTask: (task: TaskItem) => void;
   onCompleteTask: (task: TaskItem) => void;
+  onReopenTask?: (task: TaskItem) => void;
   onOpenDetail: (id: any, section?: 'subtask') => void;
   /** Offered when there is no active task yet, so the card never shows a
    *  button that does nothing. */
@@ -81,7 +78,7 @@ export interface ActiveTaskCardProps {
  */
 export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   task,
-  cardColor = '#d4ff32',
+  cardColor = TASK_BG_COLOR,
   cardBadgeLabel,
   isArabic = false,
   isFirstTaskPrompt = false,
@@ -89,6 +86,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   onRunTask,
   onPauseTask,
   onCompleteTask,
+  onReopenTask,
   onOpenDetail,
   onAddTask,
   cardIndex = 0,
@@ -135,10 +133,16 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     api.projects.getCategory,
     activeTask?.categoryId ? { id: activeTask.categoryId } : 'skip'
   );
+  const linkedSubCategory = useOfflineQuery<any>(
+    'projects.getSubCategory',
+    api.projects.getSubCategory,
+    activeTask?.subCategoryId ? { id: activeTask.subCategoryId } : 'skip'
+  );
 
-  const goalName = asDoc(linkedGoal)?.text;
+  const goalName = asDoc(linkedGoal)?.text || asDoc(linkedGoal)?.title;
   const projectName = asDoc(linkedProject)?.name;
   const categoryName = asDoc(linkedCategory)?.name;
+  const subCategoryName = asDoc(linkedSubCategory)?.name;
 
   // Progress of the active task
   const [now, setNow] = useState<number>(() => getServerNow());
@@ -150,41 +154,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   }, [activeTask?.status]);
 
   const isRunningTask = activeTask?.status === 'in_progress';
-
-  // Smooth Reanimated transition for orb centering and expansion
-  const focusAnim = useSharedValue(isRunningTask ? 1 : 0);
-
-  useEffect(() => {
-    focusAnim.value = withTiming(isRunningTask ? 1 : 0, {
-      duration: 400,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-    });
-  }, [isRunningTask]);
-
-  const orbAnimatedStyle = useAnimatedStyle(() => {
-    // When running, scale orb ~2.36x (35% larger than previous 1.75x) and move to center
-    const scale = interpolate(focusAnim.value, [0, 1], [1, 2.36]);
-    // Move slightly leftwards (or rightwards in RTL) towards the center of card
-    const targetX = isArabic ? 100 : -100;
-    const translateX = interpolate(focusAnim.value, [0, 1], [0, targetX]);
-    const translateY = interpolate(focusAnim.value, [0, 1], [0, 42]);
-
-    return {
-      transform: [
-        { translateX },
-        { translateY },
-        { scale },
-      ],
-      zIndex: isRunningTask ? 20 : 1,
-    };
-  });
-
-  const taskInfoAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(focusAnim.value, [0, 1], [1, 0.45]);
-    return {
-      opacity,
-    };
-  });
+  const isTaskDone = activeTask?.status === 'done' || activeTask?.status === 'completed';
 
   const isCountUp = activeTask?.timerDirection === 'up';
   const isCountDown = !isCountUp;
@@ -202,14 +172,28 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     const isRunning = activeTask.status === 'in_progress';
     const duration = activeTask.timerDuration || 0;
 
-    if (isRunning && activeTask.timerStartTime) {
+    if (isTaskDone) {
+      if (isCountUp) {
+        timerValue =
+          activeTask.timeLeftAtPause ??
+          (activeTask.timerStartTime && activeTask.completedAt
+            ? Math.max(0, activeTask.completedAt - activeTask.timerStartTime)
+            : 0);
+        activeTaskProgress = 100;
+      } else {
+        // Finished countdown keeps timer at 00:00 and fills particles 100%
+        timerValue = 0;
+        activeTaskProgress = 100;
+      }
+    } else if (isRunning && activeTask.timerStartTime) {
       const elapsed = Math.max(0, now - activeTask.timerStartTime);
       if (isCountUp) {
         timerValue = elapsed;
         activeTaskProgress = null;
       } else if (duration > 0) {
         timerValue = Math.max(0, duration - elapsed);
-        activeTaskProgress = Math.min(100, Math.round((elapsed / duration) * 100));
+        activeTaskProgress =
+          timerValue === 0 ? 100 : Math.min(100, Math.round((elapsed / duration) * 100));
       } else {
         timerValue = elapsed;
         activeTaskProgress = null;
@@ -228,18 +212,13 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
         activeTaskProgress = null;
       }
     } else {
-      // not_started or completed
+      // not_started or not_done
       if (isCountUp) {
-        timerValue = activeTask.status === 'completed' ? (activeTask.timeLeftAtPause ?? 0) : 0;
-        activeTaskProgress = activeTask.status === 'completed' ? 100 : null;
+        timerValue = 0;
+        activeTaskProgress = null;
       } else if (duration > 0) {
-        if (activeTask.status === 'completed') {
-          timerValue = 0;
-          activeTaskProgress = 100;
-        } else {
-          timerValue = duration;
-          activeTaskProgress = 0;
-        }
+        timerValue = duration;
+        activeTaskProgress = 0;
       } else {
         timerValue = 0;
         activeTaskProgress = null;
@@ -250,10 +229,11 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   // Status badge label and completion percent
   const activeStatusLabel = useMemo(() => {
     if (!activeTask) return isArabic ? 'لا توجد مهام' : 'Idle';
-    if (activeTask.status === 'completed') return isArabic ? 'مكتملة' : 'Completed';
+    if (isTaskDone) return isArabic ? 'مكتملة' : 'Completed';
     if (activeTask.status === 'in_progress') return isArabic ? 'قيد التنفيذ' : 'In Progress';
+    if (activeTask.status === 'paused') return isArabic ? 'متوقفة مؤقتاً' : 'Paused';
     return isArabic ? 'جاهزة' : 'To Do';
-  }, [activeTask, isArabic]);
+  }, [activeTask, isTaskDone, isArabic]);
 
   const showProgressPercent =
     activeTaskProgress !== null &&
@@ -300,6 +280,15 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
     onCompleteTask(targetTask);
   };
 
+  const handleReopenTaskAction = (targetTask: TaskItem) => {
+    selectTask?.(targetTask);
+    if (onReopenTask) {
+      onReopenTask(targetTask);
+    } else {
+      updateTodo({ id: targetTask._id, status: 'not_started' });
+    }
+  };
+
   const badgeText = cardBadgeLabel || (isArabic ? 'المهمة النشطة' : 'Active Task');
 
   if (isEmptySlot) {
@@ -334,34 +323,11 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
 
     return (
       <View style={[styles.card, { backgroundColor: cardColor }, style]}>
-        {/* Background Color Fill */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: cardColor },
-          ]}
-        />
-
-        {/* Micro-Shimmer Texture Overlay matching upper widget */}
-        <Image
-          source={require('@/assets/images/purple-shimmer.jpg')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.20 }]}
-        />
-
-        {/* Granules / Film Grain Texture Overlay matching upper widget */}
+        {/* Subtle noise/granules texture matching upper widget - no gradient */}
         <Image
           source={require('@/assets/images/grain.png')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.24 }]}
-        />
-
-        {/* Soft Specular Sheen Overlay matching upper widget */}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.30)', 'rgba(255, 255, 255, 0.08)', 'transparent']}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.85, y: 0.85 }}
-          style={StyleSheet.absoluteFill}
+          resizeMode="repeat"
+          style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
         />
         <View style={styles.cardInner}>
           <View style={styles.upperSection}>
@@ -372,10 +338,10 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               <View
                 style={[
                   styles.statusPill,
-                  { backgroundColor: 'rgba(91, 33, 182, 0.12)' },
+                  { backgroundColor: 'rgba(14, 14, 11, 0.12)' },
                 ]}
               >
-                <Text style={[styles.statusPillText, { color: TASK_GOLD_ORANGE }]}>
+                <Text style={[styles.statusPillText, { color: TASK_TEXT_COLOR }]}>
                   {isArabic ? 'دليل' : 'Tip'}
                 </Text>
               </View>
@@ -393,7 +359,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                   isArabic && styles.rowRtl,
                 ]}
               >
-                <Ionicons name={guide.icon} size={18} color={TASK_GOLD_ORANGE} />
+                <Ionicons name={guide.icon} size={18} color={TASK_TEXT_COLOR} />
                 <Text
                   numberOfLines={1}
                   style={[
@@ -429,7 +395,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                 { width: '100%', justifyContent: 'center' },
               ]}
             >
-              <Ionicons name="add-circle" size={17} color={TASK_GOLD_ORANGE} />
+              <Ionicons name="add-circle" size={17} color={TASK_BG_COLOR} />
               <Text style={styles.addTaskBtnText}>
                 {isArabic ? 'إضافة مهمة جديدة' : 'Add Next Task'}
               </Text>
@@ -443,34 +409,11 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
   if (isFirstTaskPrompt || (!activeTask && cardIndex === 0)) {
     return (
       <View style={[styles.card, { backgroundColor: cardColor }, style]}>
-        {/* Background Color Fill */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: cardColor },
-          ]}
-        />
-
-        {/* Micro-Shimmer Texture Overlay matching upper widget */}
-        <Image
-          source={require('@/assets/images/purple-shimmer.jpg')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.20 }]}
-        />
-
-        {/* Granules / Film Grain Texture Overlay matching upper widget */}
+        {/* Subtle noise/granules texture matching upper widget - no gradient */}
         <Image
           source={require('@/assets/images/grain.png')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.24 }]}
-        />
-
-        {/* Soft Specular Sheen Overlay matching upper widget */}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.30)', 'rgba(255, 255, 255, 0.08)', 'transparent']}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.85, y: 0.85 }}
-          style={StyleSheet.absoluteFill}
+          resizeMode="repeat"
+          style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
         />
         <View style={styles.cardInner}>
           <View style={styles.upperSection}>
@@ -525,7 +468,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                 { width: '100%', justifyContent: 'center' },
               ]}
             >
-              <Ionicons name="add-circle" size={18} color={TASK_GOLD_ORANGE} />
+              <Ionicons name="add-circle" size={18} color={TASK_BG_COLOR} />
               <Text style={styles.addTaskBtnText}>
                 {isArabic ? 'إضافة أول مهمة' : 'Create First Task'}
               </Text>
@@ -538,7 +481,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
 
   return (
     <View style={[styles.card, { backgroundColor: cardColor }, style]}>
-      {/* Background Color Fill */}
+      {/* Background Color Fill - Solid, No Gradient */}
       <View
         style={[
           StyleSheet.absoluteFill,
@@ -546,26 +489,18 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
         ]}
       />
 
-      {/* Micro-Shimmer Texture Overlay matching upper widget */}
-      <Image
-        source={require('@/assets/images/purple-shimmer.jpg')}
-        contentFit="cover"
-        style={[StyleSheet.absoluteFill, { opacity: 0.20 }]}
-      />
-
-      {/* Granules / Film Grain Texture Overlay matching upper widget */}
+      {/* Subtle noise/granules texture matching upper widget */}
       <Image
         source={require('@/assets/images/grain.png')}
-        contentFit="cover"
-        style={[StyleSheet.absoluteFill, { opacity: 0.24 }]}
+        resizeMode="repeat"
+        style={[StyleSheet.absoluteFill, { opacity: 0.16 }]}
       />
 
-      {/* Soft Specular Sheen Overlay matching upper widget */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.30)', 'rgba(255, 255, 255, 0.08)', 'transparent']}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 0.85 }}
-        style={StyleSheet.absoluteFill}
+      {/* Whole-card crystal dust particle field (filling from bottom to top as countdown progresses) */}
+      <CardParticleField
+        progress={activeTaskProgress !== null ? activeTaskProgress / 100 : 0}
+        isRunning={isRunningTask}
+        isCountDown={isCountDown}
       />
 
       {/* Main Content Layout with Upper Content + Pinned Bottom Actions */}
@@ -574,18 +509,53 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
         <View style={styles.upperSection}>
           {/* Header Row (Badge + Status + Open Button) */}
           <View style={[styles.headerRow, isArabic && styles.rowRtl]}>
-            <View style={styles.taskBadge}>
-              <Text style={styles.taskBadgeText}>{badgeText}</Text>
+            <View
+              style={[
+                styles.taskBadge,
+                isTaskDone && styles.taskBadgeDone,
+                isArabic && styles.rowRtl,
+              ]}
+            >
+              {isTaskDone && (
+                <Ionicons
+                  name="checkmark-done"
+                  size={11}
+                  color="#AFE607"
+                  style={{ flexShrink: 0 }}
+                />
+              )}
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.taskBadgeText, isTaskDone && styles.taskBadgeTextDone]}
+              >
+                {isTaskDone ? (isArabic ? 'منتهية' : 'Finished') : badgeText}
+              </Text>
             </View>
             <View
               style={{
                 flexDirection: isArabic ? 'row-reverse' : 'row',
                 alignItems: 'center',
                 gap: 6,
+                flexShrink: 0,
               }}
             >
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>
+              <View
+                style={[
+                  styles.statusPill,
+                  isTaskDone && styles.statusPillDone,
+                  isArabic && styles.rowRtl,
+                ]}
+              >
+                {isTaskDone && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={11}
+                    color="#4ADE80"
+                    style={{ flexShrink: 0 }}
+                  />
+                )}
+                <Text numberOfLines={1} style={styles.statusPillText}>
                   {showProgressPercent
                     ? `${activeStatusLabel} • ${activeTaskProgress}%`
                     : activeStatusLabel}
@@ -601,14 +571,14 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={styles.openDetailBtn}
               >
-                <Ionicons name="open-outline" size={13} color={TASK_DARK_VIOLET} />
+                <Ionicons name="open-outline" size={13} color={TASK_TEXT_COLOR} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Title, Labels & Crystalloid Ball */}
+          {/* Title & Crystallized Ball Timer */}
           <View style={[styles.bodyRow, isArabic && styles.rowRtl]}>
-            <Animated.View style={[{ flex: 1, minWidth: 0 }, taskInfoAnimatedStyle]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <TouchableOpacity
                 activeOpacity={0.82}
                 onPress={() => {
@@ -617,12 +587,13 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                   onOpenDetail(activeTask._id);
                 }}
                 style={[
-                  { width: '100%' },
-                  isArabic ? { paddingLeft: 10 } : { paddingRight: 10 },
+                  { width: '100%', overflow: 'hidden' },
+                  isArabic ? { paddingLeft: 6 } : { paddingRight: 6 },
                 ]}
               >
                 <Text
                   numberOfLines={showSubtasksInCard ? 1 : 2}
+                  ellipsizeMode="tail"
                   style={[styles.taskTitle, isArabic && { textAlign: 'right' }]}
                 >
                   {activeTask
@@ -636,70 +607,23 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                 {activeTask?.description && !showSubtasksInCard ? (
                   <Text
                     numberOfLines={1}
+                    ellipsizeMode="tail"
                     style={[styles.taskDesc, isArabic && { textAlign: 'right' }]}
                   >
                     {activeTask.description}
                   </Text>
                 ) : null}
-
-                {/* Priority and linked goal / project / space labels */}
-                <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
-                  {/* Priority label */}
-                  {activeTask?.priority && (
-                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                      <Text style={[styles.priorityTextOnly, { color: TASK_GOLD_ORANGE }]}>
-                        {getPriorityBadge(activeTask.priority).label}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Linked goal */}
-                  {goalName && (
-                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                      <Ionicons name="flag" size={10} color={TASK_GOLD_ORANGE} />
-                      <Text numberOfLines={1} style={styles.labelText}>
-                        {goalName}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Linked project */}
-                  {projectName && (
-                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                      <Ionicons name="folder-outline" size={10} color={TASK_GOLD_ORANGE} />
-                      <Text numberOfLines={1} style={styles.labelText}>
-                        {projectName}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Linked space / category */}
-                  {categoryName && (
-                    <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
-                      <Ionicons name="grid-outline" size={10} color={TASK_GOLD_ORANGE} />
-                      <Text numberOfLines={1} style={styles.labelText}>
-                        {categoryName}
-                      </Text>
-                    </View>
-                  )}
-                </View>
               </TouchableOpacity>
-            </Animated.View>
+            </View>
 
-            {/* Progress Indicator: Animated Hero Orb expanding and centering when active */}
-            <Animated.View style={orbAnimatedStyle}>
+            {/* Crystallized Ball Timer in natural corner position */}
+            <View style={{ justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
               <CrystalizedBall
                 size={54}
-                preset="ember"
-                color="#FF6B35"
+                preset="plasma"
+                color="#C084FC"
                 isRunning={activeTask?.status === 'in_progress'}
-                isCountDown={isCountDown}
-                timerDirection={activeTask?.timerDirection === 'up' ? 'up' : 'down'}
-                progress={
-                  !isCountUp && activeTaskProgress !== null
-                    ? activeTaskProgress / 100
-                    : undefined
-                }
+                isCompleted={isTaskDone}
                 timerLabel={
                   activeTask
                     ? hasTimer
@@ -714,6 +638,10 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                     onAddTask?.();
                     return;
                   }
+                  if (isTaskDone) {
+                    onOpenDetail(activeTask._id);
+                    return;
+                  }
                   if (activeTask.status === 'in_progress') {
                     handlePauseTaskAction(activeTask);
                   } else {
@@ -721,8 +649,102 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                   }
                 }}
               />
-            </Animated.View>
+            </View>
           </View>
+
+          {/* Priority and linked goal / project / space labels (full card width, cleanly wrapped) */}
+          {(activeTask?.priority || goalName || projectName || subCategoryName || categoryName) && (
+            <View style={[styles.labelsRow, isArabic && styles.rowRtl]}>
+              {/* Priority label */}
+              {activeTask?.priority && (
+                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[styles.priorityTextOnly, { color: TASK_TEXT_COLOR }]}
+                  >
+                    {getPriorityBadge(activeTask.priority).label}
+                  </Text>
+                </View>
+              )}
+
+              {/* Linked goal */}
+              {goalName && (
+                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                  <Ionicons
+                    name="flag"
+                    size={10}
+                    color={TASK_TEXT_COLOR}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={styles.labelText}
+                  >
+                    {goalName}
+                  </Text>
+                </View>
+              )}
+
+              {/* Linked project */}
+              {projectName && (
+                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                  <Ionicons
+                    name="folder-outline"
+                    size={10}
+                    color={TASK_TEXT_COLOR}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={styles.labelText}
+                  >
+                    {projectName}
+                  </Text>
+                </View>
+              )}
+
+              {/* Linked sub-category */}
+              {subCategoryName && subCategoryName !== projectName && (
+                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                  <Ionicons
+                    name="layers-outline"
+                    size={10}
+                    color={TASK_TEXT_COLOR}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={styles.labelText}
+                  >
+                    {subCategoryName}
+                  </Text>
+                </View>
+              )}
+
+              {/* Linked space / category */}
+              {categoryName && (
+                <View style={[styles.labelPill, isArabic && styles.rowRtl]}>
+                  <Ionicons
+                    name="grid-outline"
+                    size={10}
+                    color={TASK_TEXT_COLOR}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={styles.labelText}
+                  >
+                    {categoryName}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Subtasks Toggle Button (Shown if task has subtasks) */}
           {activeSubtasks && activeSubtasks.length > 0 && (
@@ -737,7 +759,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               style={[styles.subtasksToggleBtn, isArabic && styles.rowRtl]}
             >
               <View style={[styles.subtasksToggleLeft, isArabic && styles.rowRtl]}>
-                <Ionicons name="list-outline" size={13} color={TASK_GOLD_ORANGE} />
+                <Ionicons name="list-outline" size={13} color={TASK_TEXT_COLOR} />
                 <Text style={styles.subtasksToggleText}>
                   {isArabic ? 'المهام الفرعية' : 'Subtasks'}{' '}
                   (
@@ -748,7 +770,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               <Ionicons
                 name={showSubtasksInCard ? 'chevron-up' : 'chevron-down'}
                 size={13}
-                color={TASK_DARK_VIOLET}
+                color={TASK_TEXT_COLOR}
               />
             </TouchableOpacity>
           )}
@@ -777,7 +799,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
                     <Ionicons
                       name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
                       size={14}
-                      color={TASK_GOLD_ORANGE}
+                      color={TASK_TEXT_COLOR}
                     />
                     <Text
                       numberOfLines={1}
@@ -799,50 +821,81 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
         {/* Zone 3: Footer Actions Row — Pinned strictly at bottom edge with flexShrink: 0 */}
         <View style={[styles.footerRow, isArabic && styles.rowRtl]}>
           {activeTask ? (
-            <>
-              {/* Complete Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (!activeTask) return;
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  handleCompleteTaskAction(activeTask);
-                }}
-                style={styles.completeBtn}
-              >
-                <Ionicons name="checkmark" size={14} color={TASK_GOLD_ORANGE} />
-                <Text style={styles.completeBtnText}>
-                  {isArabic ? 'إكمال' : 'Complete'}
-                </Text>
-              </TouchableOpacity>
+            isTaskDone ? (
+              <>
+                <View style={[styles.doneBannerPill, isArabic && styles.rowRtl]}>
+                  <Ionicons name="checkmark-circle" size={14} color="#4ADE80" />
+                  <Text numberOfLines={1} style={styles.doneBannerText}>
+                    {isArabic ? 'تم إنجاز المهمة' : 'Task Finished'}
+                  </Text>
+                </View>
 
-              {/* Pause / Resume Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (!activeTask) return;
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  if (activeTask.status === 'in_progress') {
-                    handlePauseTaskAction(activeTask);
-                  } else {
-                    handleRunTaskAction(activeTask);
-                  }
-                }}
-                style={styles.pauseBtn}
-              >
-                <Text style={styles.pauseBtnText}>
-                  {activeTask.status === 'in_progress'
-                    ? isArabic
-                      ? 'إيقاف'
-                      : 'Pause'
-                    : isArabic
-                    ? 'تشغيل'
-                    : 'Resume'}
-                </Text>
-              </TouchableOpacity>
-            </>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (!activeTask) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleReopenTaskAction(activeTask);
+                  }}
+                  style={[styles.completeBtn, isArabic && styles.rowRtl]}
+                >
+                  <Ionicons name="refresh" size={13} color={TASK_TEXT_COLOR} />
+                  <Text style={styles.completeBtnText}>
+                    {isArabic ? 'إعادة فتح' : 'Reopen'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Complete Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (!activeTask) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    handleCompleteTaskAction(activeTask);
+                  }}
+                  style={[styles.completeBtn, isArabic && styles.rowRtl]}
+                >
+                  <Ionicons name="checkmark" size={14} color={TASK_TEXT_COLOR} />
+                  <Text style={styles.completeBtnText}>
+                    {isArabic ? 'إكمال' : 'Complete'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Pause / Resume Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (!activeTask) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (activeTask.status === 'in_progress') {
+                      handlePauseTaskAction(activeTask);
+                    } else {
+                      handleRunTaskAction(activeTask);
+                    }
+                  }}
+                  style={styles.pauseBtn}
+                >
+                  <Text style={styles.pauseBtnText}>
+                    {activeTask.status === 'in_progress'
+                      ? isArabic
+                        ? 'إيقاف'
+                        : 'Pause'
+                      : activeTask.status === 'paused'
+                      ? isArabic
+                        ? 'استئناف'
+                        : 'Resume'
+                      : isArabic
+                      ? 'بدء'
+                      : 'Start'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )
           ) : (
             <TouchableOpacity
               activeOpacity={0.85}
@@ -853,7 +906,7 @@ export const ActiveTaskCard: React.FC<ActiveTaskCardProps> = React.memo(({
               }}
               style={styles.addTaskBtn}
             >
-              <Ionicons name="add" size={16} color={TASK_GOLD_ORANGE} />
+              <Ionicons name="add" size={16} color={TASK_BG_COLOR} />
               <Text style={styles.addTaskBtnText}>
                 {isArabic ? 'إضافة مهمة' : 'Add a task'}
               </Text>
@@ -871,8 +924,8 @@ const styles = StyleSheet.create({
     height: '100%',
     flex: 1,
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.12)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(14, 14, 11, 0.18)',
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 14,
@@ -886,6 +939,9 @@ const styles = StyleSheet.create({
   },
   upperSection: {
     width: '100%',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
     justifyContent: 'flex-start',
   },
   rowRtl: {
@@ -895,32 +951,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 8,
     flexShrink: 0,
   },
   taskBadge: {
-    backgroundColor: 'rgba(91, 33, 182, 0.10)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    flexShrink: 1,
+    overflow: 'hidden',
+  },
+  taskBadgeDone: {
+    backgroundColor: TASK_TEXT_COLOR,
   },
   taskBadgeText: {
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
-    color: TASK_GOLD_ORANGE,
+    color: 'rgba(14, 14, 11, 0.85)',
     letterSpacing: 0.5,
+    flexShrink: 1,
+  },
+  taskBadgeTextDone: {
+    color: '#AFE607',
   },
   statusPill: {
-    backgroundColor: TASK_DARK_VIOLET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: TASK_TEXT_COLOR,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    overflow: 'hidden',
+  },
+  statusPillDone: {
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.45)',
   },
   statusPillText: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#FFB84D',
+    color: '#AFE607',
   },
   openDetailBtn: {
     width: 26,
@@ -934,25 +1011,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 4,
     gap: 8,
   },
   labelsRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 5,
-    marginTop: 4,
+    marginBottom: 4,
+    overflow: 'hidden',
   },
   labelPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(91, 33, 182, 0.10)',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
+    backgroundColor: 'rgba(14, 14, 11, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 10,
-    maxWidth: 130,
+    maxWidth: 155,
+    flexShrink: 1,
+    overflow: 'hidden',
   },
   labelPillStrong: {
     backgroundColor: 'rgba(255, 255, 255, 0.72)',
@@ -960,32 +1041,40 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: TASK_DARK_VIOLET,
+    color: TASK_TEXT_COLOR,
+    flexShrink: 1,
+    minWidth: 0,
   },
   priorityTextOnly: {
     fontSize: 9.5,
     fontWeight: '900',
+    flexShrink: 1,
+    minWidth: 0,
   },
   subtasksToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(91, 33, 182, 0.08)',
+    backgroundColor: 'rgba(14, 14, 11, 0.10)',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginBottom: 4,
     marginTop: 2,
+    flexShrink: 0,
   },
   subtasksToggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flex: 1,
+    minWidth: 0,
   },
   subtasksToggleText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: TASK_DARK_VIOLET,
+    color: TASK_TEXT_COLOR,
+    flexShrink: 1,
   },
   subtasksScroll: {
     maxHeight: 62,
@@ -993,7 +1082,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   subtasksList: {
-    backgroundColor: 'rgba(91, 33, 182, 0.07)',
+    backgroundColor: 'rgba(14, 14, 11, 0.08)',
     borderRadius: 12,
     padding: 5,
     gap: 3.5,
@@ -1002,16 +1091,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.50)',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    overflow: 'hidden',
   },
   subtaskItemText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: TASK_DARK_VIOLET,
+    color: TASK_TEXT_COLOR,
     flex: 1,
+    minWidth: 0,
   },
   subtaskItemTextDone: {
     textDecorationLine: 'line-through',
@@ -1020,14 +1111,14 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 15.5,
     fontWeight: '900',
-    color: TASK_DARK_VIOLET,
+    color: TASK_TEXT_COLOR,
     letterSpacing: -0.3,
     lineHeight: 20,
   },
   taskDesc: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(91, 33, 182, 0.80)',
+    color: 'rgba(14, 14, 11, 0.75)',
     marginTop: 2,
     lineHeight: 14,
   },
@@ -1037,7 +1128,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(91, 33, 182, 0.14)',
+    borderTopColor: 'rgba(14, 14, 11, 0.12)',
     paddingTop: 8,
     marginTop: 'auto',
     flexShrink: 0,
@@ -1046,7 +1137,7 @@ const styles = StyleSheet.create({
   completeBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1.4,
-    borderColor: TASK_DARK_VIOLET,
+    borderColor: TASK_TEXT_COLOR,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1057,10 +1148,10 @@ const styles = StyleSheet.create({
   completeBtnText: {
     fontSize: 12,
     fontWeight: '900',
-    color: TASK_DARK_VIOLET,
+    color: TASK_TEXT_COLOR,
   },
   pauseBtn: {
-    backgroundColor: TASK_DARK_VIOLET,
+    backgroundColor: TASK_TEXT_COLOR,
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 20,
@@ -1068,10 +1159,27 @@ const styles = StyleSheet.create({
   pauseBtnText: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: TASK_BG_COLOR,
+  },
+  doneBannerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: TASK_TEXT_COLOR,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    flexShrink: 1,
+    overflow: 'hidden',
+  },
+  doneBannerText: {
+    fontSize: 11.5,
+    fontWeight: '900',
+    color: '#AFE607',
+    flexShrink: 1,
   },
   addTaskBtn: {
-    backgroundColor: TASK_DARK_VIOLET,
+    backgroundColor: TASK_TEXT_COLOR,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1084,7 +1192,7 @@ const styles = StyleSheet.create({
   addTaskBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: TASK_BG_COLOR,
   },
 });
 

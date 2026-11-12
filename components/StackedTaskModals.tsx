@@ -222,10 +222,11 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           selectTask?.(t._id);
                         }}
-                        style={{ flex: 1, marginHorizontal: 8 }}
+                        style={{ flex: 1, minWidth: 0, marginHorizontal: 8, overflow: 'hidden' }}
                       >
                         <Text
                           numberOfLines={2}
+                          ellipsizeMode="tail"
                           style={[
                             styles.taskTitle,
                             isTaskDone && styles.taskDoneText,
@@ -262,8 +263,17 @@ export const StackedTaskModals: React.FC<StackedTaskModalsProps> = ({
                           </View>
                           {t.goalId && goalNames[t.goalId] && (
                             <View style={styles.metaChip}>
-                              <Ionicons name="flag-outline" size={10} color="#ffb09c" />
-                              <Text numberOfLines={1} style={styles.metaChipText}>
+                              <Ionicons
+                                name="flag-outline"
+                                size={10}
+                                color="#ffb09c"
+                                style={{ flexShrink: 0 }}
+                              />
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={styles.metaChipText}
+                              >
                                 {goalNames[t.goalId]}
                               </Text>
                             </View>
@@ -471,8 +481,10 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 3,
+    width: '100%',
   },
   selectedPill: {
     paddingHorizontal: 6,
@@ -506,12 +518,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 1.5,
-    maxWidth: 130,
+    maxWidth: 140,
+    flexShrink: 1,
+    overflow: 'hidden',
   },
   metaChipText: {
     fontSize: 9.5,
     fontWeight: '700',
     color: '#ffb09c',
+    flexShrink: 1,
+    minWidth: 0,
   },
   actionsRow: {
     flexDirection: 'row',

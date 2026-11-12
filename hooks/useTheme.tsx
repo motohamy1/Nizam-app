@@ -97,11 +97,11 @@ export interface ColorScheme {
 }
 
 /**
- * Accent sampled from the home page upper widget's purple shimmer gradient.
+ * Accent sampled from the home page upper widget's purple background (#8b53fe).
  * Used for active tabs, CTAs, confirmations and primary actions so the whole
- * UI shares the widget's purple instead of the old lime chartreuse.
+ * UI shares the widget's purple tone seamlessly.
  */
-export const UPPER_WIDGET_ACCENT = '#8E2CAC';
+export const UPPER_WIDGET_ACCENT = '#8b53fe';
 
 const darkColors: ColorScheme = {
   bg: "#060805",              // Deep dark forest obsidian matching reference base
@@ -188,11 +188,7 @@ const darkColors: ColorScheme = {
 
 // ─── LIGHT MODE — "Warm Ivory" visual system ───────────────────────────────
 // A warm ivory environment (#F3EBDD) brought alive by ambient light layers
-// (soft peach + pale sage) rendered in ScreenBackground. Orange is the PRIMARY
-// brand color, teal the SECONDARY; yellow/purple/blue/coral/soft-green are
-// semantic supporting states. Neutrals stay warm so surfaces harmonize with
-// the ivory base. DARK MODE has its own independent register above — none of
-// these values are shared with it.
+// (soft peach + pale sage) rendered in ScreenBackground.
 const lightColors: ColorScheme = {
   bg: "#F3EBDD",              // very light warm ivory base (ambient layers live in ScreenBackground)
   surface: "#FFFFFF",         // clean warm-white card surface

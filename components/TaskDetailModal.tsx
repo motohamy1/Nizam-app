@@ -175,6 +175,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
     }
   }, [todo?.status]);
 
+  // Keep hours/minutes in sync with timerDuration when not actively editing
+  useEffect(() => {
+    if (!isEditingTimer && todo?.timerDuration !== undefined) {
+      setHours(String(Math.floor(todo.timerDuration / 3600000)));
+      setMinutes(String(Math.floor((todo.timerDuration % 3600000) / 60000)));
+    } else if (!isEditingTimer && !todo?.timerDuration && todo?.timerDirection !== 'up') {
+      setHours("0");
+      setMinutes("0");
+    }
+  }, [todo?.timerDuration, todo?.timerDirection, isEditingTimer]);
+
   // Reset to blank draft when modal opens with no todoId
   useEffect(() => {
     if (visible && !todoId) {
@@ -233,9 +244,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
     if (isClosingRef.current) return;
     isClosingRef.current = true;
 
-    if (todoId) {
+    if (currentTodoId) {
       saveText();
       saveDescription();
+      saveTimerIfPending();
     } else if (editText.trim() && userId) {
       // Create new task from draft
       const h = parseInt(hours) || 0;
@@ -303,6 +315,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
   };
 
   const handleBack = () => {
+    if (currentTodoId) {
+      saveText();
+      saveDescription();
+      saveTimerIfPending();
+    }
     if (taskStack.length > 0) {
       const newStack = [...taskStack];
       newStack.pop();
@@ -391,6 +408,25 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
   const openSubtaskDetail = (id: Id<"todos">) => {
     setTaskStack(prev => [...prev, id]);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  };
+
+  const saveTimerIfPending = () => {
+    if (!currentTodoId || !isEditingTimer) return;
+    const h = parseInt(hours) || 0;
+    const m = parseInt(minutes) || 0;
+    const ms = (h * 3600 + m * 60) * 1000;
+    if (ms === 0) {
+      if (todo?.timerDuration) {
+        removeTimer({ id: currentTodoId }).catch(() => {});
+        setTimerDirection('down');
+      }
+    } else if (ms !== todo?.timerDuration) {
+      const subsTotal = (subtasks || []).reduce((sum: number, s: any) => sum + (s.timerDuration || 0), 0);
+      if (subsTotal <= ms) {
+        setTimer({ id: currentTodoId, duration: ms, timerDirection: 'down' }).catch(() => {});
+      }
+    }
+    setIsEditingTimer(false);
   };
 
   const saveText = () => {
@@ -590,19 +626,28 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
     const m = parseInt(minutes) || 0;
     const ms = (h * 3600 + m * 60) * 1000;
     if (currentTodoId) {
-      const subsTotal = (subtasks || []).reduce((sum: number, s: any) => sum + (s.timerDuration || 0), 0);
-      if (ms > 0 && subsTotal > ms) {
-        Alert.alert(
-          t.parentShrinkTitle || 'Subtasks need more time',
-          `${t.budget || 'Budget'}: ${fmtAvail(subsTotal)}`,
-          [
-            { text: t.adjustTimer || 'Adjust', style: 'cancel' },
-            { text: t.setToFit || 'Set to subtasks total', onPress: () => setTimer({ id: currentTodoId, duration: subsTotal, timerDirection: 'down' }).catch(() => {}) },
-          ]
-        );
-        return;
+      if (ms === 0) {
+        removeTimer({ id: currentTodoId }).catch(() => {});
+        setTimerDirection('down');
+      } else {
+        const subsTotal = (subtasks || []).reduce((sum: number, s: any) => sum + (s.timerDuration || 0), 0);
+        if (subsTotal > ms) {
+          Alert.alert(
+            t.parentShrinkTitle || 'Subtasks need more time',
+            `${t.budget || 'Budget'}: ${fmtAvail(subsTotal)}`,
+            [
+              { text: t.adjustTimer || 'Adjust', style: 'cancel' },
+              { text: t.setToFit || 'Set to subtasks total', onPress: () => {
+                setTimer({ id: currentTodoId, duration: subsTotal, timerDirection: 'down' }).catch(() => {});
+                setHours(String(Math.floor(subsTotal / 3600000)));
+                setMinutes(String(Math.floor((subsTotal % 3600000) / 60000)));
+              }},
+            ]
+          );
+          return;
+        }
+        setTimer({ id: currentTodoId, duration: ms, timerDirection: 'down' }).catch(() => {});
       }
-      setTimer({ id: currentTodoId, duration: ms, timerDirection: 'down' }).catch(() => {});
     }
     setIsEditingTimer(false);
   };
@@ -622,7 +667,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
         setDueDate(time);
         if (currentTodoId) {
           setTimer({ id: currentTodoId, dueDate: time });
-          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en', String(currentTodoId));
+          // deadline handled centrally by useDeadlineReminders
         }
       } else if (datePickerMode === 'time') {
         const baseDate = dueDate ? new Date(dueDate) : new Date();
@@ -631,7 +676,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
         setDueDate(time);
         if (currentTodoId) {
           setTimer({ id: currentTodoId, dueDate: time });
-          scheduleReminderNotification(editText || todo?.text || "", time, isArabic ? 'ar' : 'en', String(currentTodoId));
+          // deadline handled centrally by useDeadlineReminders
         }
       }
     }
@@ -802,10 +847,52 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
 
                     <TouchableOpacity onPress={() => {
                       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      const curDur = todo?.timerDuration || 0;
+                      setHours(Math.floor(curDur / 3600000).toString());
+                      setMinutes(Math.floor((curDur % 3600000) / 60000).toString());
                       setIsEditingTimer(false);
                     }}>
                       <Text style={{ fontSize: 13, color: colors.danger, fontWeight: '700' }}>{t.cancel}</Text>
                     </TouchableOpacity>
+                  </View>
+
+                  {/* Preset Buttons */}
+                  <View style={styles.timerPresets}>
+                    {[15, 25, 45, 60].map((mins) => {
+                      const isSelected = parseInt(hours || '0', 10) === Math.floor(mins / 60) && parseInt(minutes || '0', 10) === (mins % 60);
+                      return (
+                        <TouchableOpacity
+                          key={mins}
+                          style={[
+                            styles.timerPreset,
+                            {
+                              borderColor: isSelected ? projectColor : colors.border,
+                              backgroundColor: isSelected ? projectColor + '20' : 'transparent',
+                            }
+                          ]}
+                          onPress={() => {
+                            const h = Math.floor(mins / 60).toString();
+                            const m = (mins % 60).toString();
+                            setHours(h);
+                            setMinutes(m);
+                            const ms = mins * 60 * 1000;
+                            if (currentTodoId) {
+                              setTimer({ id: currentTodoId, duration: ms, timerDirection: 'down' }).catch(() => {});
+                            }
+                            setIsEditingTimer(false);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.timerPresetText,
+                              { color: isSelected ? projectColor : colors.text }
+                            ]}
+                          >
+                            {mins}m
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
                   {/* Custom Timer Input Row */}
@@ -816,6 +903,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                         keyboardType="numeric"
                         value={hours}
                         onChangeText={setHours}
+                        onBlur={handleSaveCustomTimer}
                         maxLength={2}
                         selectTextOnFocus
                       />
@@ -828,6 +916,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ visible, onClose, tod
                         keyboardType="numeric"
                         value={minutes}
                         onChangeText={setMinutes}
+                        onBlur={handleSaveCustomTimer}
                         maxLength={2}
                         selectTextOnFocus
                       />

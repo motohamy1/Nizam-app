@@ -1,3 +1,4 @@
+import { getAppFont } from '@/utils/globalFont';
 import { ColorScheme } from "@/hooks/useTheme";
 import { Platform, StyleSheet } from "react-native";
 
@@ -11,11 +12,11 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: colors.bg,
     },
     safeArea: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: "row",
@@ -31,12 +32,14 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       gap: 4,
     },
     headerDate: {
+      fontFamily: getAppFont('semiBold', isArabic),
       fontSize: 13,
       fontWeight: '600',
       color: colors.textMuted,
       letterSpacing: 0.3,
     },
     headerGreeting: {
+      fontFamily: getAppFont('bold', isArabic),
       fontSize: 32,
       fontWeight: "700",
       color: colors.text,
@@ -73,6 +76,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       marginBottom: 20,
     },
     todaysPlanTitle: {
+      fontFamily: getAppFont('bold', isArabic),
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
@@ -80,6 +84,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       letterSpacing: -0.3,
     },
     todaysPlanSubtitle: {
+      fontFamily: getAppFont('semiBold', isArabic),
       fontSize: 13,
       color: colors.textMuted,
       fontWeight: '600',
@@ -102,6 +107,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       gap: 6,
     },
     dateBarMonth: {
+      fontFamily: getAppFont('extraBold', isArabic),
       fontSize: 17,
       fontWeight: '800',
       color: colors.text,
@@ -124,6 +130,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       borderColor: colors.border,
     },
     dateBarResetText: {
+      fontFamily: getAppFont('bold', isArabic),
       fontSize: 12,
       fontWeight: '700',
       color: accentFill,
@@ -140,6 +147,7 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       borderColor: accentTintBorder,
     },
     dateBarPlannerBtnText: {
+      fontFamily: getAppFont('bold', isArabic),
       fontSize: 12,
       fontWeight: '700',
       color: accentFill,
@@ -170,20 +178,24 @@ export const createHomeStyles = (colors: ColorScheme, isArabic: boolean = false)
       elevation: 6,
     },
     dateBarWeekday: {
+      fontFamily: getAppFont('medium', isArabic),
       fontSize: 12,
       fontWeight: '500',
       color: colors.textMuted,
     },
     dateBarWeekdayActive: {
+      fontFamily: getAppFont('extraBold', isArabic),
       color: '#141311',
       fontWeight: '800',
     },
     dateBarDayNum: {
+      fontFamily: getAppFont('bold', isArabic),
       fontSize: 16,
       fontWeight: '700',
       color: colors.text,
     },
     dateBarDayNumActive: {
+      fontFamily: getAppFont('extraBold', isArabic),
       color: '#141311',
       fontWeight: '900',
     },

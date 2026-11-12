@@ -13,6 +13,7 @@ import { View,
   Alert,
   useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import { AIChatMessage } from '@/types/voiceNote';
@@ -351,6 +352,29 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
     Alert.alert(t.actionSuccess || 'Copied', isArabic ? 'تم نسخ الرد بنجاح.' : 'Response copied to clipboard.');
   };
 
+  const QUICK_PROMPTS = isArabic
+    ? [
+        { label: '📝 تلخيص الملاحظة', prompt: 'يرجى تقديم ملخص تنفيذي مركز لأهم الأفكار في هذه الملاحظة والتسجيل الصوتي.' },
+        { label: '📋 استخراج المهام', prompt: 'استخرج جميع المهام وخطوات العمل القابلة للتنفيذ من هذه الملاحظة مع تحديد أولوياتها.' },
+        { label: '💡 أبرز القرارات', prompt: 'ما هي أهم القرارات والأفكار المحورية الواردة في الملاحظة؟' },
+        { label: '✨ تدقيق وصياغة', prompt: 'أعد صياغة وتنسيق هذه الملاحظة بأسلوب احترافي منظم وخالٍ من الأخطاء.' },
+        { label: '🌐 ترجمة', prompt: 'ترجم محتوى هذه الملاحظة بدقة واحترافية.' },
+      ]
+    : [
+        { label: '📝 Summarize Note', prompt: 'Please provide an executive summary of the key takeaways from this note.' },
+        { label: '📋 Extract Tasks', prompt: 'Extract all actionable tasks and next steps from this note with suggested priorities.' },
+        { label: '💡 Key Decisions', prompt: 'What are the main decisions, conclusions, and insights in this note?' },
+        { label: '✨ Polish & Format', prompt: 'Refine and polish the phrasing and formatting of this note while preserving its full meaning.' },
+        { label: '🌐 Translate', prompt: 'Translate the contents of this note with professional clarity.' },
+      ];
+
+  const handleSelectPrompt = async (promptText: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (_) {}
+    await onSendMessage(promptText);
+  };
+
   if (!visible) return null;
 
   return (
@@ -362,19 +386,16 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
           style={[
             styles.sheetContainer,
             {
-              backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-              // Same proven pattern as TaskDetailModal: RN Modals rendered
-              // with statusBarTranslucent never get OS adjustResize on
-              // Android, so the keyboard would cover the input. Lift the
-              // sheet on BOTH platforms using the useKeyboard() height.
+              backgroundColor: isDark ? '#0B0812' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(0, 0, 0, 0.08)',
+              // Lift the sheet on BOTH platforms using useKeyboard() height
               marginBottom: keyboardHeight,
               height: isKeyboardVisible
                 ? Math.max(300, screenHeight - keyboardHeight - 44)
-                : '75%',
+                : '78%',
               maxHeight: isKeyboardVisible
                 ? Math.max(300, screenHeight - keyboardHeight - 44)
-                : '75%',
+                : '78%',
             },
           ]}
         >
@@ -385,19 +406,19 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
           <View style={[styles.header, isArabic && { flexDirection: 'row-reverse' }]}>
             <View style={styles.headerInfo}>
               <View style={[styles.headerBadge, isArabic && { flexDirection: 'row-reverse' }]}>
-                <Ionicons name="sparkles" size={14} color="#6366F1" />
+                <Ionicons name="sparkles" size={15} color={isDark ? '#AFE607' : '#6C38E9'} />
                 <Text style={[styles.aiTitle, { color: colors.text }]}>
-                  {t.aiAssistant}
+                  {t.aiAssistant || 'Note AI Assistant'}
                 </Text>
               </View>
               <Text
                 style={[styles.noteSubtitle, { color: colors.textMuted }, isArabic && { textAlign: 'right' }]}
                 numberOfLines={1}
               >
-                {noteTitle}
+                {noteTitle || (isArabic ? 'ملاحظة بدون عنوان' : 'Untitled Note')}
               </Text>
             </View>
-            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
               {chatHistory.length > 0 && onClearChat && (
                 <TouchableOpacity
                   style={styles.closeBtn}
@@ -412,7 +433,12 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                         {
                           text: isArabic ? 'مسح وبدء جديد' : 'Start Fresh',
                           style: 'destructive',
-                          onPress: onClearChat,
+                          onPress: () => {
+                            try {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            } catch (_) {}
+                            onClearChat();
+                          },
                         },
                       ]
                     );
@@ -436,14 +462,26 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
           >
             {chatHistory.length === 0 && !isLoading && (
               <View style={styles.emptyPrompt}>
-                <Ionicons name="chatbubbles-outline" size={36} color={colors.textMuted} />
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: isDark ? 'rgba(175, 230, 7, 0.12)' : 'rgba(108, 56, 233, 0.1)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginBottom: 4,
+                  }}
+                >
+                  <Ionicons name="sparkles" size={28} color={isDark ? '#AFE607' : '#6C38E9'} />
+                </View>
                 <Text style={[styles.emptyPromptTitle, { color: colors.text }]}>
-                  {isArabic ? 'اسأل المساعد الذكي' : 'Ask Note AI Anything'}
+                  {isArabic ? 'اسأل المساعد الذكي للملاحظة' : 'Ask Note AI Assistant'}
                 </Text>
                 <Text style={[styles.emptyPromptSub, { color: colors.textMuted }]}>
                   {isArabic
-                    ? 'يمكنك مناقشة الملاحظة، طلب شرح لأي نقطة، أو تلخيص واستخراج المهام.'
-                    : 'Discuss this note, ask for explanations, or extract actionable tasks.'}
+                    ? 'ناقش محتوى الملاحظة، استخرج مهام العمل، أو اطلب تلخيصاً وافياً للأفكار.'
+                    : 'Discuss your note, extract actionable tasks, or generate key insights.'}
                 </Text>
               </View>
             )}
@@ -467,20 +505,16 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                       styles.bubble,
                       isUser
                         ? {
-                            backgroundColor: colors.primary || '#6366F1',
-                            shadowColor: colors.primary || '#6366F1',
+                            backgroundColor: isDark ? '#5B1497' : colors.primary,
+                            shadowColor: isDark ? '#5B1497' : colors.primary,
                             shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.15,
+                            shadowOpacity: 0.25,
                             shadowRadius: 6,
-                            elevation: 2,
+                            elevation: 3,
                           }
                         : {
-                            backgroundColor: isDark
-                              ? 'rgba(30, 41, 59, 0.85)'
-                              : 'rgba(241, 245, 249, 0.95)',
-                            borderColor: isDark
-                              ? 'rgba(255, 255, 255, 0.08)'
-                              : 'rgba(0, 0, 0, 0.06)',
+                            backgroundColor: isDark ? '#181528' : 'rgba(241, 245, 249, 0.95)',
+                            borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(0, 0, 0, 0.06)',
                             borderWidth: 1,
                           },
                     ]}
@@ -490,7 +524,7 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                         style={[
                           styles.messageText,
                           {
-                            color: colors.primaryText || (isDark ? '#181326' : '#FFFFFF'),
+                            color: '#FFFFFF',
                             fontWeight: '600',
                           },
                           isArabic && { textAlign: 'right' },
@@ -518,6 +552,7 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                         <TouchableOpacity
                           style={styles.bubbleActionBtn}
                           onPress={() => handleCopy(messageText)}
+                          activeOpacity={0.7}
                         >
                           <Ionicons name="copy-outline" size={13} color={colors.textMuted} />
                           <Text style={[styles.bubbleActionText, { color: colors.textMuted }]}>
@@ -527,12 +562,26 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
 
                         {onInsertToNote && (
                           <TouchableOpacity
-                            style={styles.bubbleActionBtn}
-                            onPress={() => onInsertToNote(messageText)}
+                            style={[
+                              styles.bubbleActionBtn,
+                              {
+                                backgroundColor: isDark ? 'rgba(175, 230, 7, 0.12)' : 'rgba(108, 56, 233, 0.1)',
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 8,
+                              },
+                            ]}
+                            onPress={() => {
+                              try {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              } catch (_) {}
+                              onInsertToNote(messageText);
+                            }}
+                            activeOpacity={0.8}
                           >
-                            <Ionicons name="add-circle-outline" size={13} color="#6366F1" />
-                            <Text style={[styles.bubbleActionText, { color: '#6366F1' }]}>
-                              {t.insertToNote}
+                            <Ionicons name="add-circle-outline" size={13} color={isDark ? '#AFE607' : colors.primary} />
+                            <Text style={[styles.bubbleActionText, { color: isDark ? '#AFE607' : colors.primary, fontWeight: '700' }]}>
+                              {t.insertToNote || 'Insert into Note'}
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -549,9 +598,9 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                   style={[
                     styles.bubble,
                     {
-                      backgroundColor: isDark
-                        ? 'rgba(30, 41, 59, 0.85)'
-                        : 'rgba(241, 245, 249, 0.95)',
+                      backgroundColor: isDark ? '#181528' : 'rgba(241, 245, 249, 0.95)',
+                      borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(0, 0, 0, 0.06)',
+                      borderWidth: 1,
                       paddingVertical: 12,
                       flexDirection: 'row',
                       alignItems: 'center',
@@ -559,21 +608,57 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                     },
                   ]}
                 >
-                  <ActivityIndicator size="small" color="#6366F1" />
-                  <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '500' }}>
-                    {t.aiThinking}
+                  <ActivityIndicator size="small" color={isDark ? '#AFE607' : colors.primary} />
+                  <Text style={{ color: isDark ? '#AFE607' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>
+                    {t.aiThinking || 'Thinking & analyzing...'}
                   </Text>
                 </View>
               </View>
             )}
           </ScrollView>
 
+          {/* ─── Quick Suggestion Prompts Strip ─── */}
+          <View style={{ borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)', paddingTop: 8 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                gap: 8,
+                flexDirection: isArabic ? 'row-reverse' : 'row',
+              }}
+            >
+              {QUICK_PROMPTS.map((qp, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={{
+                    flexDirection: isArabic ? 'row-reverse' : 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 14,
+                    backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(108, 56, 233, 0.07)',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(108, 56, 233, 0.18)',
+                  }}
+                  onPress={() => handleSelectPrompt(qp.prompt)}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FFFFFF' : colors.primary }}>
+                    {qp.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
           {/* Bottom Input Area */}
           <View
             style={[
               styles.inputRow,
               {
-                borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                borderTopColor: 'transparent',
               },
               isArabic && { flexDirection: 'row-reverse' },
             ]}
@@ -583,11 +668,13 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
                 styles.textInput,
                 {
                   color: colors.text,
-                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.8)',
+                  backgroundColor: isDark ? '#181528' : 'rgba(241, 245, 249, 0.8)',
+                  borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(0, 0, 0, 0.08)',
+                  borderWidth: 1,
                 },
                 isArabic && { textAlign: 'right' },
               ]}
-              placeholder={t.askAboutNote}
+              placeholder={t.askAboutNote || 'Ask about this note...'}
               placeholderTextColor={colors.textMuted}
               value={inputMessage}
               onChangeText={setInputMessage}
@@ -599,16 +686,19 @@ export const NoteAIChatSheet: React.FC<NoteAIChatSheetProps> = ({
               style={[
                 styles.sendBtn,
                 {
-                  backgroundColor: inputMessage.trim() ? colors.primary || '#6366F1' : isDark ? '#334155' : '#E2E8F0',
+                  backgroundColor: inputMessage.trim()
+                    ? (isDark ? '#AFE607' : colors.primary)
+                    : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'),
                 },
               ]}
               onPress={handleSend}
               disabled={!inputMessage.trim() || isLoading}
+              activeOpacity={0.85}
             >
               <Ionicons
                 name="arrow-up"
                 size={18}
-                color={inputMessage.trim() ? (colors.primaryText || '#FFFFFF') : colors.textMuted}
+                color={inputMessage.trim() ? (isDark ? '#0B0812' : '#FFFFFF') : colors.textMuted}
               />
             </TouchableOpacity>
           </View>

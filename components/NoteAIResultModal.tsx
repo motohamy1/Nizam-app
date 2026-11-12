@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,9 @@ import {
   ActivityIndicator,
   Clipboard,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '@/hooks/useTheme';
-import { useTranslation } from '@/utils/i18n';
 import * as Haptics from 'expo-haptics';
 
 export interface ExtractedTaskItem {
@@ -75,22 +73,27 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
 }) => {
   const { colors, isDarkMode } = useTheme();
   const isDark = isDarkMode;
-  const { t } = useTranslation(isArabic ? 'ar' : 'en');
 
   // Selected tasks map for checklist extraction
-  const [selectedTaskIndices, setSelectedTaskIndices] = useState<Set<number>>(new Set());
+  const [prevTasks, setPrevTasks] = useState(resultData?.tasks);
+  const [selectedTaskIndices, setSelectedTaskIndices] = useState<Set<number>>(() =>
+    resultData?.tasks && resultData.tasks.length > 0
+      ? new Set(resultData.tasks.map((_, i) => i))
+      : new Set()
+  );
+
+  if (resultData?.tasks !== prevTasks) {
+    setPrevTasks(resultData?.tasks);
+    setSelectedTaskIndices(
+      resultData?.tasks && resultData.tasks.length > 0
+        ? new Set(resultData.tasks.map((_, i) => i))
+        : new Set()
+    );
+  }
+
   const [isAddingTasks, setIsAddingTasks] = useState(false);
   const addingTasksRef = useRef(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (resultData?.tasks && resultData.tasks.length > 0) {
-      // By default, select all tasks
-      setSelectedTaskIndices(new Set(resultData.tasks.map((_, i) => i)));
-    } else {
-      setSelectedTaskIndices(new Set());
-    }
-  }, [resultData]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -231,8 +234,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
           style={[
             styles.sheetContainer,
             {
-              backgroundColor: isDark ? '#11141E' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+              backgroundColor: isDark ? '#0B0812' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(0, 0, 0, 0.08)',
             },
           ]}
         >
@@ -246,16 +249,16 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: isSummary
-                      ? 'rgba(99, 102, 241, 0.15)'
-                      : 'rgba(16, 185, 129, 0.15)',
+                    backgroundColor: isDark
+                      ? 'rgba(175, 230, 7, 0.15)'
+                      : (isSummary ? 'rgba(108, 56, 233, 0.12)' : 'rgba(16, 185, 129, 0.15)'),
                   },
                 ]}
               >
                 <Ionicons
                   name={isSummary ? 'sparkles' : 'checkbox-outline'}
                   size={20}
-                  color={isSummary ? '#6366F1' : '#10B981'}
+                  color={isDark ? '#AFE607' : (isSummary ? '#6C38E9' : '#10B981')}
                 />
               </View>
               <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
@@ -465,15 +468,15 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                             {
                               backgroundColor: isSelected
                                 ? isDark
-                                  ? 'rgba(99, 102, 241, 0.12)'
-                                  : 'rgba(99, 102, 241, 0.08)'
+                                  ? 'rgba(175, 230, 7, 0.1)'
+                                  : 'rgba(108, 56, 233, 0.08)'
                                 : isDark
-                                ? 'rgba(30, 41, 59, 0.4)'
+                                ? '#181528'
                                 : 'rgba(241, 245, 249, 0.6)',
                               borderColor: isSelected
-                                ? colors.primary || '#6366F1'
+                                ? (isDark ? '#AFE607' : colors.primary)
                                 : isDark
-                                ? 'rgba(255, 255, 255, 0.06)'
+                                ? 'rgba(139, 92, 246, 0.2)'
                                 : 'rgba(0, 0, 0, 0.05)',
                             },
                             isArabic && { flexDirection: 'row-reverse' },
@@ -482,7 +485,7 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                           <Ionicons
                             name={isSelected ? 'checkbox' : 'square-outline'}
                             size={22}
-                            color={isSelected ? colors.primary || '#6366F1' : colors.textMuted}
+                            color={isSelected ? (isDark ? '#AFE607' : colors.primary) : colors.textMuted}
                           />
 
                           <View style={{ flex: 1, gap: 4 }}>
@@ -491,7 +494,7 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                                 styles.taskItemText,
                                 {
                                   color: colors.text,
-                                  textDecorationLine: isSelected ? 'none' : 'none',
+                                  textDecorationLine: 'none',
                                 },
                                 isArabic && { textAlign: 'right', writingDirection: 'rtl' },
                               ]}
@@ -531,8 +534,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
               style={[
                 styles.footer,
                 {
-                  borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-                  backgroundColor: isDark ? '#11141E' : '#FFFFFF',
+                  borderTopColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(0, 0, 0, 0.06)',
+                  backgroundColor: isDark ? '#0B0812' : '#FFFFFF',
                 },
               ]}
             >
@@ -542,7 +545,7 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                     <TouchableOpacity
                       style={[
                         styles.primaryBtn,
-                        { backgroundColor: colors.primary || '#6366F1', flex: 1 },
+                        { backgroundColor: isDark ? '#AFE607' : colors.primary, flex: 1 },
                       ]}
                       onPress={() => {
                         let fullText = cleanedSummary;
@@ -554,8 +557,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                         onClose();
                       }}
                     >
-                      <Ionicons name="document-text-outline" size={17} color={colors.primaryText} />
-                      <Text style={[styles.primaryBtnText, { color: colors.primaryText }]}>
+                      <Ionicons name="document-text-outline" size={17} color={isDark ? '#0B0812' : '#FFFFFF'} />
+                      <Text style={[styles.primaryBtnText, { color: isDark ? '#0B0812' : '#FFFFFF' }]}>
                         {isArabic ? 'إدراج في الملاحظة' : 'Insert into Note'}
                       </Text>
                     </TouchableOpacity>
@@ -566,8 +569,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                       style={[
                         styles.secondaryBtn,
                         {
-                          backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)',
-                          borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+                          backgroundColor: isDark ? 'rgba(139, 92, 246, 0.16)' : 'rgba(108, 56, 233, 0.08)',
+                          borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(108, 56, 233, 0.2)',
                         },
                       ]}
                       onPress={() => {
@@ -577,8 +580,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                         }, 300);
                       }}
                     >
-                      <Ionicons name="chatbubbles-outline" size={17} color="#6366F1" />
-                      <Text style={[styles.secondaryBtnText, { color: '#6366F1' }]}>
+                      <Ionicons name="chatbubbles-outline" size={17} color={isDark ? '#AFE607' : colors.primary} />
+                      <Text style={[styles.secondaryBtnText, { color: isDark ? '#AFE607' : colors.primary }]}>
                         {isArabic ? 'نقاش مع AI' : 'Ask AI'}
                       </Text>
                     </TouchableOpacity>
@@ -592,18 +595,20 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                     style={[
                       styles.primaryBtn,
                       {
-                        backgroundColor: selectedTaskIndices.size > 0 ? (colors.primary || '#6366F1') : isDark ? '#334155' : '#CBD5E1',
+                        backgroundColor: selectedTaskIndices.size > 0
+                          ? (isDark ? '#AFE607' : colors.primary)
+                          : isDark ? '#231F33' : '#CBD5E1',
                       },
                     ]}
                     disabled={selectedTaskIndices.size === 0 || isAddingTasks}
                     onPress={handleAddTasksConfirm}
                   >
                     {isAddingTasks ? (
-                      <ActivityIndicator size="small" color={colors.primaryText} />
+                      <ActivityIndicator size="small" color={isDark ? '#0B0812' : '#FFFFFF'} />
                     ) : (
                       <>
-                        <Ionicons name="add-circle" size={18} color={colors.primaryText} />
-                        <Text style={[styles.primaryBtnText, { color: colors.primaryText }]}>
+                        <Ionicons name="add-circle" size={18} color={isDark ? '#0B0812' : '#FFFFFF'} />
+                        <Text style={[styles.primaryBtnText, { color: isDark ? '#0B0812' : '#FFFFFF' }]}>
                           {isArabic
                             ? `إضافة ${selectedTaskIndices.size} مهمة إلى قائمة المهام`
                             : `Add ${selectedTaskIndices.size} Task(s) to Board`}
@@ -617,8 +622,8 @@ export const NoteAIResultModal: React.FC<NoteAIResultModalProps> = ({
                       style={[
                         styles.secondaryBtn,
                         {
-                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                          backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(0, 0, 0, 0.03)',
+                          borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(0, 0, 0, 0.08)',
                         },
                       ]}
                       onPress={() => {

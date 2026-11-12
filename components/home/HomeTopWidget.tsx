@@ -1,15 +1,15 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import React, { useCallback, useMemo, useRef } from "react";
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
-import { useAuth } from '@/hooks/useAuth';
-import { useOfflineQuery } from '@/hooks/useOfflineQuery';
-import { api } from '@/convex/_generated/api';
+import { useAuth } from "@/hooks/useAuth";
+import { useOfflineQuery } from "@/hooks/useOfflineQuery";
+import { api } from "@/convex/_generated/api";
+import { getAppFont } from "@/utils/globalFont";
 
 interface HomeTopWidgetProps {
   selectedDate?: number;
@@ -22,14 +22,20 @@ interface HomeTopWidgetProps {
   onActivePillLayout?: (layout: { x: number; y: number; width: number; height: number; cx: number }) => void;
 }
 
-export const LIME_ACCENT = '#d4ff32';
-export const LIME_TOP_GRADIENT = ['#cbf42e', '#d4ff32', '#daf848', '#c4ef28'] as const;
-export const COLOR_VIOLET = '#6D28D9'; // Vibrant, unmistakable Royal Violet
-export const COLOR_BLACK = COLOR_VIOLET; // Backward-compatible alias
-export const COLOR_GOLD_ORANGE = '#B85000';
-export const SAND_GOLD_ACCENT = '#f6d7a1';
-export const PURPLE_SHIMMER_ACCENT = '#641D7F';
-export const PURPLE_SHIMMER_GRADIENT = ['#3B0E4C', '#641D7F', '#8E2CAC', '#521466'] as const;
+export const BAR_WIDGET_COLOR = "#C084FC";
+export const BAR_WIDGET_GRADIENT = ["#C084FC", "#C084FC"] as const; // Backward-compatible alias (no gradient)
+export const LIME_ACCENT = BAR_WIDGET_COLOR; // Backward-compatible alias
+export const LIME_TOP_GRADIENT = BAR_WIDGET_GRADIENT; // Backward-compatible alias
+
+export const COLOR_DARK_PURPLE = "#18042B"; // Deep obsidian-violet for crisp contrast on #C084FC
+export const COLOR_VIOLET_ACCENT = "#5B1497"; // Rich royal violet accent
+export const COLOR_WARM_OFFWHITE = COLOR_DARK_PURPLE; // Backward-compatible alias
+export const COLOR_VIOLET = COLOR_DARK_PURPLE; // Backward-compatible alias
+export const COLOR_BLACK = COLOR_DARK_PURPLE; // Backward-compatible alias
+export const COLOR_GOLD_ORANGE = COLOR_VIOLET_ACCENT; // Backward-compatible alias
+export const SAND_GOLD_ACCENT = "#f6d7a1";
+export const PURPLE_SHIMMER_ACCENT = "#641D7F";
+export const PURPLE_SHIMMER_GRADIENT = ["#3B0E4C", "#641D7F", "#8E2CAC", "#521466"] as const;
 
 export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
   selectedDate,
@@ -44,18 +50,18 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { userId } = useAuth();
-  const isLocalGuest = typeof userId === 'string' && userId.startsWith('guest_');
+  const isLocalGuest = typeof userId === "string" && userId.startsWith("guest_");
   const userSettings = useOfflineQuery<any>(
-    'auth.getUserSettings',
+    "auth.getUserSettings",
     api.auth.getUserSettings,
-    userId && !isLocalGuest ? { userId } : 'skip'
+    userId && !isLocalGuest ? { userId } : "skip"
   );
 
   const widgetRef = useRef<any>(null);
 
   const handleProfilePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/(tabs)/settings');
+    router.push("/(tabs)/settings");
   }, [router]);
 
   const handleOpenPlanner = useCallback(() => {
@@ -63,21 +69,25 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onOpenDayPlanner(todayStart || selectedDate || Date.now());
     } else {
-      router.push('/(tabs)/planner');
+      router.push("/(tabs)/planner");
     }
   }, [onOpenDayPlanner, todayStart, selectedDate, router]);
 
   const todayFormatted = useMemo(() => {
     const ts = todayStart || selectedDate || Date.now();
     const d = new Date(ts);
-    return d.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
+    return d.toLocaleDateString(isArabic ? "ar-EG" : "en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
     });
   }, [todayStart, selectedDate, isArabic]);
 
-  const userName = userSettings?.name?.trim() || (isArabic ? 'المبدع' : 'Creator');
+  const userName = userSettings?.name?.trim() || (isArabic ? "المبدع" : "Creator");
+
+  const fontBold = getAppFont("bold", isArabic);
+  const fontMedium = getAppFont("medium", isArabic);
+  const fontBlack = getAppFont("black", isArabic);
 
   return (
     <View ref={widgetRef} style={styles.shadowWrapper}>
@@ -85,52 +95,49 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
         style={[
           styles.container,
           {
-            paddingTop: Math.max(insets.top + 4, Platform.OS === 'android' ? 18 : 8),
+            paddingTop: Math.max(insets.top + 5, Platform.OS === "android" ? 19 : 9),
           },
         ]}
       >
-        {/* 1. Base Rich Lime Gradient */}
-        <LinearGradient
-          colors={LIME_TOP_GRADIENT}
-          locations={[0, 0.35, 0.72, 1]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Background Base (Pure solid #C084FC, clean without granules or micro-shimmer) */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: BAR_WIDGET_COLOR },
+            ]}
+          />
 
-        {/* 2. Micro-Shimmer Texture Overlay */}
-        <Image
-          source={require('@/assets/images/purple-shimmer.jpg')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.20 }]}
-        />
+          {/* Subtle Frosted Rim along bottom */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                borderBottomWidth: 1,
+                borderBottomColor: "rgba(24, 4, 43, 0.12)",
+              },
+            ]}
+          />
+        </View>
 
-        {/* 3. Granules / Film Grain Texture Overlay */}
-        <Image
-          source={require('@/assets/images/grain.png')}
-          contentFit="cover"
-          style={[StyleSheet.absoluteFill, { opacity: 0.24 }]}
-        />
-
-        {/* 4. Soft Specular Sheen Overlay */}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.30)', 'rgba(255, 255, 255, 0.08)', 'transparent']}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.85, y: 0.85 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Content Container (Sleek, ~30% Reduced Height Footprint) */}
+        {/* Content Container (Height reduced by 15% for sleek footprint) */}
         <View style={styles.innerContent}>
           {/* Top Row: User Welcome Pill + Action Buttons (Planner Shortcut + Profile Avatar) */}
           <View style={[styles.topRow, isArabic && styles.rowRtl]}>
             <View style={[styles.welcomeBadge, isArabic && styles.rowRtl]}>
               <View style={styles.liveDot} />
-              <Text style={styles.welcomeBadgeText} numberOfLines={1}>
+              <Text
+                style={[styles.welcomeBadgeText, { fontFamily: fontBold }]}
+                numberOfLines={1}
+              >
                 {isArabic ? `أهلاً، ${userName}` : `HI, ${userName.toUpperCase()}`}
               </Text>
               <Text style={styles.badgeDivider}>•</Text>
-              <Text style={styles.badgeDateText}>{todayFormatted}</Text>
+              <Text
+                style={[styles.badgeDateText, { fontFamily: fontMedium }]}
+              >
+                {todayFormatted}
+              </Text>
             </View>
 
             <View style={[styles.topActions, isArabic && styles.rowRtl]}>
@@ -138,12 +145,12 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
                 activeOpacity={0.82}
                 onPress={handleOpenPlanner}
                 accessibilityRole="button"
-                accessibilityLabel={isArabic ? 'فتح المخطط اليومي' : 'Open Day Planner'}
-                style={styles.plannerBtn}
+                accessibilityLabel={isArabic ? "فتح المخطط اليومي" : "Open Day Planner"}
+                style={[styles.plannerBtn, isArabic && styles.rowRtl]}
               >
-                <Ionicons name="calendar-outline" size={14} color={COLOR_VIOLET} />
-                <Text style={styles.plannerBtnText}>
-                  {isArabic ? 'المخطط' : 'Planner'}
+                <Ionicons name="calendar-outline" size={14} color={COLOR_DARK_PURPLE} />
+                <Text style={[styles.plannerBtnText, { fontFamily: fontBold }]}>
+                  {isArabic ? "المخطط" : "Planner"}
                 </Text>
               </TouchableOpacity>
 
@@ -151,7 +158,7 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
                 activeOpacity={0.82}
                 onPress={handleProfilePress}
                 accessibilityRole="button"
-                accessibilityLabel={isArabic ? 'الملف الشخصي' : 'User Profile'}
+                accessibilityLabel={isArabic ? "الملف الشخصي" : "User Profile"}
                 style={styles.profileBtn}
               >
                 {userSettings?.profilePictureUrl ? (
@@ -161,61 +168,42 @@ export const HomeTopWidget: React.FC<HomeTopWidgetProps> = ({
                     contentFit="cover"
                   />
                 ) : (
-                  <Ionicons name="person" size={15} color={COLOR_VIOLET} />
+                  <Ionicons name="person" size={16} color={COLOR_DARK_PURPLE} />
                 )}
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Hero Bold Text Section with Two Contrasted Colors: Violet & Orange tend to Gold */}
+          {/* Hero Bold Text Section */}
           <View style={styles.heroSection}>
-            <Text style={[styles.headline, isArabic && styles.textRtl]}>
-              <Text style={styles.textViolet}>
-                {isArabic ? 'خطّط بوضوح، ' : 'PLAN WITH CLARITY. '}
+            <Text style={[styles.headline, { fontFamily: fontBlack }, isArabic && styles.textRtl]}>
+              <Text style={styles.textDark}>
+                {isArabic ? "خطّط بوضوح، " : "PLAN WITH CLARITY. "}
               </Text>
-              <Text style={styles.textGoldOrange}>
-                {isArabic ? 'وأنجز بأثر حقيقي.' : 'OWN YOUR MOMENTUM.'}
+              <Text style={styles.textAccent}>
+                {isArabic ? "وأنجز بأثر حقيقي." : "OWN YOUR MOMENTUM."}
               </Text>
-            </Text>
-
-            <Text style={[styles.paragraph, isArabic && styles.textRtl]}>
-              {isArabic ? (
-                <>
-                  <Text style={styles.textViolet}>مساحتك اليومية </Text>
-                  <Text style={styles.textGoldOrange}>للتركيز العميق </Text>
-                  <Text style={styles.textViolet}>وتنظيم المهام؛ حوّل أهدافك إلى </Text>
-                  <Text style={styles.textGoldOrange}>إنجازات ملموسة </Text>
-                  <Text style={styles.textViolet}>واصنع يومك بكل ثقة.</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.textViolet}>Your daily space to </Text>
-                  <Text style={styles.textGoldOrange}>plan with intention </Text>
-                  <Text style={styles.textViolet}>and execute with deep focus. Turn bold ambitions into </Text>
-                  <Text style={styles.textGoldOrange}>effortless daily momentum.</Text>
-                </>
-              )}
             </Text>
           </View>
 
-          {/* Productivity Pillars Pill Row */}
+          {/* Productivity Pillars Pill Row with Sleek Proportions */}
           <View style={[styles.pillarsRow, isArabic && styles.rowRtl]}>
             <View style={styles.pillarTag}>
-              <Ionicons name="flash" size={10} color={COLOR_GOLD_ORANGE} />
-              <Text style={styles.pillarText}>
-                {isArabic ? 'تركيز فائق' : 'Deep Focus'}
+              <Ionicons name="flash" size={11} color={COLOR_VIOLET_ACCENT} />
+              <Text style={[styles.pillarText, { fontFamily: fontBold }]}>
+                {isArabic ? "تركيز فائق" : "Deep Focus"}
               </Text>
             </View>
             <View style={styles.pillarTag}>
-              <Ionicons name="layers-outline" size={10} color={COLOR_VIOLET} />
-              <Text style={styles.pillarText}>
-                {isArabic ? 'تنظيم ذكي' : 'Smart Planning'}
+              <Ionicons name="layers-outline" size={11} color={COLOR_DARK_PURPLE} />
+              <Text style={[styles.pillarText, { fontFamily: fontBold }]}>
+                {isArabic ? "تنظيم ذكي" : "Smart Planning"}
               </Text>
             </View>
             <View style={styles.pillarTag}>
-              <Ionicons name="checkmark-done" size={10} color={COLOR_GOLD_ORANGE} />
-              <Text style={styles.pillarText}>
-                {isArabic ? 'إنجاز يومي' : 'Daily Flow'}
+              <Ionicons name="checkmark-done" size={11} color={COLOR_VIOLET_ACCENT} />
+              <Text style={[styles.pillarText, { fontFamily: fontBold }]}>
+                {isArabic ? "إنجاز يومي" : "Daily Flow"}
               </Text>
             </View>
           </View>
@@ -229,159 +217,143 @@ const styles = StyleSheet.create({
   shadowWrapper: {
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    shadowColor: COLOR_VIOLET,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 6,
-    backgroundColor: 'transparent',
+    shadowColor: "#3B0E4C",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+    backgroundColor: "transparent",
   },
   container: {
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    paddingBottom: 13,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: LIME_ACCENT,
+    paddingBottom: 15,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: BAR_WIDGET_COLOR,
   },
   innerContent: {
     paddingHorizontal: 18,
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 9,
   },
   rowRtl: {
-    flexDirection: 'row-reverse',
+    flexDirection: "row-reverse",
   },
   welcomeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(24, 4, 43, 0.08)",
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+    borderRadius: 18,
     gap: 6,
-    backgroundColor: 'rgba(109, 40, 217, 0.08)',
-    paddingHorizontal: 9,
-    paddingVertical: 4.5,
-    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(109, 40, 217, 0.16)',
-    maxWidth: '68%',
+    borderColor: "rgba(24, 4, 43, 0.14)",
+    maxWidth: "62%",
   },
   liveDot: {
     width: 5.5,
     height: 5.5,
     borderRadius: 3,
-    backgroundColor: COLOR_GOLD_ORANGE,
+    backgroundColor: COLOR_VIOLET_ACCENT,
   },
   welcomeBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '900',
-    color: COLOR_VIOLET,
-    letterSpacing: 0.3,
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: COLOR_DARK_PURPLE,
+    letterSpacing: 0.2,
   },
   badgeDivider: {
+    color: "rgba(24, 4, 43, 0.35)",
     fontSize: 9.5,
-    color: 'rgba(109, 40, 217, 0.45)',
-    fontWeight: '900',
   },
   badgeDateText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(109, 40, 217, 0.85)',
+    fontSize: 11,
+    fontWeight: "500",
+    color: "rgba(24, 4, 43, 0.72)",
   },
   topActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 7,
   },
   plannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(109, 40, 217, 0.08)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(24, 4, 43, 0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 16,
+    gap: 5,
     borderWidth: 1,
-    borderColor: 'rgba(109, 40, 217, 0.16)',
+    borderColor: "rgba(24, 4, 43, 0.14)",
   },
   plannerBtnText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: COLOR_VIOLET,
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: COLOR_DARK_PURPLE,
   },
   profileBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(109, 40, 217, 0.08)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(109, 40, 217, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: COLOR_VIOLET,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 3,
-    elevation: 2,
+    width: 31,
+    height: 31,
+    borderRadius: 15.5,
+    backgroundColor: "rgba(24, 4, 43, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(24, 4, 43, 0.14)",
+    overflow: "hidden",
   },
   profileAvatar: {
-    width: 29,
-    height: 29,
-    borderRadius: 14.5,
+    width: "100%",
+    height: "100%",
   },
   heroSection: {
-    marginTop: 2,
-    marginBottom: 8,
+    marginTop: 4,
+    marginBottom: 9,
   },
   headline: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-    marginBottom: 4,
-  },
-  paragraph: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  textViolet: {
-    color: COLOR_VIOLET,
-  },
-  textBlack: {
-    color: COLOR_VIOLET,
-  },
-  textGoldOrange: {
-    color: COLOR_GOLD_ORANGE,
+    fontSize: 23,
+    lineHeight: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
   },
   textRtl: {
-    textAlign: 'right',
+    textAlign: "right",
+  },
+  textDark: {
+    color: COLOR_DARK_PURPLE,
+  },
+  textAccent: {
+    color: "#4A044E",
   },
   pillarsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    flexWrap: "wrap",
   },
   pillarTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4.5,
-    backgroundColor: 'rgba(109, 40, 217, 0.08)',
-    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(24, 4, 43, 0.08)",
+    paddingHorizontal: 9,
     paddingVertical: 3.5,
-    borderRadius: 10,
+    borderRadius: 12,
+    gap: 4.5,
     borderWidth: 1,
-    borderColor: 'rgba(109, 40, 217, 0.14)',
+    borderColor: "rgba(24, 4, 43, 0.14)",
   },
   pillarText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: COLOR_VIOLET,
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: COLOR_DARK_PURPLE,
+    letterSpacing: 0.1,
   },
 });
 

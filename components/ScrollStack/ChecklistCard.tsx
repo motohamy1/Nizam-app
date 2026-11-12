@@ -84,21 +84,21 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
       {/* 1. Header Row */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          {/* Rounded square checkmark badge in violet/purple */}
+          {/* Rounded square checkmark badge in violet & lime */}
           <View
             style={{
               width: 36,
               height: 36,
               borderRadius: 13,
-              backgroundColor: frame.badgeBg,
+              backgroundColor: 'rgba(175, 230, 7, 0.16)',
               borderWidth: 1,
-              borderColor: frame.rowBorder,
+              borderColor: 'rgba(175, 230, 7, 0.35)',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}
           >
-            <Ionicons name="checkbox" size={19} color={frame.badgeFg} />
+            <Ionicons name="checkbox" size={19} color="#AFE607" />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text
@@ -185,18 +185,18 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
                   onPress={() => handleToggle(item)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 6,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 7,
                     borderWidth: 2,
-                    borderColor: item.status === 'done' ? frame.accent : 'rgba(109, 40, 217, 0.40)',
+                    borderColor: item.status === 'done' ? '#AFE607' : 'rgba(168, 85, 247, 0.40)',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: item.status === 'done' ? frame.accent : 'transparent',
+                    backgroundColor: item.status === 'done' ? '#9333EA' : 'transparent',
                   }}
                 >
                   {item.status === 'done' && (
-                    <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                    <Ionicons name="checkmark" size={15} color="#AFE607" />
                   )}
                 </TouchableOpacity>
 
@@ -347,13 +347,13 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* 3. Add Checklist Item Dashed Action Button in Violet/Purple */}
+      {/* 3. Add Checklist Item Dashed Action Button in Violet & Lime */}
       <TouchableOpacity
         style={{
           width: '100%',
           borderWidth: 1.6,
           borderStyle: 'dashed',
-          borderColor: 'rgba(109, 40, 217, 0.40)',
+          borderColor: 'rgba(168, 85, 247, 0.40)',
           borderRadius: 16,
           paddingVertical: 8,
           flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -361,7 +361,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           justifyContent: 'center',
           gap: 6,
           marginTop: 7,
-          backgroundColor: 'rgba(109, 40, 217, 0.10)',
+          backgroundColor: 'rgba(175, 230, 7, 0.10)',
         }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -369,8 +369,8 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
         }}
         activeOpacity={0.75}
       >
-        <Ionicons name="add" size={15} color={frame.badgeFg} />
-        <Text style={{ fontSize: 12.5, fontWeight: '800', color: frame.badgeFg }}>
+        <Ionicons name="add" size={15} color="#AFE607" />
+        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#C084FC' }}>
           {isArabic ? '+ إضافة عنصر للقائمة' : '+ Add checklist item'}
         </Text>
       </TouchableOpacity>
@@ -400,14 +400,14 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               width: 34,
               height: 34,
               borderRadius: 11,
-              backgroundColor: frame.badgeBg,
+              backgroundColor: 'rgba(175, 230, 7, 0.16)',
               borderWidth: 1,
-              borderColor: frame.rowBorder,
+              borderColor: 'rgba(175, 230, 7, 0.35)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="checkmark-done" size={18} color={frame.badgeFg} />
+            <Ionicons name="checkmark-done" size={18} color="#AFE607" />
           </View>
           <View style={isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }}>
             <Text
@@ -472,14 +472,14 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               width: 34,
               height: 34,
               borderRadius: 11,
-              backgroundColor: frame.badgeBg,
+              backgroundColor: 'rgba(168, 85, 247, 0.14)',
               borderWidth: 1,
-              borderColor: frame.rowBorder,
+              borderColor: 'rgba(168, 85, 247, 0.25)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="time-outline" size={18} color={frame.badgeFg} />
+            <Ionicons name="time-outline" size={18} color="#C084FC" />
           </View>
         </View>
       </View>

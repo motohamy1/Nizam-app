@@ -155,20 +155,29 @@ export function useAIGoalSession({
         pushHistory(draft);
         setDraft(normalizedDraft);
 
-        // Add assistant message with recommendations
+        const questionText = normalizedDraft.clarifyingQuestion?.question;
+        const introText =
+          normalizedDraft.aiResponseText ||
+          (isArabic
+            ? 'استوعبت هدفك وسأساعدك في صياغته خطوة بخطوة.'
+            : 'I understood your goal and will help you shape it step by step.');
+
+        const content = questionText ? `${introText}\n\n${questionText}` : introText;
+
+        // Add assistant message with question or summary
         const assistantMsg: AIGoalMessage = {
           id: `msg_a_${Date.now()}`,
           role: 'assistant',
-          content:
-            normalizedDraft.aiResponseText ||
-            (isArabic
-              ? 'صممت لك هذا الهدف. اختر طريقة العرض الأنسب لك لنبدأ:'
-              : 'I shaped this goal for you. Choose how you want it to look:'),
+          content,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
 
-        setSessionState('awaiting_template');
+        if (normalizedDraft.clarifyingQuestion) {
+          setSessionState('questioning');
+        } else {
+          setSessionState('reviewing');
+        }
       } catch (err: any) {
         console.warn('startGoal failed:', err);
         setErrorMessage(
@@ -661,6 +670,10 @@ export function useAIGoalSession({
     }
   }, [day, draft, isArabic, month, onPlanApplied, saveGoalsMutation, stagedGoals, userId, year]);
 
+  const finishQuestionsAndReview = useCallback(() => {
+    setSessionState('reviewing');
+  }, []);
+
   const reset = useCallback(() => {
     setSessionState('idle');
     setDraft(null);
@@ -679,6 +692,7 @@ export function useAIGoalSession({
     canUndo,
     undo,
     startGoal,
+    finishQuestionsAndReview,
     selectPresentation,
     updateGoalField,
     selectCategory,

@@ -13,22 +13,22 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-        {/* Google Fonts: Archivo Black */}
+        {/* Google Fonts: Plus Jakarta Sans & Cairo */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
 
         <style
           dangerouslySetInnerHTML={{
             __html: `
               * {
-                font-family: 'Archivo Black', sans-serif !important;
+                font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
               }
               html, body, #root, div, span, p, h1, h2, h3, h4, h5, h6, input, textarea, button, select {
-                font-family: 'Archivo Black', sans-serif !important;
+                font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
               }
               input::placeholder, textarea::placeholder {
-                font-family: 'Archivo Black', sans-serif !important;
+                font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
               }
             `,
           }}

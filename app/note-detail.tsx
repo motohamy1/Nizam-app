@@ -38,7 +38,6 @@ import NoteBodyEditor, {
 } from '@/components/NoteBodyEditor';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { AIChatMessage } from '@/types/voiceNote';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import {
@@ -92,6 +91,7 @@ export default function NoteDetailScreen() {
   const { t, isArabic } = useTranslation(language);
   const styles = useMemo(() => createNotesStyles(colors, isArabic, isDark), [colors, isArabic, isDark]);
   const insets = useSafeAreaInsets();
+  const noteBg = isDark ? '#0B0812' : colors.bg;
 
   // Note State
   const [title, setTitle] = useState('');
@@ -109,6 +109,8 @@ export default function NoteDetailScreen() {
   const scrollViewRef = useRef<ScrollViewInstance | null>(null);
   const activeLineYRef = useRef<{ y: number; h: number } | null>(null);
   const editorTopRef = useRef(0);
+  const scrollYRef = useRef(0);
+  const scrollViewHeightRef = useRef(0);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -167,9 +169,30 @@ export default function NoteDetailScreen() {
     if (y === null && activeLineYRef.current) y = activeLineYRef.current.y;
     if (y === null || y === undefined) return;
     const editorTop = editorTopRef.current;
-    const target = Math.max(0, editorTop + y - 120);
+    const caretAbsoluteY = editorTop + y;
+    const currentScroll = scrollYRef.current;
+    const visibleHeight = scrollViewHeightRef.current || 500;
+
+    const topMargin = 70;
+    const bottomMargin = 120;
+
+    // If caret is already visible within the comfortable middle band, do NOT scroll!
+    if (
+      caretAbsoluteY >= currentScroll + topMargin &&
+      caretAbsoluteY <= currentScroll + visibleHeight - bottomMargin
+    ) {
+      return;
+    }
+
+    let target = currentScroll;
+    if (caretAbsoluteY < currentScroll + topMargin) {
+      target = Math.max(0, caretAbsoluteY - topMargin);
+    } else if (caretAbsoluteY > currentScroll + visibleHeight - bottomMargin) {
+      target = caretAbsoluteY - visibleHeight + bottomMargin;
+    }
+
     requestAnimationFrame(() =>
-      scrollViewRef.current?.scrollTo({ y: target, animated: true })
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, target), animated: true })
     );
   }, []);
 
@@ -319,13 +342,7 @@ export default function NoteDetailScreen() {
         }
         if (isScheduleVisible) {
           const reminderDate = dueDate || Date.now();
-          if (reminderDate > Date.now()) {
-            await scheduleReminderNotification(
-              title.trim() || 'Untitled',
-              reminderDate,
-              language
-            );
-          }
+          // deadline/reminder handled centrally by useDeadlineReminders
         }
       } catch (err) {
         console.warn('Failed to save note', err);
@@ -429,13 +446,17 @@ export default function NoteDetailScreen() {
         languageHint: 'mixed',
       });
 
+      let transText = '';
       if (transcribeRes?.transcript) {
-        const transText = transcribeRes.transcript.trim();
+        transText = transcribeRes.transcript.trim();
         setCurrentTranscript(transText);
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (_) {}
       }
+
+      // Insert inline audio widget directly at the cursor location inside the note canvas
+      bodyEditorRef.current?.insertAudio?.(storageId, Math.round(result.duration), transText);
     } catch (err) {
       console.warn('Failed to upload/transcribe audio:', err);
       Alert.alert(t.audioUploadError || 'Audio Error', t.audioUploadErrorDesc || 'Failed to upload or transcribe audio.');
@@ -477,6 +498,17 @@ export default function NoteDetailScreen() {
     }
   };
 
+  // Helper to extract all voice transcripts from note metadata and inline audio blocks
+  const getNoteCombinedTranscript = () => {
+    const inlineTranscripts = Array.from(body.matchAll(/\{\{audio:[^|]+\|\d+\|([^}]*)\}\}/g))
+      .map((m) => m[1]?.trim())
+      .filter(Boolean);
+    const combined = [currentTranscript, existingNote?.transcript, ...inlineTranscripts]
+      .filter(Boolean)
+      .join('\n\n');
+    return combined;
+  };
+
   // AI Quick Actions
   const handleSummarizeNote = async () => {
     try {
@@ -488,11 +520,14 @@ export default function NoteDetailScreen() {
       setAIResultVisible(true);
       setIsAILoading(true);
 
+      const targetId = currentNoteId || id;
+      const combinedTranscript = getNoteCombinedTranscript();
+
       const res = await generateNoteSummaryAction({
-        noteId: id ? (id as any) : undefined,
+        noteId: targetId ? (targetId as any) : undefined,
         title: title.trim() || 'Untitled Note',
         content: body,
-        transcript: currentTranscript || existingNote?.transcript || '',
+        transcript: combinedTranscript,
         language: isArabic ? 'ar' : 'en',
       });
 
@@ -524,11 +559,14 @@ export default function NoteDetailScreen() {
       setAIResultVisible(true);
       setIsAILoading(true);
 
+      const targetId = currentNoteId || id;
+      const combinedTranscript = getNoteCombinedTranscript();
+
       const res = await extractActionItemsAction({
-        noteId: id ? (id as any) : undefined,
+        noteId: targetId ? (targetId as any) : undefined,
         title: title.trim() || 'Untitled Note',
         content: body,
-        transcript: currentTranscript || existingNote?.transcript || '',
+        transcript: combinedTranscript,
         language: isArabic ? 'ar' : 'en',
       });
 
@@ -552,23 +590,23 @@ export default function NoteDetailScreen() {
 
   const handleInsertSummaryToNote = (summaryContent: string) => {
     let cleaned = cleanClientText(summaryContent);
-    // Remove duplicate summary headers
     cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Executive Summary|Executive overview|الملخص التنفيذي|الملخص|Summary)\*?\*?:?\s*/gim, '').trim();
 
-    const header = isArabic ? '📝 **الملخص التنفيذي:**\n' : '📝 **Executive Summary:**\n';
-    const insertPos = cursorPosRef.current ?? body.length;
-    const before = body.slice(0, insertPos);
-    const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
-    const inserted = needsSpace + header + cleaned;
-    setBody(before + inserted + after);
+    const header = isArabic ? '\n\n📝 **الملخص التنفيذي:**\n' : '\n\n📝 **Executive Summary:**\n';
+    const inserted = header + cleaned + '\n';
+    if (bodyEditorRef.current?.insertAtCursor) {
+      bodyEditorRef.current.insertAtCursor(inserted);
+    } else {
+      setBody((prev) => (prev ? prev + '\n\n' + inserted : inserted));
+    }
     scrollToBottom();
   };
 
   const handleAddTasksToTodoList = async (selectedTasks: ExtractedTaskItem[]) => {
-    if (id) {
+    const targetId = currentNoteId || id;
+    if (targetId) {
       await convertActionItemsToTasks({
-        noteId: id as any,
+        noteId: targetId as any,
         tasks: selectedTasks,
       });
     } else if (userId) {
@@ -589,12 +627,12 @@ export default function NoteDetailScreen() {
   const handleInsertTasksAsChecklist = (tasks: ExtractedTaskItem[]) => {
     const header = isArabic ? '\n\n📋 **المهام المستخرجة:**\n' : '\n\n📋 **Extracted Tasks:**\n';
     const checklistText = tasks.map((t) => `- [ ] ${t.text}`).join('\n');
-    const insertPos = cursorPosRef.current ?? body.length;
-    const before = body.slice(0, insertPos);
-    const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n') && !before.endsWith(' ');
-    const inserted = (needsSpace ? '\n\n' : '') + header + checklistText;
-    setBody(before + inserted + after);
+    const inserted = header + checklistText + '\n';
+    if (bodyEditorRef.current?.insertAtCursor) {
+      bodyEditorRef.current.insertAtCursor(inserted);
+    } else {
+      setBody((prev) => (prev ? prev + '\n\n' + inserted : inserted));
+    }
     scrollToBottom();
   };
 
@@ -615,11 +653,14 @@ export default function NoteDetailScreen() {
       const updatedHistory = [...localChatHistory, userMsg];
       setLocalChatHistory(updatedHistory);
 
+      const targetId = currentNoteId || id;
+      const combinedTranscript = getNoteCombinedTranscript();
+
       const res = await chatWithNoteAction({
-        noteId: currentNoteId ? (currentNoteId as any) : (id ? (id as any) : undefined),
+        noteId: targetId ? (targetId as any) : undefined,
         title: title.trim() || 'Untitled Note',
         content: body,
-        transcript: currentTranscript || existingNote?.transcript || '',
+        transcript: combinedTranscript,
         message: userPrompt,
         chatHistory: updatedHistory,
         language: isArabic ? 'ar' : 'en',
@@ -650,11 +691,14 @@ export default function NoteDetailScreen() {
       const updatedHistory = [...localChatHistory, userMsg];
       setLocalChatHistory(updatedHistory);
 
+      const targetId = currentNoteId || id;
+      const combinedTranscript = getNoteCombinedTranscript();
+
       const res = await chatWithNoteAction({
-        noteId: currentNoteId ? (currentNoteId as any) : (id ? (id as any) : undefined),
+        noteId: targetId ? (targetId as any) : undefined,
         title: title.trim() || 'Untitled Note',
         content: body,
-        transcript: currentTranscript || existingNote?.transcript || '',
+        transcript: combinedTranscript,
         message: msg,
         chatHistory: updatedHistory,
         language: isArabic ? 'ar' : 'en',
@@ -679,12 +723,12 @@ export default function NoteDetailScreen() {
     cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Question|User Question|Prompt|User Prompt|السؤال|سؤالك|استفسارك|المطلوب)\*?\*?:?\s*(?:".*?"|'.*?'|[^\n]+)?\n+/gim, '');
     cleaned = cleaned.replace(/^(?:#{1,6}\s*)?\*?\*?(?:Answer|AI Response|Response|الإجابة|الرد|جواب)\*?\*?:?\s*/gim, '').trim();
 
-    const insertPos = cursorPosRef.current ?? body.length;
-    const before = body.slice(0, insertPos);
-    const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
-    const inserted = needsSpace + cleaned;
-    setBody(before + inserted + after);
+    const inserted = '\n' + cleaned + '\n';
+    if (bodyEditorRef.current?.insertAtCursor) {
+      bodyEditorRef.current.insertAtCursor(inserted);
+    } else {
+      setBody((prev) => (prev ? prev + '\n\n' + inserted : inserted));
+    }
     setAIChatVisible(false);
     scrollToBottom();
   };
@@ -692,13 +736,11 @@ export default function NoteDetailScreen() {
   const handleInsertTranscript = (customText?: string) => {
     const trans = (typeof customText === 'string' ? customText : (currentTranscript || existingNote?.transcript))?.trim();
     if (!trans) return;
-    const insertPos = cursorPosRef.current ?? body.length;
-    const before = body.slice(0, insertPos);
-    const after = body.slice(insertPos);
-    const needsSpace = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
-    const inserted = needsSpace + trans;
-    setBody(before + inserted + after);
-    scrollToBottom();
+    if (bodyEditorRef.current?.insertAtCursor) {
+      bodyEditorRef.current.insertAtCursor(trans);
+    } else {
+      setBody((prev) => (prev ? prev + '\n\n' + trans : trans));
+    }
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (_) {}
@@ -738,7 +780,7 @@ export default function NoteDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: noteBg,
         // Android 15/16 edge-to-edge: the OS no longer reliably resizes the
         // window for the keyboard (softwareKeyboardLayoutMode "resize" is
         // flaky), so lift the whole screen — including the toolbar and AI
@@ -747,19 +789,83 @@ export default function NoteDetailScreen() {
         marginBottom: Platform.OS === 'android' ? keyboardHeight : 0,
       }}
     >
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: noteBg }}>
         <ScrollView 
           ref={scrollViewRef}
-          style={{ flex: 1 }}
+          style={{ flex: 1, backgroundColor: noteBg }}
           contentContainerStyle={{ 
-            paddingTop: insets.top + 60,
+            paddingTop: insets.top + 8,
             paddingBottom: isKeyboardVisible ? 140 : Math.max(insets.bottom + 20, 80),
             flexGrow: 1,
+            backgroundColor: noteBg,
           }}
+          onScroll={(e) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          onLayout={(e) => {
+            scrollViewHeightRef.current = e.nativeEvent.layout.height;
+          }}
+          scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
         >
+          {/* Header Action Bar - Scrolls naturally with content, no fixed background layer */}
+          <View style={[styles.detailHeader, { paddingHorizontal: 20, paddingBottom: 6, paddingTop: 6, backgroundColor: 'transparent' }, isArabic && { flexDirection: 'row-reverse' }]}>
+            <TouchableOpacity style={styles.detailHeaderBtn} onPress={handleSaveNote}>
+              <Ionicons name={isArabic ? 'chevron-forward' : 'chevron-back'} size={24} color={colors.text} style={styles.detailHeaderBtnIcon} />
+            </TouchableOpacity>
+            
+            <View style={styles.detailHeaderRight}>
+              <TouchableOpacity 
+                style={[styles.detailHeaderBtn, isScheduleVisible && { backgroundColor: colors.warning + '20' }]} 
+                onPress={() => {
+                  if (isScheduleVisible && dateTimeConfirmed) {
+                    setDateTimeConfirmed(false);
+                  } else {
+                    setScheduleVisible(!isScheduleVisible);
+                    setDateTimeConfirmed(false);
+                  }
+                }}
+              >
+                <Ionicons 
+                  name={isScheduleVisible ? 'alarm' : 'alarm-outline'} 
+                  size={22} 
+                  color={isScheduleVisible ? colors.warning : colors.text} 
+                />
+              </TouchableOpacity>
+
+              {/* Voice Record Button in Header */}
+              <TouchableOpacity 
+                style={[
+                  styles.detailHeaderBtn,
+                  isRecording && { backgroundColor: 'rgba(239, 68, 68, 0.18)' },
+                  !isRecording && { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' },
+                ]} 
+                onPress={handleToggleRecording}
+              >
+                <Ionicons
+                  name={isRecording ? 'stop-circle' : 'mic'}
+                  size={20}
+                  color={isRecording ? '#EF4444' : '#6366F1'}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.detailHeaderBtn} onPress={handleSaveNote}>
+                <Ionicons name="checkmark" size={24} color={colors.success} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.detailHeaderBtn}
+                onPress={() => {
+                  if (id) handleDeleteNote();
+                  else router.back();
+                }}
+              >
+                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Note Title & Date */}
           <NoteHeader 
             title={title}
@@ -1051,7 +1157,7 @@ export default function NoteDetailScreen() {
             onLayout={(e) => {
               editorTopRef.current = e.nativeEvent.layout.y;
             }}
-            style={{ flexGrow: 1 }}
+            style={{ flexGrow: 1, backgroundColor: noteBg }}
           >
             <NoteBodyEditor
               ref={bodyEditorRef}
@@ -1082,92 +1188,18 @@ export default function NoteDetailScreen() {
           </View>
         </ScrollView>
 
-        {/* Floating Header */}
-        <BlurView
-          tint={isDark ? 'dark' : 'light'}
-          intensity={80}
-          style={[
-            {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              paddingTop: insets.top,
-              backgroundColor: isDark ? 'transparent' : colors.bg,
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
-              zIndex: 10,
-            },
-          ]}
-        >
-          <View style={[styles.detailHeader, { paddingBottom: 10, paddingTop: 10 }, isArabic && { flexDirection: 'row-reverse' }]}>
-            <TouchableOpacity style={styles.detailHeaderBtn} onPress={handleSaveNote}>
-              <Ionicons name={isArabic ? 'chevron-forward' : 'chevron-back'} size={24} color={colors.text} style={styles.detailHeaderBtnIcon} />
-            </TouchableOpacity>
-            
-            <View style={styles.detailHeaderRight}>
-              <TouchableOpacity 
-                style={[styles.detailHeaderBtn, isScheduleVisible && { backgroundColor: colors.warning + '20' }]} 
-                onPress={() => {
-                  if (isScheduleVisible && dateTimeConfirmed) {
-                    setDateTimeConfirmed(false);
-                  } else {
-                    setScheduleVisible(!isScheduleVisible);
-                    setDateTimeConfirmed(false);
-                  }
-                }}
-              >
-                <Ionicons 
-                  name={isScheduleVisible ? 'alarm' : 'alarm-outline'} 
-                  size={22} 
-                  color={isScheduleVisible ? colors.warning : colors.text} 
-                />
-              </TouchableOpacity>
-
-              {/* Voice Record Button in Header */}
-              <TouchableOpacity 
-                style={[
-                  styles.detailHeaderBtn,
-                  isRecording && { backgroundColor: 'rgba(239, 68, 68, 0.18)' },
-                  !isRecording && { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' },
-                ]} 
-                onPress={handleToggleRecording}
-              >
-                <Ionicons
-                  name={isRecording ? 'stop-circle' : 'mic'}
-                  size={20}
-                  color={isRecording ? '#EF4444' : '#6366F1'}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.detailHeaderBtn} onPress={handleSaveNote}>
-                <Ionicons name="checkmark" size={24} color={colors.success} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.detailHeaderBtn}
-                onPress={() => {
-                  if (id) handleDeleteNote();
-                  else router.back();
-                }}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </BlurView>
-
         {/* BOTTOM TOOLBAR / ACCESSORY BAR */}
         <View
           style={{
-            backgroundColor: isDark ? '#11131a' : colors.surface,
+            backgroundColor: noteBg,
             borderTopWidth: StyleSheet.hairlineWidth,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+            borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(0, 0, 0, 0.08)',
             zIndex: 9,
           }}
         >
           {isKeyboardVisible ? (
             /* 1-LINE UNIFIED ACCESSORY BAR ABOVE KEYBOARD */
-            <View style={{ height: 46, justifyContent: 'center' }}>
+            <View style={{ height: 46, justifyContent: 'center', backgroundColor: noteBg }}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1351,7 +1383,12 @@ export default function NoteDetailScreen() {
                   }}
                 >
                   <TouchableOpacity
-                    onPress={handleSummarizeNote}
+                    onPress={() => {
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch (_) {}
+                      handleSummarizeNote();
+                    }}
                     disabled={isAILoading}
                     style={{
                       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -1360,19 +1397,24 @@ export default function NoteDetailScreen() {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 12,
-                      backgroundColor: isDark ? 'rgba(99, 102, 241, 0.18)' : 'rgba(99, 102, 241, 0.1)',
+                      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.18)' : 'rgba(108, 56, 233, 0.1)',
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(99, 102, 241, 0.2)',
+                      borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(108, 56, 233, 0.25)',
                     }}
                   >
-                    <Ionicons name="sparkles" size={13} color="#6366F1" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#6366F1' }}>
-                      {t.aiSummarize}
+                    <Ionicons name="sparkles" size={13} color={isDark ? '#AFE607' : '#6C38E9'} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FFFFFF' : '#6C38E9' }}>
+                      {t.aiSummarize || 'Summarize'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={handleExtractTasks}
+                    onPress={() => {
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch (_) {}
+                      handleExtractTasks();
+                    }}
                     disabled={isAILoading}
                     style={{
                       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -1381,19 +1423,24 @@ export default function NoteDetailScreen() {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 12,
-                      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.1)',
+                      backgroundColor: isDark ? 'rgba(175, 230, 7, 0.14)' : 'rgba(84, 118, 0, 0.1)',
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.2)',
+                      borderColor: isDark ? 'rgba(175, 230, 7, 0.35)' : 'rgba(84, 118, 0, 0.25)',
                     }}
                   >
-                    <Ionicons name="checkbox-outline" size={13} color="#10B981" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>
-                      {t.aiExtractTasks}
+                    <Ionicons name="checkbox-outline" size={13} color={isDark ? '#AFE607' : '#547600'} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#AFE607' : '#547600' }}>
+                      {t.aiExtractTasks || 'Extract Tasks'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={handleExplainNote}
+                    onPress={() => {
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch (_) {}
+                      handleExplainNote();
+                    }}
                     disabled={isAILoading}
                     style={{
                       flexDirection: isArabic ? 'row-reverse' : 'row',
@@ -1402,19 +1449,24 @@ export default function NoteDetailScreen() {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 12,
-                      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.18)' : 'rgba(245, 158, 11, 0.1)',
+                      backgroundColor: isDark ? 'rgba(255, 185, 134, 0.14)' : 'rgba(245, 158, 11, 0.1)',
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : 'rgba(245, 158, 11, 0.2)',
+                      borderColor: isDark ? 'rgba(255, 185, 134, 0.35)' : 'rgba(245, 158, 11, 0.25)',
                     }}
                   >
-                    <Ionicons name="bulb-outline" size={13} color="#F59E0B" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B' }}>
-                      {t.aiExplain}
+                    <Ionicons name="bulb-outline" size={13} color={isDark ? '#FFB986' : '#9D5200'} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FFB986' : '#9D5200' }}>
+                      {t.aiExplain || 'Explain'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => setAIChatVisible(true)}
+                    onPress={() => {
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch (_) {}
+                      setAIChatVisible(true);
+                    }}
                     style={{
                       flexDirection: isArabic ? 'row-reverse' : 'row',
                       alignItems: 'center',
@@ -1422,14 +1474,14 @@ export default function NoteDetailScreen() {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 12,
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.14)' : 'rgba(0, 0, 0, 0.05)',
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                      borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(0, 0, 0, 0.08)',
                     }}
                   >
-                    <Ionicons name="chatbubbles-outline" size={13} color={colors.text} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
-                      {t.aiAsk}
+                    <Ionicons name="chatbubbles-outline" size={13} color={isDark ? '#AFE607' : colors.text} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FFFFFF' : colors.text }}>
+                      {t.aiAsk || 'Chat AI'}
                     </Text>
                   </TouchableOpacity>
 

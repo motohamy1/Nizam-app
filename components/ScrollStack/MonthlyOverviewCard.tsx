@@ -52,8 +52,8 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg, flexShrink: 0 }]}>
-            <Ionicons name="stats-chart" size={18} color={frame.badgeFg} />
+          <View style={[styles.iconBadge, { backgroundColor: 'rgba(175, 230, 7, 0.22)', borderWidth: 1, borderColor: 'rgba(132, 204, 22, 0.40)', flexShrink: 0 }]}>
+            <Ionicons name="stats-chart" size={18} color="#6D28D9" />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text style={[styles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
@@ -82,7 +82,7 @@ export const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
             <View 
               style={[
                 styles.monthlyProgressBarFill, 
-                { width: `${Math.min(100, Math.max(0, completionRate))}%`, backgroundColor: frame.accent }
+                { width: `${Math.min(100, Math.max(0, completionRate))}%`, backgroundColor: '#AFE607' }
               ]} 
             />
           </View>

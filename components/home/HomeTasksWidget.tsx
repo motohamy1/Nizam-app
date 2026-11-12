@@ -1,12 +1,15 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useTheme from '@/hooks/useTheme';
 import { CardStack } from '@/components/CardStack';
 import ActiveTaskCard from '@/components/ActiveTaskCard';
+import { getAppFont } from '@/utils/globalFont';
 
-export const TASK_UNIFIED_COLOR = '#d4ff32';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+export const TASK_UNIFIED_COLOR = '#AFE607';
 export const PURPLE_ACCENT = '#A084E8';
 export const SECTION_VIOLET = '#C084FC';
 
@@ -18,6 +21,7 @@ interface HomeTasksWidgetProps {
   onRunTask: (task: any) => void;
   onPauseTask: (task: any) => void;
   onCompleteTask: (task: any) => void;
+  onReopenTask?: (task: any) => void;
   onEditTask?: (id: any, section?: any) => void;
   onOpenTaskDetail?: (taskId: string) => void;
   onAddTask?: () => void;
@@ -32,6 +36,7 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
   onRunTask,
   onPauseTask,
   onCompleteTask,
+  onReopenTask,
   onEditTask,
   onOpenTaskDetail,
   onAddTask,
@@ -39,19 +44,40 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
 }) => {
   const { colors, isDarkMode } = useTheme();
 
-  const sectionVioletColor = isDarkMode ? '#C084FC' : '#7C3AED';
-
-  // Defensive array checks
+  // Filter out placeholder items and ensure unfinished tasks sit in front while completed tasks move to the back
   const safeTasks = useMemo(() => {
-    if (!tasks || !Array.isArray(tasks)) return [];
-    return tasks.filter((t) => t && typeof t === 'object' && t._id);
+    const valid = (Array.isArray(tasks) ? tasks : []).filter(
+      (t) => Boolean(t && t._id && !String(t._id).startsWith('sample_'))
+    );
+    return [...valid].sort((a, b) => {
+      const aDone = a.status === 'done' || a.status === 'completed' ? 1 : 0;
+      const bDone = b.status === 'done' || b.status === 'completed' ? 1 : 0;
+      return aDone - bDone;
+    });
   }, [tasks]);
 
-  const handleOpenTask = useCallback(
+  const resetOrderKey = useMemo(() => {
+    const doneKey = safeTasks
+      .filter((t) => t.status === 'done' || t.status === 'completed')
+      .map((t) => String(t._id))
+      .sort()
+      .join(',');
+    const pendingKey = safeTasks
+      .filter((t) => t.status !== 'done' && t.status !== 'completed')
+      .map((t) => String(t._id))
+      .join(',');
+    return `${doneKey}|${pendingKey}`;
+  }, [safeTasks]);
+
+  const handleOpenDetail = useCallback(
     (taskId: string) => {
-      onOpenTaskDetail?.(taskId);
+      if (onOpenTaskDetail) {
+        onOpenTaskDetail(taskId);
+      } else if (onEditTask) {
+        onEditTask(taskId);
+      }
     },
-    [onOpenTaskDetail]
+    [onOpenTaskDetail, onEditTask]
   );
 
   // Render cards for the CardStack (up to 4 cards)
@@ -118,31 +144,41 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
       ];
     }
 
-    // Always fill up to 4 slots
-    const totalSlots = Math.max(4, Math.min(safeTasks.length, 4));
-    return Array.from({ length: totalSlots }).map((_, slotIndex) => {
-      const task = safeTasks[slotIndex];
+    // 1 to 4+ tasks: fill real tasks, and pad with clean empty guide slots up to 4 total
+    const filled: React.ReactNode[] = [];
+    const limit = safeTasks.length;
 
-      if (task) {
-        return (
-          <ActiveTaskCard
-            key={task._id}
-            task={task}
-            cardIndex={slotIndex}
-            cardColor={TASK_UNIFIED_COLOR}
-            isArabic={isArabic}
-            onRunTask={onRunTask}
-            onPauseTask={onPauseTask}
-            onCompleteTask={onCompleteTask}
-            onOpenDetail={handleOpenTask}
-            onAddTask={onAddTask}
-            style={{ width: '100%', height: '100%' }}
-          />
-        );
-      }
+    for (let i = 0; i < limit; i++) {
+      const task = safeTasks[i];
+      filled.push(
+        <ActiveTaskCard
+          key={String(task._id)}
+          task={task}
+          cardIndex={i}
+          cardColor={TASK_UNIFIED_COLOR}
+          cardBadgeLabel={
+            i === 0
+              ? isArabic
+                ? 'المهمة النشطة'
+                : 'Active Task'
+              : `${isArabic ? 'مهمة' : 'Task'} #${i + 1}`
+          }
+          isArabic={isArabic}
+          onRunTask={() => onRunTask(task)}
+          onPauseTask={() => onPauseTask(task)}
+          onCompleteTask={() => onCompleteTask(task)}
+          onReopenTask={onReopenTask ? () => onReopenTask(task) : undefined}
+          onOpenDetail={() => handleOpenDetail(task._id)}
+          onAddTask={onAddTask}
+          style={{ width: '100%', height: '100%' }}
+        />
+      );
+    }
 
-      // Remaining slot behind real user tasks
-      return (
+    // Pad up to 4 cards so fan deck effect always looks layered
+    while (filled.length < 4) {
+      const slotIndex = filled.length;
+      filled.push(
         <ActiveTaskCard
           key={`empty_slot_${slotIndex}`}
           task={null}
@@ -158,16 +194,21 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
           style={{ width: '100%', height: '100%' }}
         />
       );
-    });
+    }
+
+    return filled;
   }, [
     safeTasks,
     isArabic,
     onRunTask,
     onPauseTask,
     onCompleteTask,
-    handleOpenTask,
+    onReopenTask,
+    handleOpenDetail,
     onAddTask,
   ]);
+
+  const sectionVioletColor = isDarkMode ? SECTION_VIOLET : '#8B53FE';
 
   return (
     <View style={styles.container}>
@@ -175,16 +216,24 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
       <View
         style={[
           styles.headerRow,
-          isArabic && { flexDirection: 'row-reverse' },
+          isArabic && styles.rowRtl,
         ]}
       >
         <View
           style={[
             styles.titleGroup,
-            isArabic && { flexDirection: 'row-reverse' },
+            isArabic && styles.rowRtl,
           ]}
         >
-          <Text style={[styles.titleText, { color: sectionVioletColor }]}>
+          <Text
+            style={[
+              styles.titleText,
+              {
+                color: sectionVioletColor,
+                fontFamily: getAppFont('black', isArabic),
+              },
+            ]}
+          >
             {isArabic ? 'مهام اليوم' : "Today's Tasks"}
           </Text>
 
@@ -201,7 +250,15 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
               },
             ]}
           >
-            <Text style={[styles.countBadgeText, { color: sectionVioletColor }]}>
+            <Text
+              style={[
+                styles.countBadgeText,
+                {
+                  color: sectionVioletColor,
+                  fontFamily: getAppFont('black', isArabic),
+                },
+              ]}
+            >
               {doneCount}/{totalCount}
             </Text>
           </View>
@@ -214,6 +271,8 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onViewAll();
             }}
+            accessibilityRole="button"
+            accessibilityLabel={isArabic ? 'عرض كل المهام' : 'View all tasks'}
             style={[
               styles.viewAllBtn,
               {
@@ -224,11 +283,18 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
                   ? 'rgba(192, 132, 252, 0.24)'
                   : 'rgba(124, 58, 237, 0.16)',
               },
-              isArabic && { flexDirection: 'row-reverse' },
             ]}
           >
-            <Text style={[styles.viewAllText, { color: sectionVioletColor }]}>
-              {isArabic ? 'عرض الكل' : 'View all'}
+            <Text
+              style={[
+                styles.viewAllText,
+                {
+                  color: sectionVioletColor,
+                  fontFamily: getAppFont('bold', isArabic),
+                },
+              ]}
+            >
+              {isArabic ? 'عرض الكل' : 'View All'}
             </Text>
             <Ionicons
               name={isArabic ? 'chevron-back' : 'chevron-forward'}
@@ -239,24 +305,23 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
         )}
       </View>
 
-      {/* 4-Task CardStack with React Bits 'fan' layout */}
-      <View
-        style={{
-          zIndex: 10,
-          elevation: Platform.OS === 'android' ? 20 : undefined,
-          overflow: 'visible',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: 14,
-          marginBottom: 10,
-        }}
-      >
+      {/* Fan / Deck Stack Container with exact proportions */}
+      <View style={styles.stackWrapper}>
         <CardStack
           cards={stackCards}
           layout="fan"
-          cardWidth={330}
-          cardHeight={215}
+          visible={4}
+          spread={0.65}
+          depth={0.45}
+          radius={28}
+          cardHeight={270}
+          cardWidth={Math.min(SCREEN_WIDTH - 52, 330)}
+          peek={26}
+          tilt={22}
+          threshold={80}
           isRTL={isArabic}
+          autoResetToTop={false}
+          resetOrderKey={resetOrderKey}
         />
       </View>
     </View>
@@ -265,50 +330,66 @@ export const HomeTasksWidget: React.FC<HomeTasksWidgetProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    paddingHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: 18,
+    marginBottom: 12,
+    zIndex: 10,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 22,
+    marginBottom: 16,
+    zIndex: 20,
+    elevation: Platform.OS === 'android' ? 25 : undefined,
+  },
+  rowRtl: {
+    flexDirection: 'row-reverse',
   },
   titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   titleText: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   countBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
     borderRadius: 12,
     borderWidth: 1,
   },
   countBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   viewAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 14,
     borderWidth: 1,
+    borderColor: 'transparent',
   },
   viewAllText: {
     fontSize: 12.5,
     fontWeight: '700',
+  },
+  stackWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    elevation: Platform.OS === 'android' ? 20 : undefined,
+    overflow: 'visible',
+    marginTop: 6,
+    marginBottom: 10,
   },
 });
 

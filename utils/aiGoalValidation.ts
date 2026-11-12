@@ -102,8 +102,27 @@ export function sanitizeAIText(text: any, fallback = ''): string {
 /**
  * Normalizes goal type into supported domain enums.
  */
-export function normalizeGoalType(rawType: any): AIGoalType {
+export function normalizeGoalType(rawType: any, rawInput = ''): AIGoalType {
   const normalized = String(rawType || '').toLowerCase().trim();
+  const inputLower = String(rawInput || '').toLowerCase().trim();
+  const combined = `${normalized} ${inputLower}`;
+
+  if (/gym|fitness|muscle|workout|exercise|bodybuilding|training|weight|squat|bench|hypertrophy|cardio|running|marathon|bulk|bulking/i.test(combined)) {
+    return 'fitness';
+  }
+  if (/diet|nutrition|calorie|protein|meal|health|sleep|water|wellness/i.test(combined)) {
+    return 'health';
+  }
+  if (/learn|study|read|course|exam|language|code|flutter|react|programming|developer|book/i.test(combined)) {
+    return 'learning';
+  }
+  if (/save|budget|money|invest|finance|dollar|revenue|wealth/i.test(combined)) {
+    return 'financial';
+  }
+  if (/habit|discipline|pray|routine|mindset|focus|meditation/i.test(combined)) {
+    return 'habit';
+  }
+
   const validTypes: AIGoalType[] = [
     'learning',
     'project',
@@ -128,7 +147,7 @@ export function normalizeGoalType(rawType: any): AIGoalType {
  * Enforces NO hallucinated secondary life domains (Blueprint Section 8).
  */
 export function validateGoalIntent(rawIntent: any, rawInput: string, timeframe: 'day' | 'month' | 'year'): AIGoalIntent {
-  const goalType = normalizeGoalType(rawIntent?.goalType);
+  const goalType = normalizeGoalType(rawIntent?.goalType, rawInput);
   const coreSubject = sanitizeAIText(rawIntent?.coreSubject, rawInput.slice(0, 40));
   const corePurpose = sanitizeAIText(rawIntent?.corePurpose, rawInput);
   const domain = sanitizeAIText(rawIntent?.domain, 'general');
@@ -553,14 +572,14 @@ export function normalizeGoalArchitectResponse(
   const description = sanitizeAIText(raw?.description, '');
 
   const templateOptions = validateTemplateRecommendations(
-    raw?.templateOptions || raw?.suggestedTemplates,
+    raw?.templateRecommendations || raw?.templateOptions || raw?.suggestedTemplates,
     intent.goalType,
     timeframe,
     isArabic
   );
 
   const presentation: AIGoalPresentation = {
-    frameworkId: templateOptions[0]?.frameworkId || 'roadmap',
+    frameworkId: templateOptions[0]?.frameworkId || (intent.goalType === 'fitness' ? 'metric' : 'checklist'),
     visualStyleId: templateOptions[0]?.visualStyleId || 'default',
   };
 
@@ -573,12 +592,14 @@ export function normalizeGoalArchitectResponse(
 
   const { color, icon } = validateColorAndIcon(raw?.color, raw?.icon);
 
-  // Initial generation has ZERO milestones by default unless user explicitly specified items in prompt
+  // Preserve milestones from AI if generated, or from explicit user items
   let milestones: MilestoneItem[] = [];
   if (intent.explicitUserItems.length > 0) {
     milestones = removeDuplicateMilestones(intent.explicitUserItems);
   } else if (Array.isArray(raw?.suggestedMilestones) && raw.suggestedMilestones.length > 0) {
     milestones = removeDuplicateMilestones(raw.suggestedMilestones);
+  } else if (Array.isArray(raw?.milestones) && raw.milestones.length > 0) {
+    milestones = removeDuplicateMilestones(raw.milestones);
   }
 
   const suggestedProjects = Array.isArray(raw?.suggestedProjects)
@@ -588,6 +609,16 @@ export function normalizeGoalArchitectResponse(
         description: sanitizeAIText(p.description, ''),
       }))
     : [];
+
+  let clarifyingQuestion: { question: string; options: string[] } | undefined = undefined;
+  if (raw?.clarifyingQuestion && typeof raw.clarifyingQuestion.question === 'string') {
+    clarifyingQuestion = {
+      question: sanitizeAIText(raw.clarifyingQuestion.question),
+      options: Array.isArray(raw.clarifyingQuestion.quickOptions || raw.clarifyingQuestion.options)
+        ? (raw.clarifyingQuestion.quickOptions || raw.clarifyingQuestion.options).map((o: any) => sanitizeAIText(o)).filter(Boolean)
+        : [],
+    };
+  }
 
   return {
     intent,
@@ -609,6 +640,7 @@ export function normalizeGoalArchitectResponse(
     icon,
     dirtyByUser: false,
     aiResponseText: sanitizeAIText(raw?.aiResponseText, ''),
+    clarifyingQuestion,
     userEditedFields: {},
   };
 }

@@ -53,10 +53,10 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
           <View
             style={[
               baseStyles.iconBadge,
-              { backgroundColor: frame.badgeBg, flexShrink: 0 },
+              { backgroundColor: 'rgba(175, 230, 7, 0.22)', borderWidth: 1, borderColor: 'rgba(132, 204, 22, 0.40)', flexShrink: 0 },
             ]}
           >
-            <Ionicons name="analytics" size={18} color={frame.badgeFg} />
+            <Ionicons name="analytics" size={18} color="#6D28D9" />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text style={[baseStyles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
@@ -76,7 +76,7 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
         activeOpacity={0.85}
       >
         <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
-          <View style={[styles.miniDot, { backgroundColor: frame.badgeFg }]} />
+          <View style={[styles.miniDot, { backgroundColor: '#84CC16' }]} />
           <Text style={[styles.metricVal, { color: frame.text }]}>{productivity}%</Text>
           <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'إنتاجية' : 'Productivity'}</Text>
         </View>
@@ -88,7 +88,7 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({
         </View>
 
         <View style={[styles.metricPill, { backgroundColor: frame.rowBg, borderColor: frame.rowBorder, borderWidth: 1 }]}>
-          <View style={[styles.miniDot, { backgroundColor: frame.badgeFg }]} />
+          <View style={[styles.miniDot, { backgroundColor: '#84CC16' }]} />
           <Text style={[styles.metricVal, { color: frame.text }]}>{streak}d</Text>
           <Text style={[styles.metricLbl, { color: frame.textMuted }]}>{isArabic ? 'استمرار' : 'Streak'}</Text>
         </View>

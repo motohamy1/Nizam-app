@@ -61,12 +61,13 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
   const theme = useTheme();
   const colors = {
     ...theme.colors,
-    primary: '#6D28D9',
+    bg: '#0B0812',
+    surface: '#0B0812',
+    border: 'rgba(168, 85, 247, 0.25)',
+    textMuted: 'rgba(237, 233, 254, 0.65)',
+    text: '#F5F3FF',
+    primary: '#9333EA',
     primaryText: '#FFFFFF',
-    border: 'rgba(109, 40, 217, 0.22)',
-    textMuted: 'rgba(76, 29, 149, 0.75)',
-    surface: 'rgba(255, 255, 255, 0.45)',
-    text: '#4C1D95',
   };
   const isDarkMode = true;
   const { language } = useAuth();
@@ -278,7 +279,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                   {headerTitle}
                 </Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={24} color="#6D28D9" />
+                  <Ionicons name="close-circle" size={24} color="#C084FC" />
                 </TouchableOpacity>
               </View>
 
@@ -307,7 +308,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             <Ionicons
                               name={opt.icon as any}
                               size={15}
-                              color={active ? '#FFFFFF' : '#4C1D95'}
+                              color={active ? '#FFFFFF' : '#C084FC'}
                             />
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
                               {opt.label}
@@ -328,7 +329,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           ? (isArabic ? 'مثال: شرب الدواء' : 'e.g., Take the medication')
                           : (isArabic ? 'مثال: اجتماع فريق العمل' : 'e.g., Team Sync Meeting')
                       }
-                      placeholderTextColor="rgba(76, 29, 149, 0.45)"
+                      placeholderTextColor="rgba(216, 180, 254, 0.65)"
                       value={title}
                       onChangeText={setTitle}
                       ref={titleInputRef}
@@ -345,7 +346,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowDatePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="calendar-outline" size={18} color="#6D28D9" />
+                      <Ionicons name="calendar-outline" size={18} color="#AFE607" />
                       <Text style={styles.modalTimeBoxText}>{dateString}</Text>
                     </TouchableOpacity>
 
@@ -355,7 +356,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                       onPress={() => setShowTimePicker(true)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="time-outline" size={18} color="#6D28D9" />
+                      <Ionicons name="time-outline" size={18} color="#AFE607" />
                       <Text style={styles.modalTimeBoxText}>{timeString}</Text>
                     </TouchableOpacity>
                   </View>
@@ -399,6 +400,13 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             onPress={() => {
                               Haptics.selectionAsync();
                               setRepeatPeriod(opt.id);
+                              if (opt.id !== 'none' && (!repeatCount || repeatCount <= 1)) {
+                                if (opt.id === 'hourly') setRepeatCount(12);
+                                else if (opt.id === 'daily') setRepeatCount(7);
+                                else if (opt.id === 'weekly') setRepeatCount(4);
+                                else if (opt.id === 'monthly') setRepeatCount(12);
+                                else if (opt.id === 'yearly') setRepeatCount(5);
+                              }
                             }}
                             activeOpacity={0.8}
                           >
@@ -406,7 +414,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                               <Ionicons
                                 name="repeat-outline"
                                 size={13}
-                                color={active ? '#FFFFFF' : '#4C1D95'}
+                                color={active ? '#FFFFFF' : '#C084FC'}
                               />
                             )}
                             <Text style={[styles.modalTypeChipText, active && styles.modalTypeChipTextActive]}>
@@ -428,11 +436,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                           paddingVertical: 10,
                           borderRadius: 14,
                           borderWidth: 1,
-                          borderColor: 'rgba(109, 40, 217, 0.22)',
-                          backgroundColor: 'rgba(255, 255, 255, 0.45)',
+                          borderColor: 'rgba(168, 85, 247, 0.25)',
+                          backgroundColor: '#14101F',
                         }}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#4C1D95', flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#F5F3FF', flex: 1 }}>
                           {repeatSummary}
                         </Text>
                         <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}>
@@ -444,16 +452,16 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: 'rgba(109, 40, 217, 0.12)',
-                              borderWidth: 1, borderColor: 'rgba(109, 40, 217, 0.25)',
+                              backgroundColor: 'rgba(168, 85, 247, 0.16)',
+                              borderWidth: 1, borderColor: 'rgba(168, 85, 247, 0.30)',
                             }}
                           >
-                            <Ionicons name="remove" size={18} color="#6D28D9" />
+                            <Ionicons name="remove" size={18} color="#C084FC" />
                           </TouchableOpacity>
                           <TextInput
                             style={{
                               minWidth: 44, textAlign: 'center', fontSize: 16, fontWeight: '800',
-                              color: '#4C1D95', paddingVertical: 2,
+                              color: '#AFE607', paddingVertical: 2,
                             }}
                             value={String(repeatCount)}
                             onChangeText={(v) => {
@@ -474,11 +482,11 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                             style={{
                               width: 34, height: 34, borderRadius: 17,
                               alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: 'rgba(109, 40, 217, 0.12)',
-                              borderWidth: 1, borderColor: 'rgba(109, 40, 217, 0.25)',
+                              backgroundColor: 'rgba(168, 85, 247, 0.16)',
+                              borderWidth: 1, borderColor: 'rgba(168, 85, 247, 0.30)',
                             }}
                           >
-                            <Ionicons name="add" size={18} color="#6D28D9" />
+                            <Ionicons name="add" size={18} color="#C084FC" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -493,7 +501,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder={isArabic ? 'مثال: قاعة الاجتماعات أو العنوان' : 'e.g., Conference Room B'}
-                          placeholderTextColor="rgba(76, 29, 149, 0.45)"
+                          placeholderTextColor="rgba(216, 180, 254, 0.65)"
                           value={location}
                           onChangeText={setLocation}
                           ref={locationInputRef}
@@ -506,7 +514,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                         <TextInput
                           style={styles.modalTextInput}
                           placeholder="https://meet.google.com/..."
-                          placeholderTextColor="rgba(76, 29, 149, 0.45)"
+                          placeholderTextColor="rgba(216, 180, 254, 0.65)"
                           value={meetingLink}
                           onChangeText={setMeetingLink}
                           keyboardType="url"
@@ -524,7 +532,7 @@ export const EventManagementModal: React.FC<EventManagementModalProps> = ({
                     <TextInput
                       style={styles.modalNotesInput}
                       placeholder={t.itemNotesPlaceholder}
-                      placeholderTextColor="rgba(76, 29, 149, 0.45)"
+                      placeholderTextColor="rgba(216, 180, 254, 0.65)"
                       value={notes}
                       onChangeText={setNotes}
                       ref={notesInputRef}

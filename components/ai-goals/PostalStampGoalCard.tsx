@@ -85,8 +85,8 @@ export const PostalStampGoalCard: React.FC<PostalStampGoalCardProps> = ({
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [cardDimensions, setCardDimensions] = useState({ width: 0, height: 0 });
 
-  // Effective colors: Keep paper stationery in pure crisp white even in dark theme (matching reference image)
-  const effectiveBackdrop = backdropColor || (isDarkMode ? '#0a0a0c' : colors.bg || '#F3F4F6');
+  // Effective colors: Keep paper stationery in pure crisp white even in dark theme to ensure high contrast against dark backdrop
+  const effectiveBackdrop = backdropColor || (isDarkMode ? '#0B0812' : colors.bg || '#F3F4F6');
   const paperBg = '#FFFFFF';
   const paperText = '#0F172A';
   const paperTextMuted = '#64748B';
@@ -133,14 +133,14 @@ export const PostalStampGoalCard: React.FC<PostalStampGoalCardProps> = ({
           },
         ]}
       >
-        {/* ─── Top Section: Header & Place Stamp Here Box ─── */}
+        {/* ─── Top Section: Header & Goal Checklist Status Box ─── */}
         <View style={[styles.topRow, isArabic && styles.rowReverse]}>
           {/* Left Column: Title & Metadata */}
           <View style={[styles.topLeftCol, isArabic && { alignItems: 'flex-end' }]}>
-            {/* "STAMPED BY" / Header */}
+            {/* Goal Tag Header */}
             <View style={[styles.stampedByRow, isArabic && styles.rowReverse]}>
               <Text style={[styles.stampedByText, { color: paperText }]}>
-                {isArabic ? 'مصدق من نظام' : 'STAMPED BY'}
+                {isArabic ? 'هدف رئيسي' : 'KEY GOAL'}
               </Text>
               <TouchableOpacity
                 onPress={onEditCategoryPress}
@@ -194,7 +194,7 @@ export const PostalStampGoalCard: React.FC<PostalStampGoalCardProps> = ({
             )}
           </View>
 
-          {/* Right Column: "PLACE STAMP HERE" Box */}
+          {/* Right Column: Goal Checklist / Target Status Box */}
           <TouchableOpacity
             onPress={onToggleGoal}
             disabled={!onToggleGoal || readOnly}
@@ -203,23 +203,27 @@ export const PostalStampGoalCard: React.FC<PostalStampGoalCardProps> = ({
               styles.placeStampBox,
               {
                 borderColor: isCompleted ? '#10B981' : dashedBorderColor,
-                backgroundColor: isCompleted ? '#10B98114' : 'transparent',
+                backgroundColor: isCompleted ? '#10B98114' : '#F8FAFC',
               },
             ]}
           >
             {isCompleted ? (
               <View style={styles.completedStampInside}>
-                <Ionicons name="checkmark-done-circle" size={26} color="#10B981" />
+                <Ionicons name="checkmark-done-circle" size={24} color="#10B981" />
                 <Text style={styles.stampAchievedText}>
-                  {isArabic ? 'مكتمل' : 'STAMPED'}
+                  {isArabic ? 'منجز' : 'ACHIEVED'}
                 </Text>
                 <Text style={styles.stampYearSub}>{year}</Text>
               </View>
             ) : (
               <View style={styles.emptyStampInside}>
-                <Ionicons name="mail-outline" size={16} color={paperTextMuted} style={{ opacity: 0.6 }} />
+                <Ionicons name="checkmark-circle-outline" size={20} color={color} />
                 <Text style={[styles.placeStampText, { color: paperTextMuted }]}>
-                  {isArabic ? 'ضع الختم\nهنا' : 'PLACE\nSTAMP\nHERE'}
+                  {milestones.length > 0
+                    ? isArabic
+                      ? `${milestones.filter((m) => m.isCompleted).length}/${milestones.length}\nمنجز`
+                      : `${milestones.filter((m) => m.isCompleted).length}/${milestones.length}\nDONE`
+                    : isArabic ? 'انقر\nللإنجاز' : 'MARK\nDONE'}
                 </Text>
               </View>
             )}
@@ -460,19 +464,20 @@ export const PostalStampGoalCard: React.FC<PostalStampGoalCardProps> = ({
             )}
           </View>
 
-          {/* Postcard Dispatch Address Block on Right (matching reference image) */}
+          {/* Goal Blueprint & Progress Meta on Right */}
           <View style={[styles.dispatchBlock, isArabic && { alignItems: 'flex-start' }]}>
             <Text style={[styles.dispatchLabel, { color: paperTextMuted }]}>
-              {isArabic ? 'من' : 'FROM'}
+              {isArabic ? 'الخطة' : 'BLUEPRINT'}
             </Text>
             <Text style={[styles.dispatchSender, { color: paperText }]}>
-              nizam.ai
+              {category}
             </Text>
             <Text style={[styles.dispatchDetail, { color: paperTextMuted }]}>
-              {category.toLowerCase()}
-            </Text>
-            <Text style={[styles.dispatchDetail, { color: paperTextMuted }]}>
-              {year} Roadmap
+              {timeframe ? timeframe.toUpperCase() : `${year}`} • {milestones.length > 0
+                ? isArabic
+                  ? `${milestones.filter((m) => m.isCompleted).length} من ${milestones.length} مهام`
+                  : `${milestones.filter((m) => m.isCompleted).length} of ${milestones.length} tasks`
+                : isArabic ? 'قائمة مهام' : 'Checklist'}
             </Text>
           </View>
         </View>

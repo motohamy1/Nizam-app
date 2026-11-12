@@ -195,6 +195,7 @@ export default function AddScreen() {
   // Convex Data & Mutations
   const todos = useOfflineQuery<any[]>('todos', api.todos.get, userId ? { userId } : 'skip');
   const addTodo = useOfflineMutation(api.todos.addTodo, 'todos:addTodo');
+  const addTodoDirect = useMutation(api.todos.addTodo);
   const deleteTodo = useOfflineMutation(api.todos.deleteTodo, 'todos:deleteTodo');
 
   const generateAudioUploadUrl = useMutation(api.audio.generateAudioUploadUrl);
@@ -205,16 +206,30 @@ export default function AddScreen() {
   const handleVoiceRecordingFinished = async (result: { uri: string; duration: number }) => {
     if (!userId) return;
     try {
-      // 1. Create a new note
-      const newNoteId = await addTodo({
-        userId,
-        text: isArabic ? 'ملاحظة صوتية' : 'Voice Note',
-        description: '',
-        status: 'not_started',
-        type: 'note',
-        hashtags: [currentHashtag || '#Voice'],
-        date: Date.now(),
-      });
+      // 1. Create a new note directly on Convex if online so we get a canonical ID immediately;
+      // fallback to offline addTodo if network is temporarily disconnected.
+      let newNoteId: string;
+      try {
+        newNoteId = await addTodoDirect({
+          userId,
+          text: isArabic ? 'ملاحظة صوتية' : 'Voice Note',
+          description: '',
+          status: 'not_started',
+          type: 'note',
+          hashtags: [currentHashtag || '#Voice'],
+          date: Date.now(),
+        });
+      } catch (directErr) {
+        newNoteId = await addTodo({
+          userId,
+          text: isArabic ? 'ملاحظة صوتية' : 'Voice Note',
+          description: '',
+          status: 'not_started',
+          type: 'note',
+          hashtags: [currentHashtag || '#Voice'],
+          date: Date.now(),
+        });
+      }
 
       if (!newNoteId) return;
 
@@ -238,7 +253,7 @@ export default function AddScreen() {
 
       // 4. Attach audio to note document
       await attachAudioToNote({
-        noteId: newNoteId,
+        noteId: newNoteId as any,
         storageId,
         duration: result.duration,
         mimeType: 'audio/m4a',
@@ -246,7 +261,7 @@ export default function AddScreen() {
 
       // 5. Trigger AI transcription in background
       transcribeAudioAction({
-        noteId: newNoteId,
+        noteId: newNoteId as any,
         storageId,
         languageHint: isArabic ? 'ar' : 'en',
       }).catch((err) => console.warn('Background transcription error:', err));
@@ -272,6 +287,14 @@ export default function AddScreen() {
     }
   };
 
+  const handlePauseResumeRecording = async () => {
+    if (isPaused) {
+      await resumeRecording();
+    } else {
+      await pauseRecording();
+    }
+  };
+
   const handleCancelInlineRecording = async () => {
     await cancelRecording();
   };
@@ -279,11 +302,11 @@ export default function AddScreen() {
   // Pulsing recording dot animation when speaking
   const pulseOpacity = useSharedValue(1);
   useEffect(() => {
-    if (isListening) {
+    if (isRecording && !isPaused) {
       pulseOpacity.value = withRepeat(
         withSequence(
-          withTiming(0.25, { duration: 600 }),
-          withTiming(1, { duration: 600 })
+          withTiming(0.25, { duration: 500 }),
+          withTiming(1, { duration: 500 })
         ),
         -1,
         true
@@ -291,7 +314,7 @@ export default function AddScreen() {
     } else {
       pulseOpacity.value = 1;
     }
-  }, [isListening, pulseOpacity]);
+  }, [isRecording, isPaused, pulseOpacity]);
 
   const animatedDotStyle = useAnimatedStyle(() => ({
     opacity: pulseOpacity.value,
@@ -440,56 +463,71 @@ export default function AddScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {/* ─── Top Status Bar ────────────────────────────────────────── */}
-      <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
-        <View style={[styles.topStatusBar, { paddingBottom: 6 }]}>
-          <View style={styles.statusBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>
-              {isArabic ? 'الملاحظات' : 'Notes'}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.topMenuBtn}
-            activeOpacity={0.8}
-            onPress={() => setMenuVisible(true)}
-          >
-            <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-      </AnimatedWavyHeader>
-
-      {/* ─── Mode Switcher: Voice vs Type ─────────────────────────── */}
-      <View style={styles.modeSelectorRow}>
-        <TouchableOpacity
-          style={[styles.modePill, inputMode === 'voice' && styles.modePillActive]}
-          onPress={() => {
-            setInputMode('voice');
-            Keyboard.dismiss();
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name="mic-outline"
-            size={16}
-            color={inputMode === 'voice' ? colors.text : colors.textMuted}
-          />
-          <Text style={[styles.modePillText, inputMode === 'voice' && styles.modePillTextActive]}>
-            {isArabic ? 'إملاء صوتي' : 'Voice Input'}
-          </Text>
-        </TouchableOpacity>
-
-
-      </View>
-
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]} edges={['top', 'left', 'right']}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ─── Top Status Bar ────────────────────────────────────────── */}
+        <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
+          <View style={[styles.topStatusBar, { paddingBottom: 6 }]}>
+            <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>
+                {isArabic ? 'الملاحظات' : 'Notes'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.topMenuBtn}
+              activeOpacity={0.8}
+              onPress={() => setMenuVisible(true)}
+            >
+              <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </AnimatedWavyHeader>
+
+        {/* ─── Mode Switcher: Voice vs Type ─────────────────────────── */}
+        <View style={styles.modeSelectorRow}>
+          <TouchableOpacity
+            style={[styles.modePill, inputMode === 'voice' && styles.modePillActive]}
+            onPress={() => {
+              setInputMode('voice');
+              Keyboard.dismiss();
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="mic-outline"
+              size={16}
+              color={inputMode === 'voice' ? colors.text : colors.textMuted}
+            />
+            <Text style={[styles.modePillText, inputMode === 'voice' && styles.modePillTextActive]}>
+              {isArabic ? 'إملاء صوتي' : 'Voice Input'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modePill, inputMode === 'text' && styles.modePillActive]}
+            onPress={() => {
+              setInputMode('text');
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="create-outline"
+              size={16}
+              color={inputMode === 'text' ? colors.text : colors.textMuted}
+            />
+            <Text style={[styles.modePillText, inputMode === 'text' && styles.modePillTextActive]}>
+              {isArabic ? 'كتابة سريعة' : 'Quick Type'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ─── Hero Input Section: Voice OR Typing ─────────────────── */}
         <Animated.View entering={FadeInDown.duration(400)} style={styles.heroSection}>
           {inputMode === 'voice' ? (
@@ -506,9 +544,9 @@ export default function AddScreen() {
                     <>
                       <Animated.View style={[styles.recordingDot, animatedDotStyle]} />
                       <Text style={styles.listeningText}>
-                        {isArabic
-                          ? `تسجيل (${formatRecordingTime(recordingDuration)})`
-                          : `Recording ${formatRecordingTime(recordingDuration)}`}
+                        {isPaused
+                          ? (isArabic ? `متوقف مؤقتاً (${formatRecordingTime(recordingDuration)})` : `Paused ${formatRecordingTime(recordingDuration)}`)
+                          : (isArabic ? `تسجيل (${formatRecordingTime(recordingDuration)})` : `Recording ${formatRecordingTime(recordingDuration)}`)}
                       </Text>
                     </>
                   ) : (
@@ -540,7 +578,7 @@ export default function AddScreen() {
                 activeOpacity={0.9}
                 onPress={handleToggleInlineRecording}
               >
-                <VoiceWaveform isListening={isRecording} audioLevel={audioLevel} />
+                <VoiceWaveform isListening={isRecording && !isPaused} audioLevel={audioLevel} />
               </TouchableOpacity>
 
               {/* Dynamic Transcript / Recording Status Preview */}
@@ -552,7 +590,9 @@ export default function AddScreen() {
                 </Text>
                 <Text style={styles.transcriptFocusText}>
                   {isRecording
-                    ? (isArabic ? 'تحدث الآن، ستتفاعل الأمواج مع صوتك' : 'Speak now — waves react to your voice')
+                    ? (isPaused
+                        ? (isArabic ? 'التسجيل متوقف مؤقتاً' : 'Recording is paused')
+                        : (isArabic ? 'تحدث الآن، ستتفاعل الأمواج مع صوتك' : 'Speak now — waves react to your voice'))
                     : (isArabic ? 'اضغط للتحدث أو تسجيل فكرة' : 'Tap below to capture your idea')}
                 </Text>
                 <Text style={styles.transcriptNextText}>
@@ -567,18 +607,59 @@ export default function AddScreen() {
                 <View
                   style={{
                     flexDirection: isArabic ? 'row-reverse' : 'row',
-                    gap: 10,
+                    gap: 8,
                     width: '100%',
-                    marginTop: 8,
+                    marginTop: 10,
                   }}
                 >
+                  {/* Pause / Resume Button */}
+                  <TouchableOpacity
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderRadius: 22,
+                      backgroundColor: isPaused
+                        ? (isDarkMode ? 'rgba(175, 230, 7, 0.18)' : 'rgba(84, 118, 0, 0.12)')
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : colors.surfaceHigh),
+                      borderWidth: 1,
+                      borderColor: isPaused
+                        ? (isDarkMode ? '#AFE607' : colors.primary)
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.12)' : colors.border),
+                      flexDirection: isArabic ? 'row-reverse' : 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                    activeOpacity={0.85}
+                    onPress={handlePauseResumeRecording}
+                  >
+                    <Ionicons
+                      name={isPaused ? "play" : "pause"}
+                      size={17}
+                      color={isPaused ? (isDarkMode ? '#AFE607' : colors.primary) : colors.text}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '700',
+                        color: isPaused ? (isDarkMode ? '#AFE607' : colors.primary) : colors.text,
+                      }}
+                    >
+                      {isPaused
+                        ? (isArabic ? 'استئناف' : 'Resume')
+                        : (isArabic ? 'إيقاف مؤقت' : 'Pause')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Stop & Save Button */}
                   <TouchableOpacity
                     style={[
                       styles.tapToSpeakBtn,
                       {
                         flex: 1,
-                        backgroundColor: 'rgba(239, 68, 68, 0.16)',
-                        borderColor: 'rgba(239, 68, 68, 0.4)',
+                        marginTop: 0,
+                        backgroundColor: 'rgba(239, 68, 68, 0.18)',
+                        borderColor: 'rgba(239, 68, 68, 0.45)',
+                        justifyContent: 'center',
                       },
                     ]}
                     activeOpacity={0.85}
@@ -588,18 +669,19 @@ export default function AddScreen() {
                     <Text
                       style={[
                         styles.tapToSpeakText,
-                        { color: '#EF4444', fontWeight: '700' },
+                        { color: '#EF4444', fontWeight: '800' },
                       ]}
                     >
                       {isArabic
-                        ? `إيقاف وحفظ (${formatRecordingTime(recordingDuration)})`
+                        ? `حفظ (${formatRecordingTime(recordingDuration)})`
                         : `Stop & Save (${formatRecordingTime(recordingDuration)})`}
                     </Text>
                   </TouchableOpacity>
 
+                  {/* Cancel Button */}
                   <TouchableOpacity
                     style={{
-                      paddingHorizontal: 16,
+                      paddingHorizontal: 14,
                       paddingVertical: 12,
                       borderRadius: 22,
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : colors.surfaceHigh,
@@ -616,12 +698,18 @@ export default function AddScreen() {
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={styles.tapToSpeakBtn}
+                  style={[
+                    styles.tapToSpeakBtn,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(175, 230, 7, 0.15)' : 'rgba(108, 56, 233, 0.12)',
+                      borderColor: isDarkMode ? 'rgba(175, 230, 7, 0.4)' : 'rgba(108, 56, 233, 0.3)',
+                    },
+                  ]}
                   activeOpacity={0.85}
                   onPress={handleToggleInlineRecording}
                 >
-                  <Ionicons name="mic" size={18} color={colors.primary} />
-                  <Text style={styles.tapToSpeakText}>
+                  <Ionicons name="mic" size={18} color={isDarkMode ? '#AFE607' : colors.primary} />
+                  <Text style={[styles.tapToSpeakText, { color: isDarkMode ? '#AFE607' : colors.primary }]}>
                     {isArabic ? 'بدء التسجيل الصوتي' : 'Start Voice Input'}
                   </Text>
                 </TouchableOpacity>
@@ -846,14 +934,73 @@ export default function AddScreen() {
                               </Text>
                             </View>
 
-                            {/* Bottom Row: Icon badge & optional reminder time */}
-                            <View style={styles.cardBottomRow}>
-                              <View style={styles.cardIconCircle}>
-                                <Ionicons
-                                  name={(item.icon as any) || (isReminderItem ? 'alarm-outline' : 'snow-outline')}
-                                  size={16}
-                                  color="#0F172A"
-                                />
+                            {/* Bottom Row: Icon badge, Audio note pill, Transcribing indicator, and optional reminder time */}
+                            <View style={[styles.cardBottomRow, isArabic && { flexDirection: 'row-reverse' }]}>
+                              <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <View style={styles.cardIconCircle}>
+                                  <Ionicons
+                                    name={(item.icon as any) || (item.audioStorageId ? 'mic' : isReminderItem ? 'alarm-outline' : 'snow-outline')}
+                                    size={15}
+                                    color="#0F172A"
+                                  />
+                                </View>
+
+                                {item.audioStorageId ? (
+                                  <View
+                                    style={{
+                                      flexDirection: isArabic ? 'row-reverse' : 'row',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                      backgroundColor: 'rgba(15, 23, 42, 0.08)',
+                                      paddingHorizontal: 7,
+                                      paddingVertical: 3,
+                                      borderRadius: 8,
+                                    }}
+                                  >
+                                    <Ionicons name="volume-medium" size={11} color="#0F172A" />
+                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#0F172A' }}>
+                                      {item.audioDuration ? `${Math.round(item.audioDuration)}s` : 'Audio'}
+                                    </Text>
+                                  </View>
+                                ) : null}
+
+                                {item.transcriptStatus === 'transcribing' ? (
+                                  <View
+                                    style={{
+                                      flexDirection: isArabic ? 'row-reverse' : 'row',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                      backgroundColor: 'rgba(108, 56, 233, 0.15)',
+                                      paddingHorizontal: 7,
+                                      paddingVertical: 3,
+                                      borderRadius: 8,
+                                    }}
+                                  >
+                                    <Ionicons name="flash" size={11} color="#6C38E9" />
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#6C38E9' }}>
+                                      {isArabic ? 'تفريغ...' : 'Transcribing...'}
+                                    </Text>
+                                  </View>
+                                ) : null}
+
+                                {item.aiChatHistory && item.aiChatHistory.length > 0 ? (
+                                  <View
+                                    style={{
+                                      flexDirection: isArabic ? 'row-reverse' : 'row',
+                                      alignItems: 'center',
+                                      gap: 2,
+                                      backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                      paddingHorizontal: 6,
+                                      paddingVertical: 3,
+                                      borderRadius: 8,
+                                    }}
+                                  >
+                                    <Ionicons name="sparkles" size={10} color="#059669" />
+                                    <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#059669' }}>
+                                      AI
+                                    </Text>
+                                  </View>
+                                ) : null}
                               </View>
 
                               {item.dueDate ? (
@@ -863,9 +1010,7 @@ export default function AddScreen() {
                                     {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </Text>
                                 </View>
-                              ) : (
-                                <View />
-                              )}
+                              ) : null}
                             </View>
                           </LivePress>
                         </View>

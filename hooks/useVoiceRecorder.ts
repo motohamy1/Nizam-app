@@ -1,11 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Platform, Alert, Linking } from 'react-native';
+import { Alert, Linking } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import {
   useAudioRecorder,
   AudioModule,
-  RecordingPresets,
-  AudioRecorder,
+  IOSOutputFormat,
+  AudioQuality,
+  type RecordingOptions,
 } from 'expo-audio';
+
+export const SPEECH_RECORDING_OPTIONS: RecordingOptions = {
+  extension: '.m4a',
+  sampleRate: 24000,
+  numberOfChannels: 1, // Mono eliminates room echo and phase cancellation for Whisper
+  bitRate: 64000,
+  isMeteringEnabled: true,
+  android: {
+    outputFormat: 'mpeg4',
+    audioEncoder: 'aac',
+  },
+  ios: {
+    outputFormat: IOSOutputFormat.MPEG4AAC,
+    audioQuality: AudioQuality.HIGH,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 64000,
+  },
+};
 
 export interface UseVoiceRecorderReturn {
   isRecording: boolean;
@@ -29,7 +54,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [uri, setUri] = useState<string | null>(null);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS);
   const timerRef = useRef<any>(null);
   const durationRef = useRef(0);
 
@@ -71,31 +96,40 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       const granted = await requestPermission();
       if (!granted) return false;
 
+      // Haptic confirmation of recording start
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
       // Reset state
       setDuration(0);
       durationRef.current = 0;
       setUri(null);
       setIsPaused(false);
 
+      await AudioModule.setAudioModeAsync({
+        playsInSilentMode: true,
+      }).catch(() => {});
+
       await recorder.prepareToRecordAsync();
       recorder.record();
 
       setIsRecording(true);
 
-      // Start duration & smooth 100ms metering level timer
+      // Start duration & smooth 60ms metering level timer for silky waveforms
       if (timerRef.current) clearInterval(timerRef.current);
       let elapsedMs = 0;
       timerRef.current = setInterval(() => {
-        elapsedMs += 100;
-        if (elapsedMs % 1000 === 0) {
+        elapsedMs += 60;
+        if (elapsedMs % 1000 < 60) {
           durationRef.current += 1;
           setDuration(durationRef.current);
         }
 
-        // Generate dynamic organic audio level variations for waveforms
-        const fluctuating = 0.3 + Math.sin(elapsedMs / 200) * 0.25 + Math.random() * 0.45;
-        setAudioLevel(Math.max(0.2, Math.min(1.2, fluctuating)));
-      }, 100);
+        // Generate dynamic organic audio level variations with natural vocal cadence
+        const speechHarmonic = Math.sin(elapsedMs / 180) * 0.35 + Math.cos(elapsedMs / 320) * 0.2;
+        const breathVariance = Math.random() * 0.45;
+        const level = Math.max(0.18, Math.min(1.25, 0.38 + speechHarmonic + breathVariance));
+        setAudioLevel(level);
+      }, 60);
 
       return true;
     } catch (err) {
@@ -108,8 +142,10 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
   const pauseRecording = useCallback(async () => {
     try {
       if (!isRecording || isPaused) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       recorder.pause();
       setIsPaused(true);
+      setAudioLevel(0.08); // resting flat level
       if (timerRef.current) clearInterval(timerRef.current);
     } catch (err) {
       console.warn('Error pausing recording:', err);
@@ -119,15 +155,23 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
   const resumeRecording = useCallback(async () => {
     try {
       if (!isRecording || !isPaused) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       recorder.record();
       setIsPaused(false);
 
       if (timerRef.current) clearInterval(timerRef.current);
+      let elapsedMs = durationRef.current * 1000;
       timerRef.current = setInterval(() => {
-        durationRef.current += 1;
-        setDuration(durationRef.current);
-        setAudioLevel(0.35 + Math.random() * 0.55);
-      }, 1000);
+        elapsedMs += 60;
+        if (elapsedMs % 1000 < 60) {
+          durationRef.current += 1;
+          setDuration(durationRef.current);
+        }
+        const speechHarmonic = Math.sin(elapsedMs / 180) * 0.35 + Math.cos(elapsedMs / 320) * 0.2;
+        const breathVariance = Math.random() * 0.45;
+        const level = Math.max(0.18, Math.min(1.25, 0.38 + speechHarmonic + breathVariance));
+        setAudioLevel(level);
+      }, 60);
     } catch (err) {
       console.warn('Error resuming recording:', err);
     }
@@ -135,6 +179,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
 
   const stopRecording = useCallback(async (): Promise<{ uri: string; duration: number } | null> => {
     try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -146,6 +191,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       const recordingUri = recorder.uri;
       setIsRecording(false);
       setIsPaused(false);
+      setAudioLevel(0);
       setUri(recordingUri || null);
 
       if (recordingUri) {
@@ -159,12 +205,14 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       console.error('Error stopping recording:', err);
       setIsRecording(false);
       setIsPaused(false);
+      setAudioLevel(0);
       return null;
     }
   }, [recorder]);
 
   const cancelRecording = useCallback(async () => {
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -172,12 +220,15 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       await recorder.stop();
       setIsRecording(false);
       setIsPaused(false);
+      setAudioLevel(0);
       setDuration(0);
       durationRef.current = 0;
       setUri(null);
     } catch (err) {
       console.warn('Error cancelling recording:', err);
       setIsRecording(false);
+      setIsPaused(false);
+      setAudioLevel(0);
     }
   }, [recorder]);
 

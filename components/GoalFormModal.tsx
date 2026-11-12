@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View,
+import {
+  View,
   Text,
   Modal,
   TextInput,
@@ -7,11 +8,16 @@ import { View,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Alert,
-  useWindowDimensions, type ScrollViewInstance } from 'react-native';
+  useWindowDimensions,
+  type ScrollViewInstance,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system/legacy';
+import { FileSystemUploadType } from 'expo-file-system/legacy';
+import { useAction, useMutation } from 'convex/react';
 import useTheme from '@/hooks/useTheme';
 import LivePress from '@/components/LivePress';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -19,7 +25,9 @@ import { useKeyboard } from '@/hooks/useKeyboard';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOfflineQuery } from '@/hooks/useOfflineQuery';
-import { UniversalLinkPickerModal, UniversalLinkSelection } from './UniversalLinkPickerModal';
+import { UniversalLinkPickerModal } from './UniversalLinkPickerModal';
+import { PostalStampGoalCard } from './ai-goals/PostalStampGoalCard';
+import { VoiceRecordModal } from './VoiceRecordModal';
 
 export interface MilestoneItem {
   id: string;
@@ -34,6 +42,8 @@ export interface GoalFormData {
   category?: string;
   color?: string;
   icon?: string;
+  templateId?: string;
+  visualStyleId?: string;
   milestones?: MilestoneItem[];
   isCompleted?: boolean;
   _type: 'goal' | 'achievement';
@@ -50,6 +60,7 @@ interface GoalFormModalProps {
   initialCategory?: string;
   categories: string[];
   isArabic?: boolean;
+  timeframe?: string;
   onSave: (formData: GoalFormData) => Promise<void> | void;
   onDelete?: (id: any, type: 'goal' | 'achievement') => Promise<void> | void;
 }
@@ -88,6 +99,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   initialCategory = '',
   categories,
   isArabic = false,
+  timeframe = 'month',
   onSave,
   onDelete,
 }) => {
@@ -105,10 +117,32 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
   const [color, setColor] = useState('#EA580C');
   const [icon, setIcon] = useState('flag-outline');
+  const [templateId, setTemplateId] = useState('checklist');
+  const [visualStyleId, setVisualStyleId] = useState('paper');
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+
+  // AI Co-Pilot State
+  const [isCoPilotLoading, setIsCoPilotLoading] = useState(false);
+  const [coPilotInsights, setCoPilotInsights] = useState<{
+    suggestedMilestones: MilestoneItem[];
+    category?: string;
+    templateId?: string;
+  } | null>(null);
+
+  // Live Card Preview Collapsible
+  const [showLivePreview, setShowLivePreview] = useState(true);
+
+  // Voice Recording State
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isTranscribingVoice, setIsTranscribingVoice] = useState(false);
+
+  // Convex Actions & Mutations
+  const coPilotAction = useAction(api.aiGoals.coPilotAssistGoal);
+  const generateAudioUploadUrl = useMutation(api.audio.generateAudioUploadUrl);
+  const transcribeAudioAction = useAction(api.audio.transcribeAudio);
 
   // Linked Space / Project State
   const [linkedCategoryId, setLinkedCategoryId] = useState<Id<'projectCategories'> | undefined>(undefined);
@@ -119,6 +153,8 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   const linkedProjectMeta = useOfflineQuery<any>('projects.getProjectMetadata', api.projects.getProjectMetadata, linkedProjectId ? { id: linkedProjectId } : 'skip');
   const linkedCategoryMeta = useOfflineQuery<any>('projects.getCategory', api.projects.getCategory, linkedCategoryId ? { id: linkedCategoryId } : 'skip');
 
+  // Synchronize modal state on open or item update
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (visible) {
       if (item) {
@@ -128,6 +164,8 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
         setCategory(item.category || initialCategory || '');
         setColor(item.color || (item._type === 'achievement' ? '#059669' : '#EA580C'));
         setIcon(item.icon || (item._type === 'achievement' ? 'trophy-outline' : 'flag-outline'));
+        setTemplateId(item.templateId || 'checklist');
+        setVisualStyleId(item.visualStyleId || 'paper');
         setMilestones(item.milestones ? [...item.milestones] : []);
         setLinkedCategoryId(item.categoryId);
         setLinkedSubCategoryId(item.subCategoryId);
@@ -140,6 +178,8 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
         setCategory(initialCategory || (categories.length > 0 ? categories[0] : ''));
         setColor('#EA580C');
         setIcon('flag-outline');
+        setTemplateId('checklist');
+        setVisualStyleId('paper');
         setMilestones([]);
         setLinkedCategoryId(undefined);
         setLinkedSubCategoryId(undefined);
@@ -148,9 +188,12 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
       setCustomCategoryInput('');
       setIsAddingCustomCategory(false);
       setNewMilestoneText('');
+      setCoPilotInsights(null);
+      setIsVoiceModalOpen(false);
       setIsLinkPickerOpen(false);
     }
-  }, [item, initialCategory, visible]);
+  }, [item, initialCategory, visible, categories]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Adjust default color & icon when switching type
   const handleTypeSwitch = (newType: 'goal' | 'achievement') => {
@@ -195,6 +238,128 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
     }
   };
 
+  // ─── AI Co-Pilot Assistant ──────────────────────────────────────────────
+  const handleCoPilotAssist = async () => {
+    const userGoalText = text.trim();
+    if (!userGoalText) {
+      Alert.alert(
+        isArabic ? 'اكتب الهدف أولاً' : 'Enter Goal First',
+        isArabic
+          ? 'يرجى كتابة عنوان أو فكرة الهدف ليقوم الذكاء الاصطناعي بتحليله واقتراح الخطوات.'
+          : 'Please enter a goal title or idea so the AI co-pilot can suggest categories and steps.'
+      );
+      return;
+    }
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setIsCoPilotLoading(true);
+
+      const result = await coPilotAction({
+        text: userGoalText,
+        timeframe,
+        language: isArabic ? 'ar' : 'en',
+        existingCategories: categories,
+      });
+
+      if (result) {
+        if (!category || category === 'General' || category === 'عام' || category === 'أهداف عامة') {
+          if (result.category) setCategory(result.category);
+        }
+        if (result.color && color === '#EA580C') {
+          setColor(result.color);
+        }
+        if (result.icon && icon === 'flag-outline') {
+          setIcon(result.icon);
+        }
+        if (result.templateId) {
+          setTemplateId(result.templateId);
+        }
+
+        const validMilestones: MilestoneItem[] = (result.suggestedMilestones || []).map((m: any, idx: number) => ({
+          id: m.id || `ms_copilot_${Date.now()}_${idx}`,
+          text: m.text || '',
+          isCompleted: false,
+        }));
+
+        setCoPilotInsights({
+          suggestedMilestones: validMilestones,
+          category: result.category,
+          templateId: result.templateId,
+        });
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      console.warn('AI Co-pilot error:', err);
+      Alert.alert(
+        isArabic ? 'تنبيه' : 'Notice',
+        isArabic
+          ? 'تعذر الاتصال بالمساعد الذكي حالياً، يمكنك المتابعة يدوياً.'
+          : 'Could not contact AI co-pilot right now, you can continue manually.'
+      );
+    } finally {
+      setIsCoPilotLoading(false);
+    }
+  };
+
+  const handleApplySuggestedMilestone = (ms: MilestoneItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMilestones((prev) => [...prev, ms]);
+    setCoPilotInsights((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        suggestedMilestones: prev.suggestedMilestones.filter((item) => item.id !== ms.id),
+      };
+    });
+  };
+
+  const handleApplyAllSuggestedMilestones = () => {
+    if (!coPilotInsights || coPilotInsights.suggestedMilestones.length === 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setMilestones((prev) => [...prev, ...coPilotInsights.suggestedMilestones]);
+    setCoPilotInsights((prev) => (prev ? { ...prev, suggestedMilestones: [] } : null));
+  };
+
+  // ─── Voice Recording Handler ─────────────────────────────────────────────
+  const handleFinishVoiceRecording = async (result: { uri: string; duration: number }) => {
+    try {
+      setIsTranscribingVoice(true);
+      const uploadUrl = await generateAudioUploadUrl();
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, result.uri, {
+        httpMethod: 'POST',
+        uploadType: FileSystemUploadType.BINARY_CONTENT,
+        headers: { 'Content-Type': 'audio/m4a' },
+      });
+
+      if (uploadResult.status !== 200) {
+        throw new Error(`Upload failed with status ${uploadResult.status}`);
+      }
+
+      const { storageId } = JSON.parse(uploadResult.body);
+      const transcribeRes = await transcribeAudioAction({
+        storageId,
+        languageHint: isArabic ? 'ar' : 'en',
+      });
+
+      if (transcribeRes?.transcript?.trim()) {
+        const spokenText = transcribeRes.transcript.trim();
+        setText(spokenText);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      console.warn('Voice transcription failed:', err);
+      Alert.alert(
+        isArabic ? 'خطأ في الصوت' : 'Voice Error',
+        isArabic ? 'تعذر تحويل الصوت إلى نص.' : 'Could not transcribe voice audio.'
+      );
+    } finally {
+      setIsTranscribingVoice(false);
+      setIsVoiceModalOpen(false);
+    }
+  };
+
   const handleSave = async () => {
     // Synchronous guard: a state flag alone is stale within the same tick, so
     // two rapid taps could both run this handler (duplicate creates).
@@ -226,6 +391,8 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
         category: category.trim() || undefined,
         color,
         icon,
+        templateId,
+        visualStyleId,
         milestones: type === 'goal' ? milestones : undefined,
         isCompleted: item?.isCompleted || false,
         _type: type,
@@ -273,11 +440,13 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
           style={[
             styles.modalSheet, 
             { 
-              backgroundColor: colors.surface,
+              backgroundColor: isDarkMode ? '#0B0812' : colors.surface,
+              borderColor: isDarkMode ? '#2D2245' : 'transparent',
+              borderWidth: isDarkMode ? 1.5 : 0,
               marginBottom: keyboardHeight,
               maxHeight: isKeyboardVisible 
                 ? Math.max(300, screenHeight - keyboardHeight - 44) 
-                : '90%',
+                : '92%',
             }
           ]}
         >
@@ -293,7 +462,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
                   ? type === 'goal' ? 'تعديل الهدف' : 'تعديل الإنجاز'
                   : type === 'goal' ? 'Edit Goal' : 'Edit Achievement'
                 : isArabic
-                ? type === 'goal' ? 'إضافة هدف جديد' : 'إضافة إنجاز جديد'
+                ? type === 'goal' ? 'إضافة هدف ذكي' : 'إضافة إنجاز جديد'
                 : type === 'goal' ? 'New Goal' : 'New Achievement'}
             </Text>
 
@@ -313,15 +482,15 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             keyboardShouldPersistTaps="handled"
           >
             {/* Type Selector Toggle (Goal vs Achievement) */}
-            <View style={[styles.typeToggleContainer, { backgroundColor: isDarkMode ? '#1E1E28' : '#F3F4F6' }]}>
+            <View style={[styles.typeToggleContainer, { backgroundColor: isDarkMode ? '#171422' : '#F3F4F6' }]}>
               <TouchableOpacity
                 style={[
                   styles.typeToggleBtn,
-                  type === 'goal' && [styles.typeToggleBtnActive, { backgroundColor: colors.surface }],
+                  type === 'goal' && [styles.typeToggleBtnActive, { backgroundColor: isDarkMode ? '#231E34' : colors.surface }],
                 ]}
                 onPress={() => handleTypeSwitch('goal')}
               >
-                <Ionicons name="flag" size={15} color={type === 'goal' ? colors.primary : colors.textMuted} />
+                <Ionicons name="flag" size={15} color={type === 'goal' ? (isDarkMode ? '#AFE607' : colors.primary) : colors.textMuted} />
                 <Text
                   style={[
                     styles.typeToggleText,
@@ -335,7 +504,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.typeToggleBtn,
-                  type === 'achievement' && [styles.typeToggleBtnActive, { backgroundColor: colors.surface }],
+                  type === 'achievement' && [styles.typeToggleBtnActive, { backgroundColor: isDarkMode ? '#231E34' : colors.surface }],
                 ]}
                 onPress={() => handleTypeSwitch('achievement')}
               >
@@ -351,30 +520,195 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Title Input */}
-            <Text style={[styles.inputLabel, { color: colors.textMuted, textAlign: isArabic ? 'right' : 'left' }]}>
-              {isArabic ? 'العنوان' : 'Title'}
-            </Text>
+            {/* Title Input + Ambient Co-Pilot & Mic Row */}
+            <View style={[styles.titleHeaderRow, isArabic && styles.rowReverse]}>
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>
+                {isArabic ? 'العنوان والهدف المطلوب' : 'Goal Title & Intent'}
+              </Text>
+
+              <View style={[styles.titleToolsRow, isArabic && styles.rowReverse]}>
+                {/* Voice Input Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.micBtn,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#F3F4F6',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.14)' : '#E5E7EB',
+                    },
+                  ]}
+                  onPress={() => setIsVoiceModalOpen(true)}
+                  disabled={isTranscribingVoice}
+                  activeOpacity={0.75}
+                >
+                  {isTranscribingVoice ? (
+                    <ActivityIndicator size="small" color="#AFE607" />
+                  ) : (
+                    <Ionicons name="mic" size={15} color={isDarkMode ? '#AFE607' : colors.primary} />
+                  )}
+                </TouchableOpacity>
+
+                {/* AI Co-Pilot Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.coPilotAssistBtn,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(175, 230, 7, 0.14)' : '#8B5CF618',
+                      borderColor: isDarkMode ? 'rgba(175, 230, 7, 0.40)' : '#8B5CF640',
+                    },
+                  ]}
+                  onPress={handleCoPilotAssist}
+                  disabled={isCoPilotLoading}
+                  activeOpacity={0.8}
+                >
+                  {isCoPilotLoading ? (
+                    <ActivityIndicator size="small" color={isDarkMode ? '#AFE607' : '#8B5CF6'} />
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={13} color={isDarkMode ? '#AFE607' : '#8B5CF6'} />
+                      <Text
+                        style={[
+                          styles.coPilotAssistText,
+                          { color: isDarkMode ? '#AFE607' : '#8B5CF6' },
+                        ]}
+                      >
+                        {isArabic ? 'مساعد ذكي' : 'AI Co-Pilot'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TextInput
               style={[
                 styles.titleInput,
                 {
                   color: colors.text,
-                  backgroundColor: isDarkMode ? '#1E1E28' : '#F9FAFB',
-                  borderColor: isDarkMode ? '#2D2D3E' : '#E5E7EB',
+                  backgroundColor: isDarkMode ? '#13111C' : '#F9FAFB',
+                  borderColor: isDarkMode ? '#2D2245' : '#E5E7EB',
                   textAlign: isArabic ? 'right' : 'left',
                 },
               ]}
               value={text}
-              onChangeText={setText}
+              onChangeText={(val) => {
+                setText(val);
+                if (coPilotInsights && val.trim().length === 0) {
+                  setCoPilotInsights(null);
+                }
+              }}
               placeholder={
                 type === 'goal'
-                  ? isArabic ? 'مثال: إنهاء وتدشين النسخة التجريبية...' : 'e.g. Ship MVP version 1.0...'
+                  ? isArabic ? 'مثال: إتقان فلاتر وبناء 3 تطبيقات عملية خلال الشهر...' : 'e.g. Master Flutter and build 3 small apps this month...'
                   : isArabic ? 'مثال: تم إكمال الدورة بنجاح...' : 'e.g. Finished certification course...'
               }
               placeholderTextColor={colors.textMuted}
               multiline
             />
+
+            {/* AI Co-Pilot Suggestion Shelf (Dismissible, 1-tap accept) */}
+            {coPilotInsights && (
+              <View
+                style={[
+                  styles.coPilotShelf,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(175, 230, 7, 0.05)' : 'rgba(139, 92, 246, 0.06)',
+                    borderColor: isDarkMode ? 'rgba(175, 230, 7, 0.25)' : 'rgba(139, 92, 246, 0.25)',
+                  },
+                ]}
+              >
+                <View style={[styles.coPilotShelfHeader, isArabic && styles.rowReverse]}>
+                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="sparkles" size={14} color={isDarkMode ? '#AFE607' : '#8B5CF6'} />
+                    <Text
+                      style={[
+                        styles.coPilotShelfTitle,
+                        { color: isDarkMode ? '#AFE607' : '#8B5CF6' },
+                      ]}
+                    >
+                      {isArabic ? 'اقتراحات المساعد الذكي السريعة' : 'AI Co-Pilot Suggestions'}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => setCoPilotInsights(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {Boolean(coPilotInsights.category) && (
+                  <View style={[styles.coPilotMetaRow, isArabic && styles.rowReverse]}>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>
+                      {isArabic ? 'القسم المقترح:' : 'Category Match:'}
+                    </Text>
+                    <View style={styles.coPilotCategoryPill}>
+                      <Text style={styles.coPilotCategoryPillText}>{coPilotInsights.category}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {coPilotInsights.suggestedMilestones.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text
+                      style={{
+                        fontSize: 11.5,
+                        color: colors.textMuted,
+                        fontWeight: '600',
+                        marginBottom: 6,
+                        textAlign: isArabic ? 'right' : 'left',
+                      }}
+                    >
+                      {isArabic ? 'خطوات تنفيذية مقترحة (اضغط للإضافة):' : 'Suggested Actionable Steps (tap to add):'}
+                    </Text>
+
+                    <View style={[styles.coPilotChipsWrap, isArabic && styles.rowReverse]}>
+                      {coPilotInsights.suggestedMilestones.map((ms) => (
+                        <TouchableOpacity
+                          key={ms.id}
+                          style={[
+                            styles.suggestedChip,
+                            {
+                              backgroundColor: isDarkMode ? '#1E1B2A' : '#FFFFFF',
+                              borderColor: isDarkMode ? '#3D2F5F' : '#E2E8F0',
+                            },
+                            isArabic && styles.rowReverse,
+                          ]}
+                          onPress={() => handleApplySuggestedMilestone(ms)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="add-circle" size={14} color={isDarkMode ? '#AFE607' : colors.primary} />
+                          <Text style={[styles.suggestedChipText, { color: colors.text }]}>{ms.text}</Text>
+                        </TouchableOpacity>
+                      ))}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.addAllChip,
+                          {
+                            backgroundColor: isDarkMode ? '#AFE607' : colors.primary,
+                          },
+                        ]}
+                        onPress={handleApplyAllSuggestedMilestones}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="flash" size={12} color={isDarkMode ? '#0B0812' : '#FFFFFF'} />
+                        <Text
+                          style={[
+                            styles.addAllChipText,
+                            { color: isDarkMode ? '#0B0812' : '#FFFFFF' },
+                          ]}
+                        >
+                          {isArabic
+                            ? `+ إضافة الكل (${coPilotInsights.suggestedMilestones.length})`
+                            : `+ Add All (${coPilotInsights.suggestedMilestones.length})`}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Description Input */}
             <Text style={[styles.inputLabel, { color: colors.textMuted, textAlign: isArabic ? 'right' : 'left', marginTop: 14 }]}>
@@ -505,6 +839,60 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
                 >
                   <Ionicons name="close" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Visual Framework Selector */}
+            {type === 'goal' && (
+              <View style={{ marginTop: 14 }}>
+                <Text style={[styles.inputLabel, { color: colors.textMuted, textAlign: isArabic ? 'right' : 'left' }]}>
+                  {isArabic ? 'قالب التنسيق والعرض' : 'Layout Framework'}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                  {[
+                    { id: 'checklist', label: isArabic ? 'قائمة إنجاز' : 'Clean Checklist', icon: 'checkbox-outline' },
+                    { id: 'roadmap', label: isArabic ? 'خارطة مرحلية' : 'Roadmap', icon: 'git-commit-outline' },
+                    { id: 'sprint', label: isArabic ? 'سبرنت مكثف' : 'Sprint', icon: 'flash-outline' },
+                    { id: 'metric', label: isArabic ? 'مقياس رقمي' : 'Metric Gauge', icon: 'speedometer-outline' },
+                  ].map((fw) => {
+                    const isSelected = templateId === fw.id;
+                    return (
+                      <TouchableOpacity
+                        key={fw.id}
+                        style={[
+                          styles.frameworkChip,
+                          {
+                            backgroundColor: isSelected
+                              ? (isDarkMode ? 'rgba(175, 230, 7, 0.14)' : color + '22')
+                              : (isDarkMode ? '#171422' : '#F3F4F6'),
+                            borderColor: isSelected
+                              ? (isDarkMode ? '#AFE607' : color)
+                              : 'transparent',
+                          },
+                          isArabic && styles.rowReverse,
+                        ]}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setTemplateId(fw.id);
+                        }}
+                      >
+                        <Ionicons
+                          name={fw.icon as any}
+                          size={13}
+                          color={isSelected ? (isDarkMode ? '#AFE607' : color) : colors.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.frameworkChipText,
+                            { color: isSelected ? (isDarkMode ? '#AFE607' : color) : colors.text },
+                          ]}
+                        >
+                          {fw.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
             )}
 
@@ -714,6 +1102,65 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
               </View>
             )}
 
+            {/* Live Generative Card Preview (Collapsible) */}
+            {type === 'goal' && (
+              <View style={{ marginTop: 18 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.previewToggleRow,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+                      borderColor: isDarkMode ? '#2D2245' : '#E2E8F0',
+                    },
+                    isArabic && styles.rowReverse,
+                  ]}
+                  onPress={() => setShowLivePreview((prev) => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="card" size={15} color={isDarkMode ? '#AFE607' : color} />
+                    <Text style={[styles.previewToggleText, { color: colors.text }]}>
+                      {isArabic ? 'معاينة البطاقة الحية (Live Card Preview)' : 'Live Generative Card Preview'}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={showLivePreview ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textMuted}
+                  />
+                </TouchableOpacity>
+
+                {showLivePreview && (
+                  <View style={styles.cardPreviewContainer}>
+                    <PostalStampGoalCard
+                      title={text.trim() || (isArabic ? 'عنوان الهدف...' : 'Your goal title...')}
+                      description={description.trim()}
+                      category={category || (isArabic ? 'أهداف عامة' : 'General')}
+                      color={color}
+                      icon={icon}
+                      timeframe={timeframe}
+                      milestones={milestones.map((m) => ({
+                        id: m.id,
+                        text: m.text,
+                        isCompleted: m.isCompleted,
+                      }))}
+                      isArabic={isArabic}
+                      backdropColor={isDarkMode ? '#0B0812' : colors.bg}
+                      onToggleMilestone={handleToggleMilestone}
+                      onDeleteMilestone={handleRemoveMilestone}
+                      onAddMilestone={(newText) => {
+                        setMilestones((prev) => [
+                          ...prev,
+                          { id: `ms_${Date.now()}_${Math.random()}`, text: newText, isCompleted: false },
+                        ]);
+                      }}
+                      readOnly={false}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={{ height: 30 }} />
           </ScrollView>
 
@@ -778,6 +1225,13 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             }}
             currentCategoryId={linkedCategoryId}
             currentProjectId={linkedProjectId}
+          />
+
+          <VoiceRecordModal
+            visible={isVoiceModalOpen}
+            onClose={() => setIsVoiceModalOpen(false)}
+            onFinishRecording={handleFinishVoiceRecording}
+            isArabic={isArabic}
           />
         </View>
       </View>
@@ -1015,4 +1469,136 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  titleHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  titleToolsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  micBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coPilotAssistBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  coPilotAssistText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  coPilotShelf: {
+    marginTop: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  coPilotShelfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  coPilotShelfTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  coPilotMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginVertical: 4,
+  },
+  coPilotCategoryPill: {
+    backgroundColor: 'rgba(175, 230, 7, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(175, 230, 7, 0.3)',
+  },
+  coPilotCategoryPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#AFE607',
+  },
+  coPilotChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  suggestedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  suggestedChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  addAllChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  addAllChipText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  frameworkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  frameworkChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  previewToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  previewToggleText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  cardPreviewContainer: {
+    marginVertical: 4,
+  },
 });
+

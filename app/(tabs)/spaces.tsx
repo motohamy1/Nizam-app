@@ -599,7 +599,7 @@ const AddResourceModal = ({ visible, onClose, colors, styles, onAdd }: {
 
 // ─── Layer 1: Categories View (Full Width) ───────────────────────────────────
 
-const CategoriesView = ({ styles, colors, onSelectCategory, onAddCategory, onEditCategory, onOpenAction, userId, isArabic = false }: {
+const CategoriesView = ({ styles, colors, onSelectCategory, onAddCategory, onEditCategory, onOpenAction, userId, isArabic = false, header }: {
   styles: any; colors: any;
   onSelectCategory: (id: Id<'projectCategories'>, name: string, color: string) => void;
   onAddCategory: () => void;
@@ -607,12 +607,20 @@ const CategoriesView = ({ styles, colors, onSelectCategory, onAddCategory, onEdi
   onOpenAction: (config: any) => void;
   userId: Id<'users'> | null;
   isArabic?: boolean;
+  header?: React.ReactNode;
 }) => {
   const categories = useOfflineQuery<any[]>('projects.getCategories', api.projects.getCategories, userId ? { userId } : 'skip');
   const allTodos = useOfflineQuery<any[]>('todos', api.todos.get, userId ? { userId } : 'skip');
   const deleteCategory = useOfflineMutation(api.projects.deleteCategory, 'projects:deleteCategory');
 
-  if (!categories) return <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color="#8E9AAB" /></View>;
+  if (!categories) {
+    return (
+      <View style={{ flex: 1 }}>
+        {header}
+        <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color="#8E9AAB" /></View>
+      </View>
+    );
+  }
 
   const getProgress = (catId: string) => {
     if (!allTodos) return 0;
@@ -629,6 +637,7 @@ const CategoriesView = ({ styles, colors, onSelectCategory, onAddCategory, onEdi
 
   return (
     <ScrollView contentContainerStyle={styles.categoriesGrid} showsVerticalScrollIndicator={false}>
+      {header}
       {categories.length === 0 && (
         <View style={styles.emptyContainer}>
           <Ionicons name="folder-open-outline" size={48} color={colors.primary} />
@@ -732,6 +741,7 @@ const CategoryDetailView = ({
   onDeleteProject,
   onOpenAction,
   isArabic = false,
+  header,
 }: {
   styles: any;
   colors: any;
@@ -746,6 +756,7 @@ const CategoryDetailView = ({
   onOpenAction: (config: any) => void;
   userId: Id<'users'> | null;
   isArabic?: boolean;
+  header?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const category = useOfflineQuery<any>('projects.getCategory', api.projects.getCategory, { id: categoryId });
@@ -847,8 +858,11 @@ const CategoryDetailView = ({
 
   if (!directProjects) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="hourglass-outline" size={40} color={colors.border} />
+      <View style={{ flex: 1 }}>
+        {header}
+        <View style={styles.emptyContainer}>
+          <Ionicons name="hourglass-outline" size={40} color={colors.border} />
+        </View>
       </View>
     );
   }
@@ -858,6 +872,7 @@ const CategoryDetailView = ({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }}>
+      {header}
       {/* ─── Goal Cross-Link Banner ─── */}
       <View style={{ paddingHorizontal: 20, marginBottom: 14 }}>
         {linkedGoal ? (
@@ -1428,7 +1443,7 @@ const CategoryDetailView = ({
 
 const SubCategoryProjectsView = ({
   styles, colors, subCategoryId, subCategoryName,
-  onSelectProject, onAddProject, onEditSubCategory, onEditProject, onDeleteSubCategory, onDeleteProject, onOpenAction, userId
+  onSelectProject, onAddProject, onEditSubCategory, onEditProject, onDeleteSubCategory, onDeleteProject, onOpenAction, userId, header
 }: {
   styles: any; colors: any;
   subCategoryId: Id<'projectSubCategories'>; subCategoryName: string;
@@ -1440,16 +1455,25 @@ const SubCategoryProjectsView = ({
   onDeleteProject: (id: Id<'projects'>) => void;
   onOpenAction: (config: any) => void;
   userId: Id<'users'> | null;
+  header?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const projects = useOfflineQuery<any[]>('projects.getProjectsBySubCategory', api.projects.getProjectsBySubCategory, { subCategoryId });
   const allTodos = useOfflineQuery<any[]>('todos', api.todos.get, userId ? { userId } : 'skip');
   const sub = useOfflineQuery<any>('projects.getSubCategory', api.projects.getSubCategory, { id: subCategoryId });
 
-  if (!projects) return <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color={colors.border} /></View>;
+  if (!projects) {
+    return (
+      <View style={{ flex: 1 }}>
+        {header}
+        <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color={colors.border} /></View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      {header}
       <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12, marginTop: 4 }}>
         <Text style={[styles.sectionLabel, { paddingHorizontal: 0, marginBottom: 0 }]}>Projects in {subCategoryName}</Text>
         <TouchableOpacity
@@ -1549,7 +1573,7 @@ const SubCategoryProjectsView = ({
 
 // ─── Layer 4: Project Detail View ───────────────────────────────────────────
 
-const ProjectDetailView = ({ styles, colors, projectId, onDeleteProject, userId, onEditProject }: { styles: any; colors: any; projectId: Id<'projects'>, onDeleteProject: (id: Id<'projects'>) => void, userId: Id<'users'> | null, onEditProject: (proj: any) => void }) => {
+const ProjectDetailView = ({ styles, colors, projectId, onDeleteProject, userId, onEditProject, header }: { styles: any; colors: any; projectId: Id<'projects'>, onDeleteProject: (id: Id<'projects'>) => void, userId: Id<'users'> | null, onEditProject: (proj: any) => void, header?: React.ReactNode }) => {
   const { language } = useAuth();
   const { isArabic } = useTranslation(language);
   const project = useOfflineQuery<any>('projects.getProject', api.projects.getProject, { id: projectId });
@@ -1634,7 +1658,14 @@ const ProjectDetailView = ({ styles, colors, projectId, onDeleteProject, userId,
     else setDescText('');
   }, [project?._id, project?.description]);
 
-  if (!project) return <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color={colors.border} /></View>;
+  if (!project) {
+    return (
+      <View style={{ flex: 1 }}>
+        {header}
+        <View style={styles.emptyContainer}><Ionicons name="hourglass-outline" size={40} color={colors.border} /></View>
+      </View>
+    );
+  }
 
   const handleSaveDesc = () => {
     if (!project) return;
@@ -1677,6 +1708,7 @@ const ProjectDetailView = ({ styles, colors, projectId, onDeleteProject, userId,
   return (
     <>
       <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
+        {header}
         <View style={[styles.detailHero, { backgroundColor: colors.surface, shadowColor: project.color }]}>
           <View style={styles.detailHeroTop}>
             <View style={[styles.detailIconWrap, { backgroundColor: project.color + '22' }]}><Ionicons name={project.icon as any} size={32} color={project.color} /></View>
@@ -2277,87 +2309,89 @@ const Projects: React.FC = () => {
     setEditingProject(null);
   };
 
+  const renderHeader = () => (
+    <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
+      {layer === 'categories' ? (
+        <View style={[styles.header, { paddingBottom: 6 }]}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{getTitle()}</Text>
+            <Text style={styles.headerSubtitle}>{isArabic ? 'إدارة مساحات العمل' : 'Manage your workspaces'}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setIsAddingCategory(true)}>
+              <Ionicons name="add" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.header, { paddingBottom: 6, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+          <TouchableOpacity onPress={handleBack} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={isArabic ? "arrow-forward" : "arrow-back"} size={22} color={colors.primary} />
+          </TouchableOpacity>
+
+          <Text style={[styles.headerTitle, { textAlign: 'center', flex: 1, fontSize: 20, marginHorizontal: 8 }]} numberOfLines={1}>
+            {getTitle()}
+          </Text>
+
+          {layer === 'categoryDetail' && selectedCatId ? (
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => {
+                setActionConfig({
+                  title: selectedCatName,
+                  options: [
+                    {
+                      label: isArabic ? 'تعديل الفئة' : 'Edit Space',
+                      icon: 'create-outline',
+                      onPress: () => setEditingCategory({ id: selectedCatId, name: selectedCatName, icon: 'briefcase-outline', color: '#dbd4fd' })
+                    },
+                    {
+                      label: isArabic ? 'مشاركة الفئة' : 'Share Space',
+                      icon: 'share-social-outline',
+                      onPress: () => Share.share({ message: `Space: ${selectedCatName}` })
+                    },
+                    {
+                      label: isArabic ? 'حذف الفئة' : 'Delete Space',
+                      icon: 'trash-outline',
+                      variant: 'destructive',
+                      onPress: () => {
+                        Alert.alert(
+                          isArabic ? "تأكيد الحذف" : "Confirm Delete",
+                          isArabic ? "هل أنت متأكد من حذف هذه المساحة وجميع المشاريع بداخلها؟" : "Are you sure you want to delete this space and all its projects?",
+                          [
+                            { text: isArabic ? "إلغاء" : "Cancel", style: "cancel" },
+                            { text: isArabic ? "حذف" : "Delete", style: "destructive", onPress: () => { deleteCategory({ id: selectedCatId }); setLayer('categories'); setSelectedCatId(null); } }
+                          ]
+                        );
+                      }
+                    }
+                  ]
+                });
+                setActionModalVisible(true);
+              }}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 42, height: 42 }} />
+          )}
+        </View>
+      )}
+    </AnimatedWavyHeader>
+  );
+
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <StatusBar style={colors.statusBarStyle === "light-content" ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea}>
-        <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
-          {layer === 'categories' ? (
-            <View style={[styles.header, { paddingBottom: 6 }]}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.headerTitle} numberOfLines={1}>{getTitle()}</Text>
-                <Text style={styles.headerSubtitle}>{isArabic ? 'إدارة مساحات العمل' : 'Manage your workspaces'}</Text>
-              </View>
-              <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.headerBtn} onPress={() => setIsAddingCategory(true)}>
-                  <Ionicons name="add" size={24} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.header, { paddingBottom: 6, flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-              <TouchableOpacity onPress={handleBack} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name={isArabic ? "arrow-forward" : "arrow-back"} size={22} color={colors.primary} />
-              </TouchableOpacity>
-
-              <Text style={[styles.headerTitle, { textAlign: 'center', flex: 1, fontSize: 20, marginHorizontal: 8 }]} numberOfLines={1}>
-                {getTitle()}
-              </Text>
-
-              {layer === 'categoryDetail' && selectedCatId ? (
-                <TouchableOpacity
-                  style={styles.headerBtn}
-                  onPress={() => {
-                    setActionConfig({
-                      title: selectedCatName,
-                      options: [
-                        {
-                          label: isArabic ? 'تعديل الفئة' : 'Edit Space',
-                          icon: 'create-outline',
-                          onPress: () => setEditingCategory({ id: selectedCatId, name: selectedCatName, icon: 'briefcase-outline', color: '#dbd4fd' })
-                        },
-                        {
-                          label: isArabic ? 'مشاركة الفئة' : 'Share Space',
-                          icon: 'share-social-outline',
-                          onPress: () => Share.share({ message: `Space: ${selectedCatName}` })
-                        },
-                        {
-                          label: isArabic ? 'حذف الفئة' : 'Delete Space',
-                          icon: 'trash-outline',
-                          variant: 'destructive',
-                          onPress: () => {
-                            Alert.alert(
-                              isArabic ? "تأكيد الحذف" : "Confirm Delete",
-                              isArabic ? "هل أنت متأكد من حذف هذه المساحة وجميع المشاريع بداخلها؟" : "Are you sure you want to delete this space and all its projects?",
-                              [
-                                { text: isArabic ? "إلغاء" : "Cancel", style: "cancel" },
-                                { text: isArabic ? "حذف" : "Delete", style: "destructive", onPress: () => { deleteCategory({ id: selectedCatId }); setLayer('categories'); setSelectedCatId(null); } }
-                              ]
-                            );
-                          }
-                        }
-                      ]
-                    });
-                    setActionModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              ) : (
-                <View style={{ width: 42, height: 42 }} />
-              )}
-            </View>
-          )}
-        </AnimatedWavyHeader>
-
-
         {layer === 'categories' && (
           <CategoriesView 
             styles={styles} colors={colors} userId={userId} isArabic={isArabic}
+            header={renderHeader()}
             onAddCategory={() => setIsAddingCategory(true)} 
             onEditCategory={(cat) => { setEditingCategory({ id: cat._id, name: cat.name, icon: cat.icon, color: cat.color, tag: cat.tag }); setIsAddingCategory(true); }}
             onSelectCategory={(id, name) => { setSelectedCatId(id); setSelectedCatName(name); setLayer('categoryDetail'); }} 
@@ -2368,6 +2402,7 @@ const Projects: React.FC = () => {
         {layer === 'categoryDetail' && selectedCatId && (
           <CategoryDetailView 
             styles={styles} colors={colors} categoryId={selectedCatId} categoryName={selectedCatName} userId={userId} isArabic={isArabic}
+            header={renderHeader()}
             onSelectProject={(id, name) => { setSelectedProjId(id); setSelectedProjName(name || ''); setLayer('detail'); }}
             onAddProject={() => setIsAddingProject(true)}
             onEditCategory={(cat) => { setEditingCategory({ id: cat._id, name: cat.name, icon: cat.icon, color: cat.color, tag: cat.tag }); setIsAddingCategory(true); }}
@@ -2387,6 +2422,7 @@ const Projects: React.FC = () => {
         {layer === 'subCategoryProjects' && selectedSubId && (
           <SubCategoryProjectsView 
             styles={styles} colors={colors} subCategoryId={selectedSubId} subCategoryName={selectedSubName} userId={userId}
+            header={renderHeader()}
             onSelectProject={(id, name) => { setSelectedProjId(id); setSelectedProjName(name || ''); setLayer('detail'); }}
             onAddProject={() => setIsAddingProject(true)}
             onEditSubCategory={(sub) => { setEditingSubCategory({ id: sub._id, name: sub.name, icon: sub.icon, color: sub.color }); setIsAddingSubCategory(true); }}
@@ -2406,6 +2442,7 @@ const Projects: React.FC = () => {
         {layer === 'detail' && selectedProjId && (
           <ProjectDetailView 
             styles={styles} colors={colors} projectId={selectedProjId} userId={userId}
+            header={renderHeader()}
             onEditProject={(proj) => { setEditingProject({ id: proj._id, name: proj.name, description: proj.description, icon: proj.icon, color: proj.color }); setIsAddingProject(true); }}
             onDeleteProject={(id) => {
                deleteProject({ id });

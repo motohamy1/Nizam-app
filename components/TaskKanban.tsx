@@ -106,7 +106,7 @@ const KanbanCard: React.FC<{
     } else if (task.status === 'paused' && task.timeLeftAtPause !== undefined) {
       setTimeLeft(task.timeLeftAtPause);
     } else if (task.status === 'done') {
-      setTimeLeft(task.timerDuration || 0);
+      setTimeLeft(task.timerDirection === 'up' ? (task.timeLeftAtPause ?? 0) : 0);
     } else {
       setTimeLeft(task.timerDuration || 0);
     }
@@ -269,11 +269,14 @@ const KanbanCard: React.FC<{
                   backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', 
                   paddingHorizontal: 8, 
                   paddingVertical: 3, 
-                  borderRadius: 8 
+                  borderRadius: 8,
+                  maxWidth: '100%',
+                  flexShrink: 1,
+                  overflow: 'hidden',
                 }}
               >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: modeColor(project.color, isDarkMode) || colors.primary }} />
-                <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: '700', color: colors.text }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: modeColor(project.color, isDarkMode) || colors.primary, flexShrink: 0 }} />
+                <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 10, fontWeight: '700', color: colors.text, flexShrink: 1, minWidth: 0 }}>
                   {project.name}
                 </Text>
               </View>
@@ -287,10 +290,13 @@ const KanbanCard: React.FC<{
                   backgroundColor: isDarkMode ? 'rgba(142, 167, 233, 0.12)' : 'rgba(142, 167, 233, 0.15)', 
                   paddingHorizontal: 7, 
                   paddingVertical: 2.5, 
-                  borderRadius: 6 
+                  borderRadius: 6,
+                  maxWidth: '100%',
+                  flexShrink: 1,
+                  overflow: 'hidden',
                 }}
               >
-                <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 10, fontWeight: '700', color: colors.primary, flexShrink: 1 }}>
                   {tag}
                 </Text>
               </View>

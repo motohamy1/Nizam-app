@@ -28,6 +28,7 @@ export interface CrystalizedBallProps {
   style?: any;
   dom?: any;
   isRunning?: boolean;
+  isCompleted?: boolean;
   isCountDown?: boolean;
   timerDirection?: 'up' | 'down';
   progress?: number; // 0 to 1

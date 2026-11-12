@@ -193,6 +193,7 @@ export const removeTempEntry = async (tempId: string) => {
   if (!tempId) return;
   pendingTempTodos.delete(tempId);
   delete pendingOverlays[tempId];
+  let changed = false;
   Object.keys(memoryCache).forEach((key) => {
     if (key.startsWith('CACHE_todos') || key.startsWith('CACHE_projects') || key.startsWith('CACHE_yearly') || key.startsWith('CACHE_daily') || key.startsWith('CACHE_monthly') || key.startsWith('CACHE_categoryItems') || key.startsWith('CACHE_plannerItems')) {
       const current = memoryCache[key];
@@ -200,15 +201,19 @@ export const removeTempEntry = async (tempId: string) => {
         const next = current.filter((t: any) => t?._id !== tempId);
         if (next.length !== current.length) {
           memoryCache[key] = next;
+          changed = true;
           AsyncStorage.setItem(key, JSON.stringify(next)).catch(() => {});
         }
       } else if (current?._id === tempId) {
         delete memoryCache[key];
+        changed = true;
         AsyncStorage.removeItem(key).catch(() => {});
       }
     }
   });
-  notifyCacheChanged();
+  if (changed) {
+    notifyCacheChanged();
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -286,13 +291,23 @@ export const notifyQueueChanged = () => {
   });
 };
 
+let notifyMicrotaskScheduled = false;
 export const notifyCacheChanged = () => {
-  listeners.forEach((cb) => {
-    try {
-      cb();
-    } catch (e) {
-      console.warn('Error in cache subscriber:', e);
-    }
+  if (notifyMicrotaskScheduled) return;
+  notifyMicrotaskScheduled = true;
+  const schedule = typeof queueMicrotask === 'function'
+    ? queueMicrotask
+    : (fn: () => void) => Promise.resolve().then(fn);
+
+  schedule(() => {
+    notifyMicrotaskScheduled = false;
+    listeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (e) {
+        console.warn('Error in cache subscriber:', e);
+      }
+    });
   });
 };
 
@@ -607,14 +622,14 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
   // Find and update all memoryCache entries matching specific prefixes.
   // Returns the exact keys touched so creates can register themselves for
   // re-injection into those specific query results.
-  const updateMatchingCaches = (prefix: string, updater: (val: any) => any): string[] => {
+  const updateMatchingCaches = (prefix: string, updater: (val: any, key: string) => any): string[] => {
     const touched: string[] = [];
     Object.keys(memoryCache).forEach((key) => {
       if (key.startsWith(prefix)) {
         touched.push(key);
         const current = memoryCache[key];
         if (current !== undefined) {
-          const updated = updater(current);
+          const updated = updater(current, key);
           if (updated !== undefined) {
             memoryCache[key] = updated;
             AsyncStorage.setItem(key, JSON.stringify(updated)).catch(() => {});
@@ -713,26 +728,17 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
         }
       });
 
-      updateMatchingCaches('CACHE_todos_', (list) => {
-        if (!Array.isArray(list)) return list;
-        return list.map((item: any) => {
-          const update = updates.find((u: any) => u?.id === item?._id);
-          return update ? { ...item, ...applyOne(update) } : item;
-        });
-      });
-
-      updateMatchingCaches('CACHE_todos.getSubtasks_', (list) => {
-        if (!Array.isArray(list)) return list;
-        return list.map((item: any) => {
-          const update = updates.find((u: any) => u?.id === item?._id);
-          return update ? { ...item, ...applyOne(update) } : item;
-        });
-      });
-
-      updateMatchingCaches('CACHE_todos.getById_', (single) => {
-        if (!single) return single;
-        const update = updates.find((u: any) => u?.id === single._id);
-        return update ? { ...single, ...applyOne(update) } : single;
+      updateMatchingCaches('CACHE_todos', (cached) => {
+        if (Array.isArray(cached)) {
+          return cached.map((item: any) => {
+            const update = updates.find((u: any) => u?.id === item?._id);
+            return update ? { ...item, ...applyOne(update) } : item;
+          });
+        } else if (cached && cached._id) {
+          const update = updates.find((u: any) => u?.id === cached._id);
+          return update ? { ...cached, ...applyOne(update) } : cached;
+        }
+        return cached;
       });
 
       notifyCacheChanged();
@@ -814,12 +820,31 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
           updated.timerDirection = undefined;
           updated.timerStartTime = undefined;
           updated.timeLeftAtPause = undefined;
+          updated.status = 'not_started';
         } else if (mutationPath === 'todos:setTimer') {
-          if (args.duration !== undefined) updated.timerDuration = args.duration;
-          if (args.timerDuration !== undefined) updated.timerDuration = args.timerDuration;
-          if (args.timerDirection !== undefined) updated.timerDirection = args.timerDirection;
+          const newDuration = args.duration !== undefined ? args.duration : args.timerDuration;
+          if (newDuration !== undefined) {
+            const oldDuration = updated.timerDuration;
+            updated.timerDuration = newDuration;
+            if (updated.status === 'paused') {
+              if (oldDuration !== undefined && updated.timeLeftAtPause !== undefined) {
+                const diff = newDuration - oldDuration;
+                updated.timeLeftAtPause = Math.max(0, updated.timeLeftAtPause + diff);
+              } else {
+                updated.timeLeftAtPause = newDuration;
+              }
+            } else if (updated.status === 'not_started') {
+              updated.timeLeftAtPause = undefined;
+            }
+          }
+          if (args.timerDirection !== undefined) {
+            updated.timerDirection = args.timerDirection;
+            if (args.timerDirection === 'up') {
+              updated.timerDuration = 0;
+            }
+          }
           if (args.timerStartTime !== undefined) updated.timerStartTime = args.timerStartTime;
-          if (args.dueDate !== undefined) updated.dueDate = args.dueDate;
+          if ('dueDate' in args) updated.dueDate = args.dueDate;
           if (args.date !== undefined) updated.date = args.date;
         } else if (mutationPath === 'todos:linkTask') {
           if ('categoryId' in args) updated.categoryId = args.categoryId;
@@ -845,25 +870,19 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
         return updated;
       };
 
-      updateMatchingCaches('CACHE_todos_', (list) => {
-        if (!Array.isArray(list)) return list;
-        let next = list.map(patchTodo);
-        // The server `todos` get-query only returns top-level items: mirror
-        // that by dropping an item the moment it is nested under a parent.
-        if (mutationPath === 'todos:updateTodo' && args.parentId) {
-          next = next.filter((t: any) => t._id !== targetId);
+      updateMatchingCaches('CACHE_todos', (cached, key) => {
+        if (Array.isArray(cached)) {
+          let next = cached.map(patchTodo);
+          // The server `todos` get-query only returns top-level items: mirror
+          // that by dropping an item the moment it is nested under a parent.
+          if (mutationPath === 'todos:updateTodo' && args.parentId && key?.startsWith('CACHE_todos_')) {
+            next = next.filter((t: any) => t._id !== targetId);
+          }
+          return next;
+        } else if (cached && typeof cached === 'object' && cached._id === targetId) {
+          return patchTodo(cached);
         }
-        return next;
-      });
-
-      updateMatchingCaches('CACHE_todos.getSubtasks_', (list) => {
-        if (!Array.isArray(list)) return list;
-        return list.map(patchTodo);
-      });
-
-      updateMatchingCaches('CACHE_todos.getById_', (single) => {
-        if (!single || single._id !== targetId) return single;
-        return patchTodo(single);
+        return cached;
       });
 
       // Record the optimistic field changes so they survive a server snapshot
@@ -886,18 +905,16 @@ export const applyOptimisticMutation = (mutationPath: string, args: any): any =>
 
       recordDeletedTombstone(targetId);
 
-      updateMatchingCaches('CACHE_todos_', (list) => {
-        if (!Array.isArray(list)) return list;
-        // Delete target todo and any nested subtasks
-        list.forEach((t: any) => {
-          if (t?.parentId === targetId) recordDeletedTombstone(t._id);
-        });
-        return list.filter((t: any) => t._id !== targetId && t.parentId !== targetId);
-      });
-
-      updateMatchingCaches('CACHE_todos.getSubtasks_', (list) => {
-        if (!Array.isArray(list)) return list;
-        return list.filter((t: any) => t._id !== targetId);
+      updateMatchingCaches('CACHE_todos', (cached) => {
+        if (Array.isArray(cached)) {
+          cached.forEach((t: any) => {
+            if (t?.parentId === targetId) recordDeletedTombstone(t._id);
+          });
+          return cached.filter((t: any) => t._id !== targetId && t.parentId !== targetId);
+        } else if (cached && typeof cached === 'object' && (cached._id === targetId || cached.parentId === targetId)) {
+          return undefined;
+        }
+        return cached;
       });
 
       notifyCacheChanged();

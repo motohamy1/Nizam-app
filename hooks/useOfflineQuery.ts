@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { useQuery } from 'convex/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const singleResultQueryKeys = [
   'auth.getUserSettings',
@@ -95,7 +95,7 @@ function hasOfflineId(args: any): boolean {
 // Re-apply unacknowledged optimistic state to whatever the server (or cache)
 // returned, so a subscription update can no longer wipe a fresh pause/start/
 // create until the server has echoed the same values (or the overlay TTLs).
-function withPendingState(cacheKey: string, data: any): any {
+function withPendingState(cacheKey: string, data: any, isServerData: boolean = false): any {
   if (data === undefined || data === null) return data;
 
   if (Array.isArray(data)) {
@@ -110,7 +110,7 @@ function withPendingState(cacheKey: string, data: any): any {
     const merged = fresh
       .map((item: any) => {
         if (item && typeof item === 'object') {
-          reconcileOverlay(item);
+          if (isServerData) reconcileOverlay(item);
           return applyOverlay(item);
         }
         return item;
@@ -126,7 +126,9 @@ function withPendingState(cacheKey: string, data: any): any {
     const temps = getPendingTempTodosForCacheKey(cacheKey).filter((t: any) => {
       if (seen.has(t._id)) return false;
       if (serverLocalIds.has(t._id)) {
-        removeTempEntry(t._id).catch(() => {});
+        setTimeout(() => {
+          removeTempEntry(t._id).catch(() => {});
+        }, 0);
         return false;
       }
       return true;
@@ -136,7 +138,7 @@ function withPendingState(cacheKey: string, data: any): any {
   }
 
   if (typeof data === 'object' && data?._id) {
-    reconcileOverlay(data);
+    if (isServerData) reconcileOverlay(data);
     return applyOverlay(data);
   }
 
@@ -150,10 +152,16 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
   const cacheKey = getCacheKey(queryKey, args);
 
   // Synchronously initialize with in-memory cache if available
+  const [prevCacheKey, setPrevCacheKey] = useState(cacheKey);
   const [offlineData, setOfflineData] = useState<any>(() => {
     if (isSkipped) return undefined;
     return readCachedValue(queryKey, args, cacheKey);
   });
+
+  if (cacheKey !== prevCacheKey) {
+    setPrevCacheKey(cacheKey);
+    setOfflineData(isSkipped ? undefined : readCachedValue(queryKey, args, cacheKey));
+  }
 
   const [isOffline, setIsOffline] = useState(false);
 
@@ -164,39 +172,28 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
     return unsub;
   }, []);
 
-  // Sync state with in-memory or persisted cache whenever cacheKey changes
-  const refreshFromCache = useCallback(() => {
-    if (isSkipped) {
-      setOfflineData(undefined);
-      return;
-    }
-    const memVal = readCachedValue(queryKey, args, cacheKey);
-    if (memVal !== undefined) {
-      setOfflineData(memVal);
-      return;
-    }
-
+  // Asynchronously backfill from persistent storage if memory cache was empty
+  useEffect(() => {
+    if (isSkipped) return;
+    let cancelled = false;
     AsyncStorage.getItem(cacheKey)
       .then((value) => {
-        if (value) {
-          try {
-            const parsed = JSON.parse(value);
-            if (!isEmptySingleResultCache(queryKey, parsed)) {
-              memoryCache[cacheKey] = parsed;
-              setOfflineData(parsed);
-            }
-          } catch (e) {
-            // ignore parse error
+        if (cancelled || !value) return;
+        try {
+          const parsed = JSON.parse(value);
+          if (!isEmptySingleResultCache(queryKey, parsed)) {
+            memoryCache[cacheKey] = parsed;
+            setOfflineData(parsed);
           }
+        } catch (_) {
+          // ignore parse error
         }
       })
       .catch(() => {});
-  }, [cacheKey, queryKey, args, isSkipped]);
-
-  // Initial and cacheKey change refresh
-  useEffect(() => {
-    refreshFromCache();
-  }, [refreshFromCache]);
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheKey, queryKey, isSkipped]);
 
   // Subscribe to offlineStorage events (fires on any optimistic update or cache change)
   useEffect(() => {
@@ -220,16 +217,16 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
           lastPersistedJsonByKey[cacheKey] = json;
           AsyncStorage.setItem(cacheKey, json).catch(() => {});
         }
-      } catch (e) {
+      } catch (_) {
         AsyncStorage.setItem(cacheKey, JSON.stringify(convexData)).catch(() => {});
       }
-      setOfflineData(convexData);
     }
   }, [convexData, cacheKey, isSkipped]);
 
-  const base = isSkipped
-    ? undefined
-    : isOffline
+  // Overlay pending optimistic changes and locally-created docs on every render
+  return useMemo(() => {
+    if (isSkipped) return undefined;
+    const base = isOffline
       ? offlineData !== undefined
         ? offlineData
         : !singleResultQueryKeys.includes(queryKey)
@@ -239,9 +236,7 @@ export function useOfflineQuery<T = any>(queryKey: string, queryFn: any, args?: 
         ? convexData
         : offlineData;
 
-  // Overlay pending optimistic changes and locally-created docs on every render
-  return useMemo(() => {
-    if (isSkipped) return undefined;
-    return withPendingState(cacheKey, base) as T | undefined;
-  }, [base, cacheKey, isSkipped]);
+    const isServer = !isOffline && convexData !== undefined && base === convexData;
+    return withPendingState(cacheKey, base, isServer) as T | undefined;
+  }, [cacheKey, isSkipped, isOffline, convexData, offlineData, queryKey]);
 }

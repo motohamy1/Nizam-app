@@ -29,7 +29,11 @@ interface AIGoalConversationProps {
   messages: AIGoalMessage[];
   isThinking: boolean;
   onSendMessage: (text: string) => void;
-  onQuickAction: (action: string) => void;
+  onQuickAction?: (action: string) => void;
+  quickOptions?: string[];
+  onSelectOption?: (option: string) => void;
+  onFinishQuestions?: () => void;
+  showFinishButton?: boolean;
   isArabic?: boolean;
 }
 
@@ -38,11 +42,15 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
   isThinking,
   onSendMessage,
   onQuickAction,
+  quickOptions = [],
+  onSelectOption,
+  onFinishQuestions,
+  showFinishButton = true,
   isArabic = false,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const T = getAiTheme(colors, isDarkMode);
-  const styles = createStyles(T);
+  const styles = createStyles(T, isDarkMode);
   const [inputText, setInputText] = useState('');
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -88,19 +96,17 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
     }
   };
 
-  // Contextual quick chips
-  const quickChips = isArabic
+  // Contextual quick chips (if no direct question options provided)
+  const defaultQuickChips = isArabic
     ? [
         { label: 'اقترح مراحل', action: 'suggest_milestones' },
         { label: 'اختصر العنوان', action: 'shorten_title' },
         { label: 'تحويل لقائمة مهام', action: 'switch_to_checklist' },
-        { label: 'اقتراح مشاريع', action: 'suggest_projects' },
       ]
     : [
         { label: 'Suggest milestones', action: 'suggest_milestones' },
         { label: 'Make title punchier', action: 'shorten_title' },
         { label: 'Switch to checklist', action: 'switch_to_checklist' },
-        { label: 'Suggest projects', action: 'suggest_projects' },
       ];
 
   return (
@@ -156,30 +162,65 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
             <View style={[styles.bubble, styles.assistantBubble, styles.thinkingBubble]}>
               <ActivityIndicator size="small" color={T.accent} />
               <Text style={styles.thinkingText}>
-                {isArabic ? 'جاري الصياغة...' : 'Shaping your goal...'}
+                {isArabic ? 'جاري صياغة الهدف...' : 'Shaping your goal...'}
               </Text>
             </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Quick Contextual Action Chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.chipsContainer, isArabic && styles.chipsContainerRtl]}
-      >
-        {quickChips.map((chip, idx) => (
-          <TouchableOpacity
-            key={idx}
-            onPress={() => onQuickAction(chip.action)}
-            style={styles.quickChip}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickChipText}>{chip.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Suggested Quick Answer Options (From AI Clarifying Question) */}
+      {quickOptions.length > 0 ? (
+        <View style={styles.optionsSection}>
+          <Text style={[styles.optionsLabel, isArabic && styles.textRtl]}>
+            {isArabic ? 'إجابات سريعة مقترحة (اضغط لاختيار):' : 'Suggested quick answers (tap to pick):'}
+          </Text>
+          <View style={[styles.chipsContainer, isArabic && styles.chipsContainerRtl]}>
+            {quickOptions.map((opt, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => (onSelectOption ? onSelectOption(opt) : onSendMessage(opt))}
+                style={styles.answerOptionChip}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="checkmark-circle-outline" size={13} color={T.accent} />
+                <Text style={styles.answerOptionText}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ) : onQuickAction ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipsContainer, isArabic && styles.chipsContainerRtl]}
+        >
+          {defaultQuickChips.map((chip, idx) => (
+            <TouchableOpacity
+              key={idx}
+              onPress={() => onQuickAction(chip.action)}
+              style={styles.quickChip}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickChipText}>{chip.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {/* Prominent Button: End Questions & Create Goal Now */}
+      {showFinishButton && onFinishQuestions && (
+        <TouchableOpacity
+          onPress={onFinishQuestions}
+          style={[styles.finishQuestionsBtn, isArabic && styles.rowRtl]}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="sparkles" size={16} color="#0B0812" />
+          <Text style={styles.finishQuestionsBtnText}>
+            {isArabic ? 'إنهاء الأسئلة وصياغة الهدف الآن ✨' : 'End Questions & Create Goal Now ✨'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Input Dock: Mic + Text + Send */}
       <View style={[styles.inputDock, isArabic && styles.rowRtl]}>
@@ -202,8 +243,8 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
           onChangeText={setInputText}
           placeholder={
             isArabic
-              ? 'تحدث أو اكتب للتعديل (مثلاً: أضف كورس، اختصر...)'
-              : 'Speak or type instruction (e.g. add milestones...)'
+              ? 'أو اكتب إجابتك/تعديلك بحرية هنا...'
+              : 'Or type your answer/refinement freely...'
           }
           placeholderTextColor={T.placeholder}
           onSubmitEditing={handleSend}
@@ -238,7 +279,7 @@ export const AIGoalConversation: React.FC<AIGoalConversationProps> = ({
   );
 };
 
-const createStyles = (T: any) => StyleSheet.create({
+const createStyles = (T: any, isDarkMode?: boolean) => StyleSheet.create({
   container: {
     marginTop: 8,
   },
@@ -314,13 +355,61 @@ const createStyles = (T: any) => StyleSheet.create({
   assistantText: {
     color: T.text,
   },
+  optionsSection: {
+    marginVertical: 6,
+  },
+  optionsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: T.textSecondary,
+    marginBottom: 6,
+  },
   chipsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   chipsContainerRtl: {
     flexDirection: 'row-reverse',
+  },
+  answerOptionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: isDarkMode ? '#171322' : T.accentWash,
+    borderWidth: 1,
+    borderColor: isDarkMode ? '#34264F' : T.accentBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+  },
+  answerOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: isDarkMode ? '#E0DAED' : T.accent,
+  },
+  finishQuestionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#AFE607',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginVertical: 8,
+    shadowColor: '#AFE607',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  finishQuestionsBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0B0812',
+    letterSpacing: 0.3,
   },
   quickChip: {
     backgroundColor: T.input,

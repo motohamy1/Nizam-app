@@ -170,13 +170,13 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
               style={[
                 styles.eventCheckCircle,
                 {
-                  borderColor: isDone ? frame.accent : 'rgba(109, 40, 217, 0.40)',
-                  backgroundColor: isDone ? frame.accent : 'transparent',
+                  borderColor: isDone ? '#AFE607' : 'rgba(168, 85, 247, 0.40)',
+                  backgroundColor: isDone ? '#9333EA' : 'transparent',
                 },
               ]}
             >
               {isDone && (
-                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={13} color="#AFE607" />
               )}
             </TouchableOpacity>
           </View>
@@ -259,8 +259,8 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBadge, { backgroundColor: frame.badgeBg, flexShrink: 0 }]}>
-            <Ionicons name="calendar" size={18} color={frame.badgeFg} />
+          <View style={[styles.iconBadge, { backgroundColor: 'rgba(175, 230, 7, 0.22)', borderWidth: 1, borderColor: 'rgba(132, 204, 22, 0.40)', flexShrink: 0 }]}>
+            <Ionicons name="calendar" size={18} color="#6D28D9" />
           </View>
           <View style={[{ flex: 1, minWidth: 0 }, isArabic ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
             <Text style={[styles.cardTitle, { color: frame.text }]} numberOfLines={1} ellipsizeMode="tail">
@@ -279,12 +279,12 @@ export const UpcomingEventsCard: React.FC<UpcomingEventsCardProps> = ({
           <Ionicons name="notifications-outline" size={28} color={frame.accent} />
           <Text style={[styles.emptyCardTitle, { color: frame.text }]}>{t.noUpcomingRemindersEvents}</Text>
           <TouchableOpacity 
-            style={[styles.emptyCardBtn, { backgroundColor: frame.pillBg, borderColor: frame.rowBorder }]} 
+            style={[styles.emptyCardBtn, { backgroundColor: 'rgba(175, 230, 7, 0.16)', borderColor: 'rgba(175, 230, 7, 0.35)' }]}
             onPress={() => onOpenEventModal()}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={16} color={frame.accent} />
-            <Text style={[styles.emptyCardBtnText, { color: frame.text }]}>{t.addReminder}</Text>
+            <Ionicons name="add" size={16} color="#AFE607" />
+            <Text style={[styles.emptyCardBtnText, { color: "#F5F3FF" }]}>{t.addReminder}</Text>
           </TouchableOpacity>
         </View>
       ) : (

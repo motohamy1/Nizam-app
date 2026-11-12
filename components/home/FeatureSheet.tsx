@@ -11,13 +11,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const SHEET_SURFACE_CREAM = '#FAF8F5';
-export const SHEET_SURFACE_BORDER = 'rgba(30, 27, 24, 0.08)';
-export const SHEET_TEXT_TITLE = '#1E1B18';
-export const SHEET_TEXT_MUTED = 'rgba(30, 27, 24, 0.70)';
-export const SHEET_ACCENT_PRIMARY = '#1E1B18';
-export const SHEET_ACCENT_LIGHT = 'rgba(30, 27, 24, 0.06)';
-export const SHEET_ACCENT_BORDER = 'rgba(30, 27, 24, 0.12)';
+export const SHEET_SURFACE_CREAM = '#0B0812';
+export const SHEET_SURFACE_BORDER = 'rgba(168, 85, 247, 0.25)';
+export const SHEET_TEXT_TITLE = '#F5F3FF';
+export const SHEET_TEXT_MUTED = 'rgba(237, 233, 254, 0.65)';
+export const SHEET_ACCENT_PRIMARY = '#C084FC';
+export const SHEET_ACCENT_LIGHT = 'rgba(168, 85, 247, 0.16)';
+export const SHEET_ACCENT_BORDER = 'rgba(168, 85, 247, 0.30)';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderColor: SHEET_SURFACE_BORDER,
     maxHeight: Math.min(SCREEN_HEIGHT * 0.75, 560),
-    shadowColor: '#1E1B18',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.10,
     shadowRadius: 16,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 4.5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(30, 27, 24, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     alignSelf: 'center',
   },
   titleText: {

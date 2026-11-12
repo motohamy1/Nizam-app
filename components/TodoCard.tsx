@@ -206,7 +206,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
         if (todo.timerDirection === 'up') {
           setTimeLeft(todo.timeLeftAtPause || 0);
         } else if (todo.timerDuration) {
-          setTimeLeft(todo.timerDuration);
+          setTimeLeft(0);
         }
       }
     } else if (rollupTotal > 0) {
@@ -562,9 +562,9 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
           </View>
 
           {/* Row 2: Priority & Status Pills (left) | Subtasks & Completion % (right) */}
-          <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2, marginBottom: hasSubtasks ? 10 : 0 }]}>
+          <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 2, marginBottom: hasSubtasks ? 10 : 0 }]}>
             {/* Left Badges */}
-            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+            <View style={[{ flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }]}>
               {/* Priority Pill */}
               <View style={{
                 backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
@@ -616,7 +616,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
               </TouchableOpacity>
 
               {/* Goal Pill */}
-              {linkedGoal && (
+              {linkedGoal && (linkedGoal.text || linkedGoal.title) && (
                 <View style={{
                   backgroundColor: '#8B5CF620',
                   paddingHorizontal: 10,
@@ -627,32 +627,55 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 4,
-                  maxWidth: 130,
+                  maxWidth: 140,
+                  flexShrink: 1,
+                  overflow: 'hidden',
                 }}>
-                  <Ionicons name="flag" size={11} color="#8B5CF6" />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#8B5CF6' }} numberOfLines={1}>
-                    {linkedGoal.title}
+                  <Ionicons name="flag" size={11} color="#8B5CF6" style={{ flexShrink: 0 }} />
+                  <Text
+                    style={{ fontSize: 11, fontWeight: '700', color: '#8B5CF6', flexShrink: 1, minWidth: 0 }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {linkedGoal.text || linkedGoal.title}
                   </Text>
                 </View>
               )}
 
               {/* Space / Project Pill */}
-              {(project || linkedCategory) && (
+              {(project || linkedSubCategory || linkedCategory) && (
                 <View style={{
-                  backgroundColor: (project?.color || colors.primary) + '20',
+                  backgroundColor: (project?.color || linkedSubCategory?.color || linkedCategory?.color || colors.primary) + '20',
                   paddingHorizontal: 10,
                   paddingVertical: 5,
                   borderRadius: 14,
                   borderWidth: 1,
-                  borderColor: (project?.color || colors.primary) + '40',
+                  borderColor: (project?.color || linkedSubCategory?.color || linkedCategory?.color || colors.primary) + '40',
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 4,
-                  maxWidth: 120,
+                  maxWidth: 140,
+                  flexShrink: 1,
+                  overflow: 'hidden',
                 }}>
-                  <Ionicons name="folder-outline" size={11} color={project?.color || colors.primary} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: project?.color || colors.primary }} numberOfLines={1}>
-                    {project?.name || linkedCategory?.name}
+                  <Ionicons
+                    name="folder-outline"
+                    size={11}
+                    color={project?.color || linkedSubCategory?.color || linkedCategory?.color || colors.primary}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: project?.color || linkedSubCategory?.color || linkedCategory?.color || colors.primary,
+                      flexShrink: 1,
+                      minWidth: 0,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {project?.name || linkedSubCategory?.name || linkedCategory?.name}
                   </Text>
                 </View>
               )}
@@ -660,7 +683,7 @@ const TodoCard: React.FC<TodoCardProps> = ({ todo, onSetTimer, onLongPress, onLi
 
             {/* Right Info: Subtasks & Progression % */}
             {hasSubtasks && (
-              <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }]}>
                 <TouchableOpacity 
                   onPress={toggleSubtasks}
                   style={{

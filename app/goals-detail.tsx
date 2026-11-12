@@ -23,7 +23,6 @@ import useTheme from '@/hooks/useTheme';
 import { useTranslation } from '@/utils/i18n';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
 import LivePress from '@/components/LivePress';
-import { AIGoalGeneratorModal } from '@/components/AIGoalGeneratorModal';
 import { GoalFormModal, GoalFormData } from '@/components/GoalFormModal';
 import { GoalLinkedTasks } from '@/components/GoalLinkedTasks';
 import { PostalStampGoalCard } from '@/components/ai-goals/PostalStampGoalCard';
@@ -133,7 +132,6 @@ export default function GoalsDetailScreen() {
   // ─── Local State ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'all' | 'goals' | 'achievements'>('all');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
-  const [aiModalVisible, setAiModalVisible] = useState(false);
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [formModalMode, setFormModalMode] = useState<'create' | 'edit'>('create');
   const [formInitialCategory, setFormInitialCategory] = useState('');
@@ -141,12 +139,17 @@ export default function GoalsDetailScreen() {
   const [selectedTaskDetailId, setSelectedTaskDetailId] = useState<any | null>(null);
   const [hasAutoOpenedAI, setHasAutoOpenedAI] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   React.useEffect(() => {
     if (autoAI === 'true' && !hasAutoOpenedAI) {
-      setAiModalVisible(true);
+      setFormModalMode('create');
+      setEditingItem(null);
+      setFormInitialCategory(selectedCategoryFilter || '');
+      setFormModalVisible(true);
       setHasAutoOpenedAI(true);
     }
-  }, [autoAI, hasAutoOpenedAI]);
+  }, [autoAI, hasAutoOpenedAI, selectedCategoryFilter]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle hardware back press on Android to dismiss open modals first
   useFocusEffect(
@@ -157,22 +160,16 @@ export default function GoalsDetailScreen() {
           setEditingItem(null);
           return true;
         }
-        if (aiModalVisible) {
-          setAiModalVisible(false);
-          return true;
-        }
         return false; // Allow stack navigator to pop the screen immediately
       };
 
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => sub.remove();
-    }, [formModalVisible, aiModalVisible])
+    }, [formModalVisible])
   );
 
   // Toggle expansion states
   const [expandedSectionIds, setExpandedSectionIds] = useState<Record<string, boolean>>({});
-  const [expandedGoalIds, setExpandedGoalIds] = useState<Record<string, boolean>>({});
-  const [newMilestoneText, setNewMilestoneText] = useState<Record<string, string>>({});
 
   // ─── Data Grouping & Derivations ─────────────────────────────────────────────
   const allItems = useMemo(() => {
@@ -263,6 +260,8 @@ export default function GoalsDetailScreen() {
           category: formData.category,
           color: formData.color,
           icon: formData.icon,
+          templateId: formData.templateId,
+          visualStyleId: formData.visualStyleId,
           milestones: formData.milestones,
           categoryId: formData.categoryId,
           subCategoryId: formData.subCategoryId,
@@ -288,6 +287,8 @@ export default function GoalsDetailScreen() {
         category: formData.category,
         color: formData.color,
         icon: formData.icon,
+        templateId: formData.templateId,
+        visualStyleId: formData.visualStyleId,
         milestones: formData.milestones,
         categoryId: formData.categoryId,
         subCategoryId: formData.subCategoryId,
@@ -315,28 +316,14 @@ export default function GoalsDetailScreen() {
     updateGoal({ id: goalItem._id, milestones: updated });
   };
 
-  const handleAddSubMilestone = (goalItem: any) => {
-    const text = (newMilestoneText[goalItem._id] || '').trim();
-    if (!text) return;
 
-    const currentMilestones = goalItem.milestones || [];
-    const updated = [
-      ...currentMilestones,
-      { id: `ms_${Date.now()}`, text, isCompleted: false },
-    ];
-
-    updateGoal({ id: goalItem._id, milestones: updated });
-    setNewMilestoneText((prev) => ({ ...prev, [goalItem._id]: '' }));
-    setExpandedGoalIds((prev) => ({ ...prev, [goalItem._id]: true }));
-  };
-
-  const handleDeleteMilestone = (goalItem: any, milestoneId: string) => {
+  const handleDeleteMilestone = useCallback((goalItem: any, milestoneId: string) => {
     const currentMilestones = goalItem.milestones || [];
     const updated = currentMilestones.filter((ms: any) => ms.id !== milestoneId);
     updateGoal({ id: goalItem._id, milestones: updated });
-  };
+  }, [updateGoal]);
 
-  const handleAddSubMilestoneDirect = (goalItem: any, text: string) => {
+  const handleAddSubMilestoneDirect = useCallback((goalItem: any, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -347,7 +334,7 @@ export default function GoalsDetailScreen() {
     ];
 
     updateGoal({ id: goalItem._id, milestones: updated });
-  };
+  }, [updateGoal]);
 
   const toggleSectionExpansion = (catName: string) => {
     setExpandedSectionIds((prev) => ({
@@ -356,16 +343,9 @@ export default function GoalsDetailScreen() {
     }));
   };
 
-  const toggleGoalExpansion = (goalId: string) => {
-    setExpandedGoalIds((prev) => ({
-      ...prev,
-      [goalId]: prev[goalId] === undefined ? true : !prev[goalId],
-    }));
-  };
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: 'transparent' }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={{ flex: 1 }}>
@@ -397,25 +377,26 @@ export default function GoalsDetailScreen() {
               )}
             </View>
 
-            {/* Top Right Action Buttons: AI Sparkle + New Manual Goal */}
-            <View style={{ flexDirection: isArabic ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-              <LivePress
-                style={[styles.aiSparkleBtn, { backgroundColor: '#EA580C16', borderColor: '#EA580C30' }]}
-                onPress={() => setAiModalVisible(true)}
-                pressScale={0.94}
-              >
-                <Ionicons name="sparkles" size={16} color="#EA580C" />
-                <Text style={[styles.aiSparkleBtnText, { color: '#EA580C' }]}>AI</Text>
-              </LivePress>
-
-              <TouchableOpacity
-                style={[styles.topAddBtn, { backgroundColor: colors.primary }]}
-                onPress={() => handleOpenCreate()}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="add" size={20} color={colors.primaryText} />
-              </TouchableOpacity>
-            </View>
+            {/* Top Right Action Button: Unified Goal Creation with AI Co-Pilot */}
+            <LivePress
+              style={[
+                styles.aiSparkleBtn,
+                {
+                  backgroundColor: isDarkMode ? '#1E1B4B' : '#7C3AED',
+                  borderColor: isDarkMode ? '#4338CA' : '#6D28D9',
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 10,
+                },
+              ]}
+              onPress={() => handleOpenCreate()}
+              pressScale={0.94}
+            >
+              <Ionicons name="sparkles" size={14} color="#AFE607" />
+              <Text style={[styles.aiSparkleBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
+                {isArabic ? '+ هدف' : '+ Goal'}
+              </Text>
+            </LivePress>
           </View>
         </AnimatedWavyHeader>
 
@@ -470,14 +451,14 @@ export default function GoalsDetailScreen() {
                                 { color: cardInk, opacity: 0.8, textAlign: isArabic ? 'right' : 'left' },
                               ]}
                             >
-                              "{currentBlueprint.motivationalQuote}"
+                              &quot;{currentBlueprint.motivationalQuote}&quot;
                             </Text>
                           ) : null}
                         </View>
 
                         <TouchableOpacity
                           style={[styles.editBlueprintBtn, { backgroundColor: cardInk + '15' }]}
-                          onPress={() => setAiModalVisible(true)}
+                          onPress={() => handleOpenCreate()}
                         >
                           <Ionicons name="create-outline" size={18} color={cardInk} />
                         </TouchableOpacity>
@@ -518,7 +499,7 @@ export default function GoalsDetailScreen() {
                       borderColor: '#EA580C35',
                     },
                   ]}
-                  onPress={() => setAiModalVisible(true)}
+                  onPress={() => handleOpenCreate()}
                   pressScale={0.98}
                 >
                   <View style={[styles.aiInviteRow, isArabic && styles.rowReverse]}>
@@ -844,9 +825,6 @@ export default function GoalsDetailScreen() {
                         {/* Render Section Goals */}
                         {visibleGoals.map((goal) => {
                           const milestones: any[] = goal.milestones || [];
-                          const completedMilestones = milestones.filter((m) => m.isCompleted).length;
-                          const isGoalExpanded = expandedGoalIds[goal._id] ?? (milestones.length > 0);
-                          const isPillar = goal.templateId === 'pillar';
 
                           return (
                             <View key={goal._id} style={{ marginBottom: 14 }}>
@@ -973,21 +951,6 @@ export default function GoalsDetailScreen() {
             <Ionicons name="add" size={28} color={colors.primaryText} />
           </LivePress>
         </View>
-
-        {/* ─── AI Goal Generator Modal ────────────────────────────────────── */}
-        <AIGoalGeneratorModal
-          visible={aiModalVisible}
-          onClose={() => setAiModalVisible(false)}
-          year={year}
-          month={month}
-          day={day}
-          userId={userId || ''}
-          isArabic={isArabic}
-          existingCategories={categoriesList}
-          onPlanApplied={() => {
-            // Refreshes when blueprint is applied
-          }}
-        />
 
         {/* ─── Goal / Achievement Full Form Modal (Create & Edit) ─────────── */}
         <GoalFormModal

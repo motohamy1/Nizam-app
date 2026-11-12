@@ -83,7 +83,7 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   const { colors, isDarkMode } = useTheme();
   const { keyboardHeight, isKeyboardVisible } = useKeyboard();
   const T = getAiTheme(colors, isDarkMode);
-  const styles = createStyles(T);
+  const styles = createStyles(T, isDarkMode);
 
   // Initial prompt state (before draft is created)
   const [initialPrompt, setInitialPrompt] = useState('');
@@ -257,6 +257,33 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
           {/* STATE 1: INITIAL PROMPT INPUT (Before Draft Created) */}
           {!session.draft && !isAnalyzing && (
             <View style={styles.initialScreen}>
+              {session.stagedGoals.length > 0 && (
+                <View style={styles.stagedBanner}>
+                  <View style={[styles.stagedBannerHeader, isArabic && styles.rowRtl]}>
+                    <Ionicons name="checkmark-done-circle" size={18} color="#AFE607" />
+                    <Text style={[styles.stagedBannerTitle, isArabic && styles.textRtl]}>
+                      {isArabic
+                        ? `تم تجهيز ${session.stagedGoals.length} ${session.stagedGoals.length === 1 ? 'هدف' : 'أهداف'} للحفظ في خطتك`
+                        : `${session.stagedGoals.length} goal(s) staged ready to save`}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => session.saveAllToGoals()}
+                    style={styles.saveStagedBtn}
+                    activeOpacity={0.85}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator size="small" color="#0B0812" />
+                    ) : (
+                      <Text style={styles.saveStagedBtnText}>
+                        {isArabic ? 'حفظ الأهداف المجهزة في الخطة' : 'Save Staged Goals to Plan'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <View style={styles.heroCard}>
                 <View style={styles.heroIconCircle}>
                   <Ionicons name="bulb-outline" size={28} color={T.accent} />
@@ -366,8 +393,47 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
             </View>
           )}
 
-          {/* STATE 3: DRAFT ACTIVE (Reviewing / Refining / Expanding) */}
-          {session.draft && !isAnalyzing && (
+          {/* STATE 3: FOCUSED QUESTIONING FLOW */}
+          {session.draft &&
+            (session.state === 'questioning' || session.state === 'refining') &&
+            !isAnalyzing && (
+            <View style={styles.questioningContainer}>
+              {/* Guidance Header */}
+              <View style={[styles.questioningHeader, isArabic && styles.rowRtl]}>
+                <View style={styles.questioningIcon}>
+                  <Ionicons name="sparkles" size={18} color="#AFE607" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.questioningTitle, isArabic && styles.textRtl]}>
+                    {isArabic ? 'صياغة وتخصيص الهدف' : 'Fine-Tuning Your Goal'}
+                  </Text>
+                  <Text style={[styles.questioningSubtitle, isArabic && styles.textRtl]}>
+                    {isArabic
+                      ? 'أجب عن السؤال السريع لتخصيص الخطة أو اضغط إنهاء للصياغة فوراً.'
+                      : 'Answer quick questions or tap finish to generate right now.'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* The Conversation Thread + Quick Option Chips + Prominent Finish Button */}
+              <AIGoalConversation
+                messages={session.messages}
+                isThinking={session.state === 'refining'}
+                onSendMessage={(text) => session.refineGoal(text)}
+                quickOptions={session.draft.clarifyingQuestion?.options || []}
+                onSelectOption={(opt) => session.refineGoal(opt)}
+                onFinishQuestions={() => session.finishQuestionsAndReview()}
+                showFinishButton={true}
+                isArabic={isArabic}
+              />
+            </View>
+          )}
+
+          {/* STATE 4: GOAL REVIEW & CUSTOMIZATION FLOW */}
+          {session.draft &&
+            session.state !== 'questioning' &&
+            session.state !== 'refining' &&
+            !isAnalyzing && (
             <View style={styles.draftSection}>
               {/* 1. Interactive Preview Card */}
               <AIGoalPreview
@@ -405,31 +471,15 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
                 isArabic={isArabic}
               />
 
-              {/* 4. Conversational Chat & Input Bar */}
-              <AIGoalConversation
-                messages={session.messages}
-                isThinking={session.state === 'refining'}
-                onSendMessage={(text) => session.refineGoal(text)}
-                onQuickAction={(action) => {
-                  if (action === 'suggest_milestones') {
-                    session.expandWithAI('');
-                  } else if (action === 'shorten_title') {
-                    session.refineGoal(isArabic ? 'اجعل عنوان الهدف أكثر إيجازاً وقوة' : 'Make title punchier and more concise');
-                  } else if (action === 'switch_to_checklist') {
-                    session.selectPresentation({ frameworkId: 'checklist', visualStyleId: session.draft?.presentation.visualStyleId || 'default' });
-                  } else if (action === 'suggest_projects') {
-                    session.expandWithAI(isArabic ? 'اقترح مشاريع فرعية لتنفيذ هذا الهدف' : 'Suggest project deliverables for this goal');
-                  }
-                }}
-                isArabic={isArabic}
-              />
-
-              {/* 5. Final Review & Batch Save Section */}
+              {/* 4. Final Review & Batch Save Section */}
               <AIGoalFinalReview
                 stagedGoals={session.stagedGoals}
                 activeDraft={session.draft}
                 isSaving={isSaving}
-                onStageAndNext={() => session.stageCurrentGoal()}
+                onStageAndNext={() => {
+                  session.stageCurrentGoal();
+                  setInitialPrompt('');
+                }}
                 onSaveAll={() => session.saveAllToGoals()}
                 onRemoveStagedGoal={(id) => session.removeStagedGoal(id)}
                 isArabic={isArabic}
@@ -450,9 +500,74 @@ export const AIGoalGeneratorModal: React.FC<AIGoalGeneratorModalProps> = ({
   );
 };
 
-const createStyles = (T: any) => StyleSheet.create({
+const createStyles = (T: any, isDarkMode?: boolean) => StyleSheet.create({
   container: {
     flex: 1,
+  },
+  stagedBanner: {
+    backgroundColor: isDarkMode ? '#171322' : '#F4FBF0',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: isDarkMode ? '#34264F' : '#D0F0C0',
+    padding: 12,
+    marginBottom: 4,
+  },
+  stagedBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  stagedBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: isDarkMode ? '#AFE607' : '#2D6A12',
+    flex: 1,
+  },
+  saveStagedBtn: {
+    backgroundColor: '#AFE607',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveStagedBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0B0812',
+  },
+  questioningContainer: {
+    gap: 12,
+    paddingBottom: 20,
+  },
+  questioningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDarkMode ? '#13101E' : T.accentWash,
+    borderWidth: 1,
+    borderColor: isDarkMode ? '#2D2245' : T.accentBorder,
+    borderRadius: 14,
+    padding: 12,
+  },
+  questioningIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDarkMode ? '#1E1830' : '#E8E0F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  questioningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: T.text,
+  },
+  questioningSubtitle: {
+    fontSize: 12,
+    color: T.textMuted,
+    marginTop: 2,
   },
   modalHeader: {
     flexDirection: 'row',

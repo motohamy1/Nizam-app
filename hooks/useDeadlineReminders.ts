@@ -76,6 +76,9 @@ const tryReserveNudge = (key: string): boolean => {
  * persistently per task+deadline so restarts and resumes can't re-spam it.
  * Stale schedules for done/deleted tasks are cancelled.
  */
+// Mutex lock to serialize run() calls and prevent concurrent scheduling races
+let reconcileChain = Promise.resolve();
+
 export function useDeadlineReminders(todos: any[] | undefined, language: string = 'en') {
   const appState = useRef(AppState.currentState);
   const todosRef = useRef(todos);
@@ -90,11 +93,6 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
     if (!todos || !Array.isArray(todos)) return;
 
     let cancelled = false;
-    const seen = new Set<string>();
-    // Server-corrected clock: dueDate comes from the server, so comparing it
-    // against the raw device clock made "past due" wrong whenever the device
-    // and server clocks disagreed (the same class of bug the timer math had).
-    const now = getServerNow();
 
     const run = async () => {
       // Offline-created events scheduled their notifications under the temp
@@ -112,6 +110,9 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
         // id mappings unavailable — scheduling continues without the sweep
       }
 
+      const seen = new Set<string>();
+      const now = getServerNow();
+
       for (const todo of todos) {
         if (cancelled) return;
         if (isTempId(todo?._id)) {
@@ -125,7 +126,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
           // otherwise an offline-created repeating reminder never alerts.
           if (todo.type === 'reminder' || todo.type === 'meeting' || todo.type === 'appointment') {
             const tempId = String(todo._id);
-            const tempSig = `${todo.dueDate}|${todo.repeatPeriod || 'none'}|${todo.repeatCount || 1}`;
+            const tempSig = `${todo.dueDate}|${todo.repeatPeriod || 'none'}|${todo.repeatCount || 1}|${todo.text}`;
             if (
               ACTIVE.has(todo.status) &&
               !todo.isCompleted &&
@@ -143,7 +144,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
                   language
                 );
                 if (n > 0) scheduled.current.set(tempId, tempSig);
-              } else if (todo.dueDate > now || todo.dueDate >= now - 120000) {
+              } else if (todo.dueDate > now || todo.dueDate >= now - 30000) {
                 const nid = await scheduleReminderNotification(todo.text || 'Task', todo.dueDate, language, tempId);
                 if (nid) scheduled.current.set(tempId, tempSig);
               }
@@ -161,7 +162,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
         const isReminderCard = todo.type === 'reminder' || todo.type === 'meeting' || todo.type === 'appointment';
         // Signature of everything that affects scheduling: editing the time,
         // period or count must re-schedule, not be skipped as "already done".
-        const scheduleSignature = `${todo.dueDate}|${repeatPeriod}|${todo.repeatCount || 1}`;
+        const scheduleSignature = `${todo.dueDate}|${repeatPeriod}|${todo.repeatCount || 1}|${todo.text}`;
 
         if (!active || typeof todo.dueDate !== 'number') {
           if (scheduled.current.has(id)) {
@@ -197,7 +198,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
                 language
               );
               if (n > 0) scheduled.current.set(id, scheduleSignature);
-            } else if (todo.dueDate > now || todo.dueDate >= now - 120000) {
+            } else if (todo.dueDate > now || todo.dueDate >= now - 30000) {
               const nid = await scheduleReminderNotification(todo.text || 'Task', todo.dueDate, language, id);
               if (nid) scheduled.current.set(id, scheduleSignature);
             } else {
@@ -207,7 +208,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
           continue;
         }
 
-        if (todo.dueDate > now + 5000) {
+        if (todo.dueDate > now + 3000) {
           if (scheduled.current.get(id) !== scheduleSignature) {
             const nid = await scheduleDeadlineReminder(id, todo.text || 'Task', todo.dueDate, language);
             if (nid) scheduled.current.set(id, scheduleSignature);
@@ -232,7 +233,7 @@ export function useDeadlineReminders(todos: any[] | undefined, language: string 
       }
     };
 
-    run();
+    reconcileChain = reconcileChain.then(() => run()).catch(() => {});
 
     return () => {
       cancelled = true;

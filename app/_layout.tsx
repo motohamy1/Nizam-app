@@ -5,6 +5,21 @@ import * as SplashScreen from "expo-splash-screen";
 import "fast-text-encoding";
 import "react-native-get-random-values";
 import "../utils/periodicSyncManager";
+import {
+  useFonts,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import {
+  Cairo_500Medium,
+  Cairo_600SemiBold,
+  Cairo_700Bold,
+  Cairo_800ExtraBold,
+  Cairo_900Black,
+} from '@expo-google-fonts/cairo';
+import { ArchivoBlack_400Regular } from '@expo-google-fonts/archivo-black';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -31,6 +46,19 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 // Register the background task (already defined in backgroundTask.ts via defineTask)
 
 function RootLayoutContent() {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    Cairo_500Medium,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
+    Cairo_800ExtraBold,
+    Cairo_900Black,
+    ArchivoBlack_400Regular,
+  });
+
   useSyncManager();
   const { isInitialized, migrationInProgress, error: offlineError } = useOfflineFirstInit();
   const { hasPermission } = useNotifications();
@@ -70,14 +98,14 @@ function RootLayoutContent() {
     }
 
     
-    // Hide splash screen once loading and onboarding check are complete
-    if (!isLoading && isFirstLaunch !== null) {
+    // Hide splash screen once loading, onboarding check, and font assets are complete
+    if (!isLoading && isFirstLaunch !== null && fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [language, t, isLoading, isFirstLaunch]);
+  }, [language, t, isLoading, isFirstLaunch, fontsLoaded]);
 
-  // Still checking storage and auth
-  if (isLoading || isFirstLaunch === null) return null;
+  // Still checking storage, auth, or fonts
+  if (isLoading || isFirstLaunch === null || !fontsLoaded) return null;
 
   if (isFirstLaunch) {
     return (

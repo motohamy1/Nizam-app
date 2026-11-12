@@ -1038,16 +1038,23 @@ export const architectGoalIntent = action({
 Your mission is to understand the user's natural language goal intent (in Arabic or English) and convert it into a precise, beautifully structured goal blueprint.
 
 ======================================================================
-SECTION A: INTENT & BOUNDARY RULES (CRITICAL)
+SECTION A: INTENT & DIRECTION FIDELITY (ABSOLUTE CRITICAL PRIORITY)
 1. USER INTENT IS THE SOLE SOURCE OF TRUTH:
    - Base the goal STRICTLY and EXCLUSIVELY on what the user stated.
-   - NEVER invent, hallucinate, or add unrelated domains.
-   - ANTI-EXAMPLE: If user says "Learn Flutter and build small apps", DO NOT invent gym workouts, dieting, reading 10 books, or saving money.
-   - Separate core intent from supporting practice: e.g. Core = "Flutter Mastery", Practice = "Build small apps".
-2. STRICT SUB-GOALS POLICY (NO AUTOMATIC MILESTONES):
-   - DO NOT generate milestones or sub-goals automatically.
-   - ALWAYS return "suggestedMilestones": [] unless the user explicitly provided numbered steps in their message.
-   - The user will interactively choose to add or expand milestones later.
+   - DIRECTIONAL POLARITY IS NON-NEGOTIABLE:
+     * If user wants to GAIN weight, bulk up, build muscle, or increase weight/mass:
+       NEVER invert this to "weight loss", "slimming", "cutting", or a "weight loss project". The goal MUST be about weight gain / muscle building.
+     * If user wants to LOSE weight, reduce fat, or cut: keep it strictly as weight loss.
+     * If user states a multi-month vision (e.g. "gain 3 kg in 3 months") inside a Monthly scope:
+       Recognize the 3-month ambition, and set this month's concrete deliverable (e.g. "Month 1: Gain ~1 kg & Establish Strength Routine" or "زيادة الوزن: المرحلة الأولى (+1 كجم)").
+   - Never invent random hobbies, foreign languages, or unrelated financial goals when user talks about fitness or coding.
+
+2. ACTIONABLE MILESTONES & DISCOVERY QUESTION:
+   - Generate 2 to 4 high-impact, realistic milestones or actionable steps directly tailored to achieve this goal.
+   - Provide a "clarifyingQuestion" with:
+     * "question": exactly 1 simple, focused, friendly question to refine or tailor the goal (e.g. training frequency, preferred routine, or key focus).
+     * "quickOptions": 2 to 4 short, actionable quick-reply options (e.g. ["3-4 gym sessions/week", "Home workouts", "Focus on nutrition & meal prep"]).
+
 3. TIMEFRAME SCOPE:
    - ${timeframeContext}
    - Adapt outcome scope to the timeframe without altering intent.
@@ -1056,8 +1063,11 @@ SECTION A: INTENT & BOUNDARY RULES (CRITICAL)
 SECTION B: CATEGORY INTELLIGENCE (STRICT DOMAIN CLASSIFICATION)
 - STRICT PROHIBITION: NEVER output generic, lazy, or placeholder category names like "General", "General Goals", "عام", "أهداف عامة", "Miscellaneous", "Other", or "Personal".
 - If any existing category in ${existingSecsStr} accurately reflects the user's specific domain, use it.
-- Otherwise, generate a crisp, domain-specific category name describing the life or professional sphere (e.g. "Mobile & App Development", "Health & Physical Fitness", "Language & Learning", "Financial Growth", "Creative Arts", "Career & Leadership").
-- In Arabic: "تطوير البرمجيات والتطبيقات", "الصحة واللياقة البدنية", "التعلم وتطوير المهارات", "المالية والاستثمار", "المسار المهني والأعمال", etc.
+- Otherwise, generate a crisp, domain-specific category name describing the life or professional sphere:
+  * For weight, gym, fitness: "Health & Physical Fitness" / "الصحة واللياقة البدنية"
+  * For coding, mobile, web: "Software & App Development" / "تطوير البرمجيات والتطبيقات"
+  * For learning, languages: "Learning & Skill Growth" / "التعلم وتطوير المهارات"
+  * For finance, money: "Finance & Wealth Building" / "المالية والاستثمار"
 - Provide "categoryRecommendation" with:
   {
     "mode": "existing" | "new",
@@ -1069,13 +1079,13 @@ SECTION B: CATEGORY INTELLIGENCE (STRICT DOMAIN CLASSIFICATION)
 SECTION C: TEMPLATE RECOMMENDATION RULES (MAX 3)
 - Recommend MAXIMUM 3 template choices separating Framework from Visual Style:
   * Frameworks (Data Structure):
-    - "roadmap" -> for courses, sequential learning, phased projects.
+    - "metric" -> for quantifiable metrics, body weight, distance, counters (Best fit for weight gain/loss goals!).
     - "checklist" -> for standard deliverables, actionable tasks, check-off lists.
-    - "metric" -> for quantifiable metrics (e.g. read 100 pages, save $1000, 30km run).
+    - "roadmap" -> for courses, sequential learning, phased projects.
     - "sprint" -> for urgent, high-energy sprints, time-boxed challenges.
     - "pillar" -> for foundational habits, identity grounding, core focus.
   * Visual Styles (Appearance):
-    - "book", "paper", "glass", "editorial", "minimal", "dark-capsule", "notebook"
+    - "dark-capsule", "glass", "paper", "book", "editorial", "minimal", "notebook"
 - Recommendations MUST have:
   - Exactly 1 "primary" fit (best match).
   - Up to 2 "alternative" fits.
@@ -1085,22 +1095,30 @@ SECTION C: TEMPLATE RECOMMENDATION RULES (MAX 3)
 SECTION D: LANGUAGE FIDELITY
 - Respond strictly in ${isArabic ? "Arabic (العربية الفصحى الواضحة والراقية)" : "English"}.
 - Preserve technical terms like Flutter, React, Firebase, Docker as proper nouns.
-- Provide a brief, motivating, friendly 1-2 sentence "aiResponseText".
+- Provide a motivating, friendly 1-2 sentence "aiResponseText" acknowledging the goal.
 
 ======================================================================
 Strict JSON Output Schema:
 {
   "intent": {
-    "coreSubject": "Primary subject (e.g. Flutter, Marathon, Budget)",
-    "corePurpose": "Purpose/why (e.g. Learn through practice, Prepare for race)",
-    "goalType": "learning | project | fitness | health | habit | financial | academic | career | creative | personal | custom",
-    "domain": "e.g. Technology, Sports, Personal Finance",
+    "coreSubject": "Primary subject (e.g. Weight Gain, Flutter, Savings)",
+    "corePurpose": "Purpose/why (e.g. Gain healthy mass, Learn through practice)",
+    "goalType": "fitness | health | learning | project | habit | financial | academic | career | creative | personal | custom",
+    "domain": "e.g. Health & Fitness, Technology, Personal Finance",
     "desiredOutcome": "Target outcome definition",
     "supportingOutcomes": ["Supporting deliverable or practice item"]
   },
   "goal": {
-    "title": "Punchy, specific outcome title",
+    "title": "Punchy, specific outcome title honoring intent (e.g. Gain 3 kg Weight - Month 1: +1 kg)",
     "description": "1 sentence definition of done or target clarity"
+  },
+  "clarifyingQuestion": {
+    "question": "${isArabic ? "سؤال قصير ومباشر لضبط تفاصيل الهدف" : "One simple, focused question to sharpen the goal"}",
+    "quickOptions": [
+      "${isArabic ? "3-4 تمارين في الجيم أسبوعياً" : "3-4 gym sessions/week"}",
+      "${isArabic ? "تمارين منزلية مع زيادة سعرات" : "Home workouts with surplus"}",
+      "${isArabic ? "التركيز على التغذية والوجبات" : "Focus on nutrition & meal prep"}"
+    ]
   },
   "categoryRecommendation": {
     "mode": "existing | new",
@@ -1109,31 +1127,29 @@ Strict JSON Output Schema:
   },
   "templateRecommendations": [
     {
-      "frameworkId": "roadmap | checklist | metric | sprint | pillar",
-      "visualStyleId": "book | paper | glass | editorial | minimal | dark-capsule | notebook",
-      "title": "${isArabic ? "عنوان القالب بالعربية" : "Template combination title"}",
-      "reason": "${isArabic ? "سبب ملاءمة هذا التنسيق للهدف" : "Why this layout fits the goal"}",
+      "frameworkId": "metric",
+      "visualStyleId": "dark-capsule",
+      "title": "${isArabic ? "مؤشر أداء رقمي (كبسولة داكنة)" : "Target Metric (Dark Capsule)"}",
+      "reason": "${isArabic ? "الأنسب لتتبع أرقام الوزن والمؤشرات القياسية بدقة" : "Best for quantifiable weight tracking"}",
       "fit": "primary"
     },
     {
-      "frameworkId": "...",
-      "visualStyleId": "...",
-      "title": "...",
-      "reason": "...",
+      "frameworkId": "checklist",
+      "visualStyleId": "paper",
+      "title": "${isArabic ? "قائمة إنجاز أنيقة (ورقي)" : "Clean Checklist (Paper)"}",
+      "reason": "${isArabic ? "لمتابعة الخطوات والوجبات والتمارين اليومية" : "Track routine actions and checklist items"}",
       "fit": "alternative"
     }
   ],
-  "suggestedMilestones": [],
-  "suggestedProjects": [
-    {
-      "name": "Project Name (only if user explicitly mentioned buildable deliverables)",
-      "description": "Brief description"
-    }
+  "suggestedMilestones": [
+    { "text": "${isArabic ? "الالتزام بفائض حراري 300-500 سعرة يومياً" : "Maintain 300-500 kcal daily caloric surplus"}" },
+    { "text": "${isArabic ? "أداء 3-4 تمارين تضخيم عضلات أسبوعياً" : "Complete 3-4 strength hypertrophy sessions weekly"}" },
+    { "text": "${isArabic ? "وزن أسبوعي كل أحد صباحاً لمتابعة التقدم" : "Weekly weigh-in on Sunday morning"}" }
   ],
-  "suggestedExpansionQuestion": "${isArabic ? "هل ترغب في إضافة مهام فرعية، مشاريع، أو حفظ الهدف هكذا؟" : "Would you like to add milestones, projects, or keep it focused?"}",
-  "color": "#2563EB",
-  "icon": "school-outline",
-  "aiResponseText": "${isArabic ? "رسالة موجزة تشرح ما صممه الذكاء الاصطناعي ولماذا اختار هذا القالب" : "Brief friendly explanation of how the goal was architected"}"
+  "suggestedProjects": [],
+  "color": "#10B981",
+  "icon": "barbell-outline",
+  "aiResponseText": "${isArabic ? "رسالة ترحيبية تؤكد فهم الهدف وتشرح كيف تم تصميمه" : "Friendly acknowledgment confirming intent and how the goal is structured"}"
 }`;
 
     const userPrompt = `User Goal Request:
@@ -1154,15 +1170,43 @@ Architect this goal into valid JSON now.`;
     } catch (e) {
       console.warn("architectGoalIntent fallback triggered:", e);
       const fallbackDomain = deriveCategoryFromIntent(args.userMessage, isArabic);
+      const isWeightGain = /gain|زيادة|ضخام|عضل/i.test(args.userMessage);
+      const isWeightLoss = /loss|lose|تخسيس|نزول|فقدان/i.test(args.userMessage);
+
+      const title = isWeightGain
+        ? isArabic ? "زيادة الوزن واكتساب الكتلة (المرحلة الأولى)" : "Gain Weight & Lean Mass (Month 1)"
+        : isWeightLoss
+        ? isArabic ? "خسارة الوزن وتنشيف الدهون" : "Weight Loss & Conditioning"
+        : args.userMessage.slice(0, 40);
+
       parsed = {
-        goal: { title: args.userMessage.slice(0, 40), description: "" },
-        intent: { coreSubject: args.userMessage.slice(0, 30), corePurpose: args.userMessage, goalType: "custom", domain: fallbackDomain },
-        categoryRecommendation: { mode: allCategories.length > 0 ? "existing" : "new", name: allCategories[0] || fallbackDomain, reason: "Inferred domain category" },
+        goal: { title, description: args.userMessage },
+        intent: {
+          coreSubject: title,
+          corePurpose: args.userMessage,
+          goalType: "fitness",
+          domain: fallbackDomain,
+        },
+        categoryRecommendation: {
+          mode: allCategories.length > 0 ? "existing" : "new",
+          name: allCategories[0] || fallbackDomain,
+          reason: "Inferred domain category",
+        },
+        clarifyingQuestion: {
+          question: isArabic ? "كم يوماً في الأسبوع تخطط للتمرين؟" : "How many days a week do you plan to train?",
+          quickOptions: isArabic
+            ? ["3-4 أيام أسبوعياً", "5-6 أيام أسبوعياً", "التركيز على النظام الغذائي"]
+            : ["3-4 days/week", "5-6 days/week", "Focus on nutrition only"],
+        },
         templateRecommendations: [
-          { frameworkId: "roadmap", visualStyleId: "glass", reason: "Standard milestone roadmap", fit: "primary" },
+          { frameworkId: "metric", visualStyleId: "dark-capsule", reason: "Target metric tracking", fit: "primary" },
           { frameworkId: "checklist", visualStyleId: "paper", reason: "Clean execution checklist", fit: "alternative" },
         ],
-        suggestedMilestones: [],
+        suggestedMilestones: [
+          { text: isArabic ? "تحديد احتياج السعرات اليومية وتناول فائض محسوب" : "Establish daily caloric surplus and macro targets" },
+          { text: isArabic ? "الالتزام بتمارين المقاومة والتدرج في الأوزان" : "Stick to progressive overload resistance training" },
+          { text: isArabic ? "قياس الوزن دورياً لتسجيل الزيادة التدريجية" : "Track weekly weigh-ins to confirm steady progress" },
+        ],
       };
     }
 
@@ -1185,20 +1229,30 @@ Architect this goal into valid JSON now.`;
 
     const primaryTpl = Array.isArray(parsed.templateRecommendations) && parsed.templateRecommendations[0]
       ? parsed.templateRecommendations[0].frameworkId || parsed.templateRecommendations[0].templateId
-      : parsed.suggestedTemplateId || "roadmap";
+      : parsed.suggestedTemplateId || "checklist";
+
+    const clarifyingQuestion = parsed.clarifyingQuestion && typeof parsed.clarifyingQuestion.question === "string"
+      ? {
+          question: parsed.clarifyingQuestion.question,
+          quickOptions: Array.isArray(parsed.clarifyingQuestion.quickOptions)
+            ? parsed.clarifyingQuestion.quickOptions
+            : [],
+        }
+      : undefined;
 
     return {
       // New Architect Blueprint fields
       intent: parsed.intent || {
         coreSubject: goalTitle,
         corePurpose: description,
-        goalType: "custom",
+        goalType: "fitness",
         domain: catRecName,
       },
       goal: {
         title: goalTitle,
         description,
       },
+      clarifyingQuestion,
       categoryRecommendation: {
         recommendedCategory: {
           mode: isExistingCat ? "existing" : "new",
@@ -1213,7 +1267,7 @@ Architect this goal into valid JSON now.`;
         : [
             {
               frameworkId: primaryTpl,
-              visualStyleId: "glass",
+              visualStyleId: "dark-capsule",
               reason: "Recommended layout for this goal",
               fit: "primary",
             },
@@ -1240,7 +1294,7 @@ Architect this goal into valid JSON now.`;
           }))
         : [],
       suggestedTemplateId: primaryTpl,
-      color: parsed.color || "#2563EB",
+      color: parsed.color || "#10B981",
       icon: parsed.icon || "flag-outline",
     };
   },
@@ -1615,3 +1669,100 @@ export const saveArchitectGoals = mutation({
     };
   },
 });
+
+/**
+ * Lightweight Single-Turn Co-Pilot Action for Goal Structuring.
+ * Rapidly suggests domain category, optimal framework, aesthetic icon & color,
+ * and 3-4 actionable milestones for the given user intent without conversational friction.
+ */
+export const coPilotAssistGoal = action({
+  args: {
+    text: v.string(),
+    timeframe: v.optional(v.string()), // "day" | "month" | "year"
+    language: v.optional(v.string()),
+    existingCategories: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const isArabic = args.language === "ar";
+    const userText = args.text.trim();
+    if (!userText) {
+      throw new Error("Text is required for goal co-pilot assistance");
+    }
+
+    // 1. Instant domain fallback
+    const fallbackCategory = deriveCategoryFromIntent(userText, isArabic);
+    let matchedCategory = fallbackCategory;
+    if (args.existingCategories && args.existingCategories.length > 0) {
+      const found = args.existingCategories.find(
+        (c) => c.toLowerCase() === fallbackCategory.toLowerCase()
+      );
+      if (found) matchedCategory = found;
+    }
+
+    const groqApiKey = process.env.GROQ_API_KEY;
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+
+    if (!groqApiKey && !geminiApiKey) {
+      return {
+        category: matchedCategory,
+        color: "#2563EB",
+        icon: "flag-outline",
+        templateId: "checklist",
+        suggestedMilestones: [
+          { id: `ms_${Date.now()}_1`, text: isArabic ? "تحديد الخطوة الأولى والبدء" : "Define first step and begin", isCompleted: false },
+          { id: `ms_${Date.now()}_2`, text: isArabic ? "التنفيذ ومتابعة التقدم" : "Execute core milestones", isCompleted: false },
+          { id: `ms_${Date.now()}_3`, text: isArabic ? "المراجعة وتحقيق النتيجة" : "Review and complete outcome", isCompleted: false },
+        ],
+      };
+    }
+
+    const systemPrompt = `You are Nizam App's ultra-fast Goal Co-Pilot.
+Given a user's goal statement (in ${isArabic ? "Arabic" : "English"}), analyze and output a concise JSON object:
+{
+  "category": "Specific domain category (e.g. Software Development, Fitness, Learning, Wealth)",
+  "color": "Hex color code matching the category mood (e.g. #2563EB, #059669, #EA580C, #7C3AED, #D97706)",
+  "icon": "One Ionicons icon name (e.g. briefcase-outline, fitness-outline, book-outline, wallet-outline, rocket-outline, code-slash-outline)",
+  "templateId": "one of: 'checklist', 'roadmap', 'metric', 'sprint', 'pillar'",
+  "refinedTitle": "Refined punchy title (only if user text was too wordy, otherwise keep same)",
+  "suggestedMilestones": ["Step 1 concise action", "Step 2 concise action", "Step 3 concise action"]
+}
+Rules:
+- Category MUST NEVER be generic (never "General", "Goals", "أهداف", "عامة").
+- Provide 3 to 4 actionable, inspiring milestone steps.
+- Reply ONLY in valid JSON. No markdown code fences.`;
+
+    try {
+      const responseText = await callLLMForGoals(systemPrompt, userText);
+      const parsed = JSON.parse(responseText);
+
+      return {
+        category: (parsed.category && !isGenericCategory(parsed.category)) ? parsed.category : matchedCategory,
+        color: parsed.color || "#2563EB",
+        icon: parsed.icon || "flag-outline",
+        templateId: ["checklist", "roadmap", "metric", "sprint", "pillar"].includes(parsed.templateId) ? parsed.templateId : "checklist",
+        refinedTitle: parsed.refinedTitle || undefined,
+        suggestedMilestones: Array.isArray(parsed.suggestedMilestones)
+          ? parsed.suggestedMilestones.map((m: any, idx: number) => ({
+              id: `ms_${Date.now()}_${idx}`,
+              text: typeof m === "string" ? m : m.text || "",
+              isCompleted: false,
+            }))
+          : [],
+      };
+    } catch (err) {
+      console.warn("coPilotAssistGoal LLM call failed, returning fallback:", err);
+      return {
+        category: matchedCategory,
+        color: "#2563EB",
+        icon: "flag-outline",
+        templateId: "checklist",
+        suggestedMilestones: [
+          { id: `ms_${Date.now()}_1`, text: isArabic ? "التخطيط والتحضير" : "Plan & setup fundamentals", isCompleted: false },
+          { id: `ms_${Date.now()}_2`, text: isArabic ? "التنفيذ الأساسي" : "Execute core build", isCompleted: false },
+          { id: `ms_${Date.now()}_3`, text: isArabic ? "الإنجاز والتقييم" : "Achieve target milestone", isCompleted: false },
+        ],
+      };
+    }
+  },
+});
+

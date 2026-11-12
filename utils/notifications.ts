@@ -73,6 +73,9 @@ const clampRepeatCount = (count: number) => Math.max(1, Math.min(MAX_REPEAT_COUN
  * independent DATE trigger with a date-keyed identifier, so re-running this
  * (app relaunch, edit) replaces instead of duplicating. Past occurrences are
  * skipped; nothing is scheduled when the whole series is in the past.
+ *
+ * `repeatCount` specifies how many times it should repeat beyond the first occurrence.
+ * (e.g. repeatCount = 1 means 1 repeat after the initial occurrence, total 2).
  */
 export async function scheduleRepeatingReminder(
   taskId: string,
@@ -86,7 +89,8 @@ export async function scheduleRepeatingReminder(
   if (repeatPeriod === 'none') return 0; // one-shots go through scheduleReminderNotification
 
   const t: any = translations[language as keyof typeof translations] || translations.en;
-  const count = clampRepeatCount(repeatCount);
+  // repeatCount is the number of times it repeats; total occurrences can be up to count + 1.
+  const maxOccurrences = clampRepeatCount(repeatCount) + 1;
   const now = Date.now();
 
   try {
@@ -96,18 +100,20 @@ export async function scheduleRepeatingReminder(
     let scheduled = 0;
     let idx = 0;
     const maxScan = 500;
-    while (scheduled < count && idx < maxScan) {
-      let occurrence = computeRepeatOccurrence(firstOccurrenceMs, repeatPeriod, idx);
+    while (scheduled < maxOccurrences && idx < maxScan) {
+      const occurrence = computeRepeatOccurrence(firstOccurrenceMs, repeatPeriod, idx);
       idx++;
+      // If occurrence is more than 30s in the past, skip it.
+      // If it is due right now (or within the last 30s), trigger 1.5s in future.
+      let triggerDate = new Date(occurrence);
       if (occurrence <= now) {
-        // If the very first occurrence was set for now or within the last 60 seconds (just saved),
-        // trigger in 3 seconds so the user receives the initial alert on time.
-        if (scheduled === 0 && idx === 1 && occurrence >= now - 60000) {
-          occurrence = now + 3000;
+        if (scheduled === 0 && idx === 1 && occurrence >= now - 30000) {
+          triggerDate = new Date(now + 1500);
         } else {
           continue;
         }
       }
+
       await Notifications.scheduleNotificationAsync({
         identifier: getReminderNotificationId(taskId, occurrence),
         content: {
@@ -115,11 +121,13 @@ export async function scheduleRepeatingReminder(
           body: (t.reminderNotifBody || 'Time for: ') + `"${title}"`,
           sound: iosSound(file),
           priority: Notifications.AndroidNotificationPriority?.MAX,
+          autoDismiss: true,
           vibrate: [0, 500, 200, 500, 200, 500],
+          data: { taskId, occurrence } as any,
         } as any,
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: new Date(occurrence),
+          date: triggerDate,
           channelId: CHANNEL_IDS.reminders,
         } as any,
       });
@@ -133,18 +141,14 @@ export async function scheduleRepeatingReminder(
 }
 
 /**
- * Cancel every scheduled occurrence of a reminder series.
- * Prefix-based: sweeps ALL scheduled notifications whose identifier starts
- * with `reminder_<taskId>_` regardless of which period/date produced them, so
- * a period switch, a count shrink, turning repeat off, or a temp→real id
- * remap can never leave an orphaned future notification behind. Also clears
- * the legacy `reminder_<id>` id from earlier builds.
+ * Cancel every scheduled occurrence of a reminder series AND dismiss any delivered
+ * notifications from the device tray for this task.
  */
 export async function cancelReminderSeries(taskId: string): Promise<void> {
   if (!Notifications || !taskId) return;
   try {
     const prefix = `reminder_${taskId}_`;
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
     for (const item of scheduled) {
       const identifier = item?.identifier;
       if (typeof identifier !== 'string') continue;
@@ -152,9 +156,34 @@ export async function cancelReminderSeries(taskId: string): Promise<void> {
         await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
       }
     }
+    // Also dismiss any already delivered to notification center
+    if (Notifications.dismissNotificationAsync) {
+      await Notifications.dismissNotificationAsync(`reminder_${taskId}`).catch(() => {});
+      const presented = await Notifications.getPresentedNotificationsAsync().catch(() => []);
+      for (const item of presented) {
+        const id = item?.request?.identifier;
+        if (typeof id === 'string' && (id.startsWith(prefix) || id === `reminder_${taskId}`)) {
+          await Notifications.dismissNotificationAsync(id).catch(() => {});
+        }
+      }
+    }
   } catch (error) {
     console.warn('Error cancelling reminder series:', error);
   }
+}
+
+/**
+ * Dismiss ALL active / delivered notifications for a given taskId from the OS notification center.
+ */
+export async function dismissAllNotificationsForTask(taskId: string): Promise<void> {
+  if (!Notifications || !taskId) return;
+  try {
+    await Notifications.dismissNotificationAsync(getTimerNotificationId(taskId)).catch(() => {});
+    await Notifications.dismissNotificationAsync(getDeadlineNotificationId(taskId)).catch(() => {});
+    await Notifications.dismissNotificationAsync(`overdue_${taskId}`).catch(() => {});
+    await Notifications.dismissNotificationAsync(`completion_${taskId}`).catch(() => {});
+    await cancelReminderSeries(taskId).catch(() => {});
+  } catch {}
 }
 
 export interface TimerNotificationData {
@@ -221,13 +250,15 @@ const androidSound = (file: string) => file.replace(/\.wav$/i, '');
 const iosSound = (file: string) => file;
 
 /**
- * Create (or recreate) every channel with its curated per-type sound.
- * Idempotent — safe to call on every launch. This MUST run independent of
- * permission state: Android silently drops notifications scheduled to a
- * missing channel, and the OS caches channel config permanently.
+ * Create every channel with its curated per-type sound.
+ * Idempotent — will NOT delete existing channels unless forceRecreate is true.
+ * This prevents Android from dropping in-flight notifications or corrupting sound.
  */
-export async function ensureNotificationChannels(): Promise<void> {
+let channelsInitialized = false;
+
+export async function ensureNotificationChannels(forceRecreate = false): Promise<void> {
   if (!Notifications || Platform.OS !== 'android') return;
+  if (channelsInitialized && !forceRecreate) return;
 
   for (const legacy of LEGACY_CHANNELS) {
     try {
@@ -254,10 +285,16 @@ export async function ensureNotificationChannels(): Promise<void> {
   ];
 
   for (const def of defs) {
-    const file = await resolveKindSound(def.kind).catch(() => TYPE_SOUND[def.kind]);
     try {
-      await Notifications.deleteNotificationChannelAsync(def.id);
+      if (forceRecreate) {
+        await Notifications.deleteNotificationChannelAsync(def.id).catch(() => {});
+      } else {
+        const existing = await Notifications.getNotificationChannelAsync(def.id).catch(() => null);
+        if (existing) continue;
+      }
     } catch {}
+
+    const file = await resolveKindSound(def.kind).catch(() => TYPE_SOUND[def.kind]);
     await Notifications.setNotificationChannelAsync(def.id, {
       name: def.name,
       importance: def.importance,
@@ -268,17 +305,15 @@ export async function ensureNotificationChannels(): Promise<void> {
       enableLights: true,
       bypassDnd: def.bypassDnd,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    } as any);
+    } as any).catch(() => {});
   }
+  channelsInitialized = true;
 }
 
 export async function updateNotificationSoundPreference(_soundFile: any) {
   if (!Notifications || Platform.OS !== 'android') return;
-  // The preference is read per-kind inside ensureNotificationChannels via
-  // resolveKindSound, so re-ensuring applies the new pick to all channels.
-  // Pending timers keep their already-queued channel snapshot and pick the
-  // new sound up on their next schedule cycle.
-  await ensureNotificationChannels();
+  // Bumping or recreating on explicit user change in Settings
+  await ensureNotificationChannels(true);
 }
 
 /**
@@ -363,15 +398,16 @@ export async function scheduleTimerCompletion(
   isSubtask = false,
   language: string = 'en'
 ): Promise<string> {
-  if (!Notifications) return '';
+  if (!Notifications || !taskId) return '';
 
   const t: any = translations[language as keyof typeof translations] || translations.en;
 
   try {
     const kind: NotificationKind = isSubtask ? 'subtask' : 'task';
     const file = await resolveKindSound(kind).catch(() => TYPE_SOUND[kind]);
-    const seconds = Math.floor(durationMs / 1000);
     const identifier = getTimerNotificationId(taskId);
+    const triggerDate = new Date(Date.now() + Math.max(1000, durationMs));
+
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: {
@@ -384,8 +420,8 @@ export async function scheduleTimerCompletion(
         data: { taskId, durationMinutes: Math.round(durationMs / 60000) } as TimerNotificationData,
       } as any,
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: seconds > 0 ? seconds : 1,
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
         channelId: isSubtask ? CHANNEL_IDS.subtasks : CHANNEL_IDS.tasks,
       } as any,
     });
@@ -402,14 +438,14 @@ export async function updateTimerNotificationText(
   isSubtask = false,
   language: string = 'en'
 ) {
-  if (!Notifications) return;
+  if (!Notifications || !taskId) return;
   const identifier = getTimerNotificationId(taskId);
   try {
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
     const existing = scheduled.find((n) => n.identifier === identifier);
     if (existing) {
       const t: any = translations[language as keyof typeof translations] || translations.en;
-      await Notifications.cancelScheduledNotificationAsync(identifier);
+      await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
       await Notifications.scheduleNotificationAsync({
         identifier,
         content: {
@@ -430,7 +466,10 @@ export async function cancelTaskNotification(taskId: string) {
 
   try {
     const identifier = getTimerNotificationId(taskId);
-    await Notifications.cancelScheduledNotificationAsync(identifier);
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+    if (Notifications.dismissNotificationAsync) {
+      await Notifications.dismissNotificationAsync(identifier).catch(() => {});
+    }
   } catch (error) {
     console.log('Error cancelling notification:', error);
   }
@@ -455,23 +494,22 @@ export async function scheduleReminderNotification(
   try {
     const file = await resolveKindSound('reminder').catch(() => TYPE_SOUND.reminder);
     const now = Date.now();
-    // If the reminder time passed more than 2 minutes ago without repeat, skip it.
-    // If it was set within the last 2 minutes (or right now), fire in 3 seconds so the alert isn't lost.
-    if (dueDateMs < now - 120000) return '';
-    const triggerDate = dueDateMs <= now ? new Date(now + 3000) : new Date(dueDateMs);
+    // If the reminder time passed more than 30s ago without repeat, skip it.
+    if (dueDateMs < now - 30000) return '';
+    const triggerDate = dueDateMs <= now ? new Date(now + 1500) : new Date(dueDateMs);
 
-    await ensureNotificationChannels().catch(() => {});
-
+    const identifier = taskId ? getReminderNotificationId(taskId, dueDateMs) : undefined;
     const id = await Notifications.scheduleNotificationAsync({
-      ...(taskId ? { identifier: getReminderNotificationId(taskId, dueDateMs) } : {}),
+      ...(identifier ? { identifier } : {}),
       content: {
         title: t.reminderNotifTitle || '⏰ Reminder',
         body: (t.reminderNotifBody || 'Time for: ') + `"${title}"`,
         sound: iosSound(file),
         priority: Notifications.AndroidNotificationPriority?.MAX,
         sticky: false,
-        autoDismiss: false,
+        autoDismiss: true,
         vibrate: [0, 500, 200, 500, 200, 500],
+        data: taskId ? { taskId, dueDate: dueDateMs } : undefined,
       } as any,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -488,23 +526,31 @@ export async function scheduleReminderNotification(
 
 /**
  * Show an immediate notification when a task is completed.
+ * Keyed by taskId to replace any existing completion notice in the tray.
  */
-export async function showTaskCompletedNotification(title: string, language: string = 'en') {
+export async function showTaskCompletedNotification(title: string, language: string = 'en', taskId?: string) {
   if (!Notifications) return;
 
   const t: any = translations[language as keyof typeof translations] || translations.en;
 
   try {
     const file = await resolveKindSound('completion').catch(() => TYPE_SOUND.completion);
+    const identifier = taskId ? `completion_${taskId}` : undefined;
+    
+    // Dismiss any active timer notification for this task first so they don't stack
+    if (taskId && Notifications.dismissNotificationAsync) {
+      await Notifications.dismissNotificationAsync(getTimerNotificationId(taskId)).catch(() => {});
+    }
+
     await Notifications.scheduleNotificationAsync({
+      ...(identifier ? { identifier } : {}),
       content: {
         title: t.taskCompletedNotifTitle || '🎯 Task Completed!',
         body: (t.taskCompletedNotifBody || 'Great job finishing: ') + `"${title}"`,
         sound: iosSound(file),
         priority: Notifications.AndroidNotificationPriority?.HIGH,
+        data: taskId ? { taskId } : undefined,
       } as any,
-      // null = deliver immediately. Keep channelId: Android plays the
-      // notification's channel sound, so dropping it would lose the sound.
       trigger: {
         channelId: CHANNEL_IDS.completion,
       } as any,

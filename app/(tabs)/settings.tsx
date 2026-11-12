@@ -183,18 +183,17 @@ const Settings = () => {
   );
 
   return (
-    <View style={[styles.container]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={colors.statusBarStyle === "light-content" ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea}>
-        <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
-          <Animated.View entering={FadeInDown.duration(500)} style={[styles.header, { paddingTop: 4, paddingBottom: 4 }]}>
-            <Text style={[styles.headerTitle, isArabic && { textAlign: 'right' }]}>
-              {t.settings}
-            </Text>
-          </Animated.View>
-        </AnimatedWavyHeader>
-
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 12 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 4 }]} showsVerticalScrollIndicator={false}>
+          <AnimatedWavyHeader backgroundColor={colors.bg} waveHeight={10} contentStyle={{ paddingBottom: 2 }}>
+            <Animated.View entering={FadeInDown.duration(500)} style={[styles.header, { paddingTop: 4, paddingBottom: 4 }]}>
+              <Text style={[styles.headerTitle, isArabic && { textAlign: 'right' }]}>
+                {t.settings}
+              </Text>
+            </Animated.View>
+          </AnimatedWavyHeader>
 
           {/* Profile Section */}
           <Animated.View entering={FadeInUp.duration(600).delay(100)} style={styles.profileOuter}>

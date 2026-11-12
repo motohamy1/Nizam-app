@@ -58,10 +58,26 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
   const { t } = useTranslation(language);
   const inputRef = useRef<any>(null);
   const subtaskInputRef = useRef<any>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Dedicated keyboard event listeners for rock-solid keyboard avoidance on iOS & Android
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
+
+  const focusMainInput = () => {
+    if (focusTimerRef.current) {
+      clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+    focusTimerRef.current = setTimeout(() => {
+      if (!inputRef.current?.isFocused?.()) {
+        inputRef.current?.focus();
+      }
+    }, 120);
+  };
 
   useEffect(() => {
     const handleKeyboardShow = (event: KeyboardEvent) => {
@@ -118,35 +134,68 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
   const addTodoMutation = useOfflineMutation(api.todos.addTodo, 'todos:addTodo');
 
   // Queries for Projects/Spaces and Goals
-  const categories = useOfflineQuery<any[]>(
+  const categoriesData = useOfflineQuery<any[]>(
     'projects.getCategories',
     api.projects.getCategories,
     userId ? { userId } : 'skip'
-  ) || [];
+  );
+  const categories = useMemo(() => categoriesData ?? [], [categoriesData]);
 
-  const allGoals = useOfflineQuery<any[]>(
+  const defaultProjectMeta = useOfflineQuery<any>(
+    'projects.getProjectMetadata',
+    api.projects.getProjectMetadata,
+    defaultProjectId ? { id: defaultProjectId } : 'skip'
+  );
+
+  const allGoalsData = useOfflineQuery<any[]>(
     'yearlyGoals.getAllGoals',
     api.yearlyGoals.getAllGoals,
     userId ? { userId } : 'skip'
-  ) || [];
+  );
+  const allGoals = useMemo(() => allGoalsData ?? [], [allGoalsData]);
 
   // Form State
   const [title, setTitle] = useState('');
   const [selectedDate, setSelectedDate] = useState<number>(initialDate || startOfDay(Date.now()));
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Timer State
+  // Timer State (custom duration starts at 0 with no preset minutes)
   const [timerDirection, setTimerDirection] = useState<'down' | 'up'>('down');
   const [timerMs, setTimerMs] = useState<number | null>(null);
   const [customHours, setCustomHours] = useState('0');
-  const [customMinutes, setCustomMinutes] = useState('25');
+  const [customMinutes, setCustomMinutes] = useState('0');
 
   // Priority State
   const [priority, setPriority] = useState<string | undefined>(undefined);
 
-  // Project & Space State
+  // Project & Space State (supports choosing a space or a nested project inside it)
   const [selectedCategoryId, setSelectedCategoryId] = useState<Id<'projectCategories'> | undefined>(undefined);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<Id<'projectSubCategories'> | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(defaultProjectId);
+  const [browsingCategoryId, setBrowsingCategoryId] = useState<Id<'projectCategories'> | undefined>(undefined);
+  const [browsingSubCategoryId, setBrowsingSubCategoryId] = useState<Id<'projectSubCategories'> | undefined>(undefined);
+
+  const spaceSubCategoriesData = useOfflineQuery<any[]>(
+    'projects.getSubCategories',
+    api.projects.getSubCategories,
+    browsingCategoryId ? { categoryId: browsingCategoryId } : 'skip'
+  );
+  const spaceSubCategories = useMemo(
+    () => spaceSubCategoriesData ?? [],
+    [spaceSubCategoriesData]
+  );
+
+  const spaceDirectProjects = useOfflineQuery<any[]>(
+    'projects.getProjectsByCategory',
+    api.projects.getProjectsByCategory,
+    browsingCategoryId ? { categoryId: browsingCategoryId } : 'skip'
+  ) || [];
+
+  const subCategoryProjects = useOfflineQuery<any[]>(
+    'projects.getProjectsBySubCategory',
+    api.projects.getProjectsBySubCategory,
+    browsingSubCategoryId ? { subCategoryId: browsingSubCategoryId } : 'skip'
+  ) || [];
 
   // Goal State
   const [selectedGoalId, setSelectedGoalId] = useState<Id<'yearlyGoals'> | undefined>(undefined);
@@ -167,27 +216,57 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
       setTimerDirection('down');
       setTimerMs(null);
       setCustomHours('0');
-      setCustomMinutes('25');
+      setCustomMinutes('0');
       setPriority(undefined);
       setSelectedCategoryId(undefined);
+      setSelectedSubCategoryId(undefined);
       setSelectedProjectId(defaultProjectId);
+      setBrowsingCategoryId(undefined);
+      setBrowsingSubCategoryId(undefined);
       setSelectedGoalId(undefined);
       setSubtasks([]);
       setNewSubtaskText('');
       setActiveOption(null);
       setIsSubmitting(false);
 
-      // Focus input with slight delay for modal mount
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
+      focusMainInput();
+      return () => {
+        if (focusTimerRef.current) {
+          clearTimeout(focusTimerRef.current);
+          focusTimerRef.current = null;
+        }
+      };
+    } else {
+      setKeyboardHeight(0);
+      keyboardHeightAnim.setValue(0);
     }
   }, [visible, initialDate, defaultProjectId]);
 
+  useEffect(() => {
+    if (visible && defaultProjectId && defaultProjectMeta && !Array.isArray(defaultProjectMeta)) {
+      if (defaultProjectMeta.categoryId && !selectedCategoryId) {
+        setSelectedCategoryId(defaultProjectMeta.categoryId);
+        setBrowsingCategoryId(defaultProjectMeta.categoryId);
+      }
+      if (defaultProjectMeta.subCategoryId && !selectedSubCategoryId) {
+        setSelectedSubCategoryId(defaultProjectMeta.subCategoryId);
+        setBrowsingSubCategoryId(defaultProjectMeta.subCategoryId);
+      }
+    }
+  }, [visible, defaultProjectId, defaultProjectMeta]);
+
   const toggleOption = (option: ActiveOptionType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveOption((prev) => (prev === option ? null : option));
+    const prev = activeOption;
+    const next = prev === option ? null : option;
+    setActiveOption(next);
+    if ((prev === 'timer' || prev === 'subtasks') && next !== prev) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+    if (next === 'project' && selectedCategoryId && !browsingCategoryId) {
+      setBrowsingCategoryId(selectedCategoryId);
+      setBrowsingSubCategoryId(selectedSubCategoryId);
+    }
   };
 
   const handleAddSubtask = () => {
@@ -222,6 +301,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
         dueDate: selectedDate,
         priority: priority as any,
         categoryId: selectedCategoryId,
+        subCategoryId: selectedSubCategoryId,
         projectId: selectedProjectId as any,
         goalId: selectedGoalId,
         timerDuration: timerMs || undefined,
@@ -278,6 +358,37 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
     return d.toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' });
   }, [selectedDate, isArabic, todayTs]);
 
+  // Filter goals to current month only
+  const currentMonthGoals = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const targetDate = new Date(selectedDate);
+    const isTargetInCurrentMonth =
+      targetDate.getFullYear() === currentYear &&
+      targetDate.getMonth() === currentMonth;
+    const targetDay = isTargetInCurrentMonth ? targetDate.getDate() : now.getDate();
+
+    return allGoals.filter((g: any) => {
+      if (g.year !== currentYear || g.month !== currentMonth) return false;
+      return g.day === undefined || g.day === targetDay;
+    });
+  }, [allGoals, selectedDate]);
+
+  const browsingCategory = useMemo(
+    () => categories.find((c: any) => c._id === browsingCategoryId) || null,
+    [categories, browsingCategoryId]
+  );
+
+  const browsingSubCategory = useMemo(
+    () => spaceSubCategories.find((s: any) => s._id === browsingSubCategoryId) || null,
+    [spaceSubCategories, browsingSubCategoryId]
+  );
+
+  const hasSpaceOrProjectSelection = Boolean(
+    selectedCategoryId || selectedSubCategoryId || selectedProjectId
+  );
+
   const baseBottomMargin = Math.max(insets.bottom, 16);
   const extraOffset = Platform.OS === 'ios' ? 8 : 12;
 
@@ -295,6 +406,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
       transparent
       animationType="fade"
       onRequestClose={handleClose}
+      onShow={focusMainInput}
       statusBarTranslucent={true}
     >
       <View style={styles.overlay}>
@@ -308,7 +420,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
             { marginBottom: animatedBottomMargin },
           ]}
         >
-          <Pressable onPress={(e) => e.stopPropagation()}>
+          <View>
           {/* ======================================================== */}
           {/* OPTION POP-UP: Animated panel above the main capsule */}
           {/* ======================================================== */}
@@ -441,7 +553,10 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                       <TouchableOpacity
                         onPress={() => {
                           setTimerDirection('down');
-                          if (!timerMs) setTimerMs(25 * 60 * 1000);
+                          const h = parseInt(customHours || '0', 10);
+                          const m = parseInt(customMinutes || '0', 10);
+                          const total = (h * 60 + m) * 60 * 1000;
+                          setTimerMs(total > 0 ? total : null);
                         }}
                         style={[
                           styles.toggleBtn,
@@ -528,8 +643,11 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                               <TextInput
                                 value={customHours}
+                                placeholder="0"
+                                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                                selectTextOnFocus={true}
                                 onChangeText={(text) => {
-                                  const clean = text.replace(/[^0-9]/g, '').slice(0, 2);
+                                  const clean = text.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 2);
                                   setCustomHours(clean);
                                   const h = parseInt(clean || '0', 10);
                                   const m = parseInt(customMinutes || '0', 10);
@@ -561,8 +679,11 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                               <TextInput
                                 value={customMinutes}
+                                placeholder="0"
+                                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                                selectTextOnFocus={true}
                                 onChangeText={(text) => {
-                                  const clean = text.replace(/[^0-9]/g, '').slice(0, 2);
+                                  const clean = text.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 2);
                                   setCustomMinutes(clean);
                                   const h = parseInt(customHours || '0', 10);
                                   const m = parseInt(clean || '0', 10);
@@ -600,6 +721,8 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                                 onPress={() => {
                                   if (isActive) {
                                     setTimerMs(null);
+                                    setCustomHours('0');
+                                    setCustomMinutes('0');
                                   } else {
                                     setTimerMs(preset.ms);
                                     const mins = Math.floor(preset.ms / 60000);
@@ -672,59 +795,281 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
 
                 {/* 4. PROJECT / SPACE OPTION */}
                 {activeOption === 'project' && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={[styles.horizontalScroll, isArabic && styles.rowRtl]}
-                  >
-                    {categories && categories.length > 0 ? (
-                      categories.map((cat: any) => {
-                        const isActive = selectedCategoryId === cat._id;
-                        return (
-                          <TouchableOpacity
-                            key={cat._id}
-                            onPress={() => {
-                              setSelectedCategoryId(isActive ? undefined : cat._id);
-                              toggleOption(null);
-                            }}
-                            style={[
-                              styles.popChip,
-                              isActive && styles.popChipActive,
-                            ]}
-                          >
-                            <Ionicons
-                              name="folder"
-                              size={13}
-                              color={isActive ? '#000000' : cat.color || '#C9A6F2'}
-                            />
-                            <Text
+                  <View style={styles.nestedPickerContainer}>
+                    {/* Spaces Horizontal Row */}
+                    <ScrollView
+                      horizontal
+                      keyboardShouldPersistTaps="always"
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={[styles.horizontalScroll, isArabic && styles.rowRtl]}
+                    >
+                      {categories && categories.length > 0 ? (
+                        categories.map((cat: any) => {
+                          const isBrowsing = browsingCategoryId === cat._id;
+                          const isSelected = selectedCategoryId === cat._id;
+                          return (
+                            <TouchableOpacity
+                              key={cat._id}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setBrowsingCategoryId(cat._id);
+                                setBrowsingSubCategoryId(undefined);
+                                setSelectedCategoryId(cat._id);
+                                setSelectedSubCategoryId(undefined);
+                                setSelectedProjectId(undefined);
+                              }}
                               style={[
-                                styles.popChipText,
-                                isActive && styles.popChipTextActive,
+                                styles.popChip,
+                                (isBrowsing || isSelected) && styles.popChipActive,
                               ]}
                             >
-                              {cat.name}
+                              <Ionicons
+                                name={(cat.icon || 'folder') as any}
+                                size={13}
+                                color={(isBrowsing || isSelected) ? '#141311' : cat.color || '#C9A6F2'}
+                                style={{ flexShrink: 0 }}
+                              />
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={[
+                                  styles.popChipText,
+                                  (isBrowsing || isSelected) && styles.popChipTextActive,
+                                ]}
+                              >
+                                {cat.name}
+                              </Text>
+                              <Ionicons
+                                name={isBrowsing ? 'chevron-down' : isArabic ? 'chevron-back' : 'chevron-forward'}
+                                size={11}
+                                color={(isBrowsing || isSelected) ? '#141311' : 'rgba(255, 255, 255, 0.55)'}
+                                style={{ flexShrink: 0 }}
+                              />
+                            </TouchableOpacity>
+                          );
+                        })
+                      ) : (
+                        <Text style={styles.emptyText}>
+                          {isArabic ? 'لا توجد مساحات مضافة' : 'No spaces found'}
+                        </Text>
+                      )}
+                    </ScrollView>
+
+                    {/* Nested Projects / Sub-Categories inside selected Space */}
+                    {browsingCategoryId && (
+                      <View style={styles.nestedSection}>
+                        <View style={[styles.nestedHeaderRow, isArabic && styles.rowRtl]}>
+                          <View style={[styles.nestedBreadcrumb, isArabic && styles.rowRtl]}>
+                            {browsingSubCategoryId && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setBrowsingSubCategoryId(undefined);
+                                  setSelectedSubCategoryId(undefined);
+                                  setSelectedProjectId(undefined);
+                                }}
+                                style={styles.nestedBackBtn}
+                              >
+                                <Ionicons
+                                  name={isArabic ? 'chevron-forward' : 'chevron-back'}
+                                  size={12}
+                                  color="#C9A6F2"
+                                />
+                              </TouchableOpacity>
+                            )}
+                            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.nestedSectionTitle}>
+                              {browsingSubCategory
+                                ? `${browsingCategory?.name || ''} / ${browsingSubCategory.name}`
+                                : isArabic
+                                ? `مشاريع ${browsingCategory?.name || ''}`
+                                : `Projects in ${browsingCategory?.name || 'Space'}`}
                             </Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    ) : (
-                      <Text style={styles.emptyText}>
-                        {isArabic ? 'لا توجد مشاريع مضافة' : 'No spaces / projects found'}
-                      </Text>
+                          </View>
+
+                          <View style={[styles.nestedActionGroup, isArabic && styles.rowRtl]}>
+                            {hasSpaceOrProjectSelection && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setSelectedCategoryId(undefined);
+                                  setSelectedSubCategoryId(undefined);
+                                  setSelectedProjectId(undefined);
+                                  setBrowsingCategoryId(undefined);
+                                  setBrowsingSubCategoryId(undefined);
+                                }}
+                                style={styles.nestedClearBtn}
+                              >
+                                <Text style={styles.nestedClearText}>
+                                  {isArabic ? 'إلغاء' : 'Clear'}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                              onPress={() => toggleOption(null)}
+                              style={styles.nestedConfirmBtn}
+                            >
+                              <Text style={styles.nestedConfirmText}>
+                                {isArabic ? 'تأكيد المساحة' : 'Use Space'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <ScrollView
+                          horizontal
+                          keyboardShouldPersistTaps="always"
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={[styles.horizontalScroll, isArabic && styles.rowRtl]}
+                        >
+                          {browsingSubCategoryId ? (
+                            subCategoryProjects.length > 0 ? (
+                              subCategoryProjects.map((proj: any) => {
+                                const isProjActive = selectedProjectId === proj._id;
+                                return (
+                                  <TouchableOpacity
+                                    key={proj._id}
+                                    onPress={() => {
+                                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                      setSelectedCategoryId(browsingCategoryId);
+                                      setSelectedSubCategoryId(browsingSubCategoryId);
+                                      setSelectedProjectId(isProjActive ? undefined : proj._id);
+                                      if (!isProjActive) toggleOption(null);
+                                    }}
+                                    style={[
+                                      styles.popChip,
+                                      styles.nestedChip,
+                                      isProjActive && styles.popChipActive,
+                                    ]}
+                                  >
+                                    <Ionicons
+                                      name={(proj.icon || 'rocket-outline') as any}
+                                      size={13}
+                                      color={isProjActive ? '#141311' : proj.color || '#38bdf8'}
+                                      style={{ flexShrink: 0 }}
+                                    />
+                                    <Text
+                                      numberOfLines={1}
+                                      ellipsizeMode="tail"
+                                      style={[
+                                        styles.popChipText,
+                                        isProjActive && styles.popChipTextActive,
+                                      ]}
+                                    >
+                                      {proj.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })
+                            ) : (
+                              <Text style={styles.emptyText}>
+                                {isArabic ? 'لا توجد مشاريع في هذا القسم' : 'No projects in this sub-category'}
+                              </Text>
+                            )
+                          ) : (spaceDirectProjects.length > 0 || spaceSubCategories.length > 0) ? (
+                            <>
+                              {spaceDirectProjects.map((proj: any) => {
+                                const isProjActive = selectedProjectId === proj._id;
+                                return (
+                                  <TouchableOpacity
+                                    key={proj._id}
+                                    onPress={() => {
+                                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                      setSelectedCategoryId(browsingCategoryId);
+                                      setSelectedSubCategoryId(undefined);
+                                      setSelectedProjectId(isProjActive ? undefined : proj._id);
+                                      if (!isProjActive) toggleOption(null);
+                                    }}
+                                    style={[
+                                      styles.popChip,
+                                      styles.nestedChip,
+                                      isProjActive && styles.popChipActive,
+                                    ]}
+                                  >
+                                    <Ionicons
+                                      name={(proj.icon || 'rocket-outline') as any}
+                                      size={13}
+                                      color={isProjActive ? '#141311' : proj.color || '#38bdf8'}
+                                      style={{ flexShrink: 0 }}
+                                    />
+                                    <Text
+                                      numberOfLines={1}
+                                      ellipsizeMode="tail"
+                                      style={[
+                                        styles.popChipText,
+                                        isProjActive && styles.popChipTextActive,
+                                      ]}
+                                    >
+                                      {proj.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+
+                              {spaceSubCategories.map((sub: any) => {
+                                const isSubActive = selectedSubCategoryId === sub._id;
+                                return (
+                                  <TouchableOpacity
+                                    key={sub._id}
+                                    onPress={() => {
+                                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                      setBrowsingSubCategoryId(sub._id);
+                                      setSelectedCategoryId(browsingCategoryId);
+                                      setSelectedSubCategoryId(sub._id);
+                                      setSelectedProjectId(undefined);
+                                    }}
+                                    style={[
+                                      styles.popChip,
+                                      styles.nestedChip,
+                                      isSubActive && styles.popChipActive,
+                                    ]}
+                                  >
+                                    <Ionicons
+                                      name={(sub.icon || 'layers-outline') as any}
+                                      size={13}
+                                      color={isSubActive ? '#141311' : sub.color || '#C9A6F2'}
+                                      style={{ flexShrink: 0 }}
+                                    />
+                                    <Text
+                                      numberOfLines={1}
+                                      ellipsizeMode="tail"
+                                      style={[
+                                        styles.popChipText,
+                                        isSubActive && styles.popChipTextActive,
+                                      ]}
+                                    >
+                                      {sub.name}
+                                    </Text>
+                                    <Ionicons
+                                      name={isArabic ? 'chevron-back' : 'chevron-forward'}
+                                      size={11}
+                                      color={isSubActive ? '#141311' : 'rgba(255, 255, 255, 0.55)'}
+                                      style={{ flexShrink: 0 }}
+                                    />
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <Text style={styles.emptyText}>
+                              {isArabic ? 'تم اختيار المساحة • لا توجد مشاريع بداخلها' : 'Space selected • No projects inside'}
+                            </Text>
+                          )}
+                        </ScrollView>
+                      </View>
                     )}
-                  </ScrollView>
+                  </View>
                 )}
 
-                {/* 5. GOAL OPTION */}
+                {/* 5. GOAL OPTION (Current Month Goals Only) */}
                 {activeOption === 'goal' && (
                   <ScrollView
                     horizontal
+                    keyboardShouldPersistTaps="always"
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={[styles.horizontalScroll, isArabic && styles.rowRtl]}
                   >
-                    {allGoals && allGoals.length > 0 ? (
-                      allGoals.map((g: any) => {
+                    {currentMonthGoals.length > 0 ? (
+                      currentMonthGoals.map((g: any) => {
                         const isActive = selectedGoalId === g._id;
                         return (
                           <TouchableOpacity
@@ -742,13 +1087,15 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                               name="trophy"
                               size={13}
                               color={isActive ? '#000000' : '#f59e0b'}
+                              style={{ flexShrink: 0 }}
                             />
                             <Text
                               numberOfLines={1}
+                              ellipsizeMode="tail"
                               style={[
                                 styles.popChipText,
                                 isActive && styles.popChipTextActive,
-                                { maxWidth: 140 },
+                                { maxWidth: 150 },
                               ]}
                             >
                               {g.text}
@@ -758,7 +1105,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                       })
                     ) : (
                       <Text style={styles.emptyText}>
-                        {isArabic ? 'لا توجد أهداف مضافة' : 'No yearly goals found'}
+                        {isArabic ? 'لا توجد أهداف للشهر الحالي' : 'No goals for this month'}
                       </Text>
                     )}
                   </ScrollView>
@@ -768,7 +1115,13 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                 {activeOption === 'subtasks' && (
                   <View>
                     {subtasks.length > 0 && (
-                      <View style={styles.subtasksList}>
+                      <ScrollView
+                        style={styles.subtasksList}
+                        contentContainerStyle={{ gap: 6 }}
+                        keyboardShouldPersistTaps="always"
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator={false}
+                      >
                         {subtasks.map((st, idx) => (
                           <View
                             key={idx}
@@ -791,7 +1144,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                             </TouchableOpacity>
                           </View>
                         ))}
-                      </View>
+                      </ScrollView>
                     )}
 
                     <View style={[styles.subtaskInputRow, isArabic && styles.rowRtl]}>
@@ -832,6 +1185,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
             {/* Top: Task Title Text Input */}
             <TextInput
               ref={inputRef}
+              autoFocus={visible}
               value={title}
               onChangeText={setTitle}
               placeholder={isArabic ? 'ما الذي تريد إنجازه؟' : 'What needs doing?'}
@@ -901,7 +1255,9 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                     name={priority ? 'flag' : 'flag-outline'}
                     size={20}
                     color={
-                      priority === 'High'
+                      priority === 'Urgent'
+                        ? '#f43f5e'
+                        : priority === 'High'
                         ? '#ef4444'
                         : priority === 'Medium'
                         ? '#f59e0b'
@@ -920,16 +1276,16 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
                   style={[
                     styles.iconBtn,
                     activeOption === 'project' && styles.iconBtnActive,
-                    selectedCategoryId ? styles.iconBtnHighlighted : null,
+                    hasSpaceOrProjectSelection ? styles.iconBtnHighlighted : null,
                   ]}
                   accessibilityLabel="Project"
                 >
                   <Ionicons
-                    name={selectedCategoryId ? 'folder' : 'folder-outline'}
+                    name={hasSpaceOrProjectSelection ? 'folder' : 'folder-outline'}
                     size={20}
-                    color={selectedCategoryId ? '#38bdf8' : activeOption === 'project' ? '#C9A6F2' : 'rgba(255, 255, 255, 0.70)'}
+                    color={hasSpaceOrProjectSelection ? '#38bdf8' : activeOption === 'project' ? '#C9A6F2' : 'rgba(255, 255, 255, 0.70)'}
                   />
-                  {selectedCategoryId && (
+                  {hasSpaceOrProjectSelection && (
                     <View style={[styles.activeDot, { backgroundColor: '#38bdf8' }]} />
                   )}
                 </TouchableOpacity>
@@ -995,7 +1351,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          </Pressable>
+          </View>
         </Animated.View>
 
         {/* Custom Date Picker Modal */}
@@ -1082,6 +1438,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 7,
+    maxWidth: 190,
+    overflow: 'hidden',
   },
   popChipActive: {
     backgroundColor: '#C9A6F2',
@@ -1091,10 +1449,80 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255, 255, 255, 0.85)',
+    flexShrink: 1,
   },
   popChipTextActive: {
     color: '#141311',
     fontWeight: '800',
+  },
+  nestedPickerContainer: {
+    gap: 8,
+  },
+  nestedSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 8,
+    gap: 6,
+  },
+  nestedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  nestedBreadcrumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    minWidth: 0,
+  },
+  nestedBackBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(201, 166, 242, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  nestedSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.65)',
+    flexShrink: 1,
+  },
+  nestedActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  nestedClearBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  nestedClearText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#fca5a5',
+  },
+  nestedConfirmBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
+  },
+  nestedConfirmText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#7dd3fc',
+  },
+  nestedChip: {
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderColor: 'rgba(56, 189, 248, 0.22)',
   },
   horizontalScroll: {
     flexDirection: 'row',

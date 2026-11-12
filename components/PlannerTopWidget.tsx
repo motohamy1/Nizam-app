@@ -17,7 +17,7 @@ interface PlannerTopWidgetProps {
 }
 
 export const PLANNER_LIGHT_TEXTURE_BG = '#FAF8F5';
-export const PLANNER_DARK_CONTRAST_CARD = '#181922';
+export const PLANNER_DARK_CONTRAST_CARD = '#5B1497';
 export const PLANNER_ACTIVITY_COLOR = '#FF9470';
 
 export const PlannerTopWidget: React.FC<PlannerTopWidgetProps> = ({
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   goalsCard: {
     backgroundColor: PLANNER_DARK_CONTRAST_CARD,
-    shadowColor: '#181922',
+    shadowColor: PLANNER_DARK_CONTRAST_CARD,
   },
   goalsIconCircle: {
     width: 36,

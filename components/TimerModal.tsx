@@ -27,7 +27,7 @@ const MODAL_PURPLE_BG = '#1C0A2A';
 const MODAL_PURPLE_BORDER = '#8E2CAC';
 const MODAL_PURPLE_TINT = 'rgba(142, 44, 172, 0.14)';
 const MODAL_PURPLE_LINE = 'rgba(142, 44, 172, 0.35)';
-const MODAL_CORAL_ACCENT = '#FF9470';
+const MODAL_CORAL_ACCENT = '#AFE607';
 
 const TimerModal: React.FC<TimerModalProps> = ({ visible, onClose, onSave, initialDate }) => {
   const { colors, isDarkMode } = useTheme();

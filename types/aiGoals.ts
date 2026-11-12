@@ -135,6 +135,10 @@ export interface AIGoalDraft {
   icon: string;
   dirtyByUser: boolean;
   aiResponseText?: string;
+  clarifyingQuestion?: {
+    question: string;
+    options: string[];
+  };
   userEditedFields: {
     title?: boolean;
     description?: boolean;
@@ -149,6 +153,7 @@ export interface AIGoalDraft {
 export type AIGoalSessionState =
   | 'idle'
   | 'analyzing'
+  | 'questioning'
   | 'awaiting_template'
   | 'reviewing'
   | 'asking_expansion'

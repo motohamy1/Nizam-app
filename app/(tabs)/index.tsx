@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -36,6 +36,8 @@ import {
   HomeTasksWidget,
   HomeFeatureKey,
   LIME_ACCENT,
+  BAR_WIDGET_COLOR,
+  SECTION_VIOLET,
 } from "@/components/home";
 
 import { CardSwap, CardSwapItem } from "@/components/CardSwap";
@@ -122,8 +124,21 @@ const Index = () => {
   const [isFocusTimerModalVisible, setFocusTimerModalVisible] = useState(false);
   const [activeFeature, setActiveFeature] = useState<HomeFeatureKey | null>(null);
 
-  const [todayStart] = useState(() => startOfDay(Date.now()));
+  const [todayStart, setTodayStart] = useState(() => startOfDay(Date.now()));
   const [selectedDate, setSelectedDate] = useState(todayStart);
+
+  useFocusEffect(
+    useCallback(() => {
+      const currentToday = startOfDay(Date.now());
+      setTodayStart((prev) => {
+        if (prev !== currentToday) {
+          setSelectedDate((sel) => (sel === prev ? currentToday : sel));
+          return currentToday;
+        }
+        return prev;
+      });
+    }, [])
+  );
 
   const scrollViewRef = useRef<any>(null);
   const homeStyles = createHomeStyles(colors, isArabic);
@@ -256,7 +271,9 @@ const Index = () => {
     if (sortActive === 'date') return (a.dueDate || 0) - (b.dueDate || 0);
     const pDiff = (pScores[b.priority || ''] ?? -1) - (pScores[a.priority || ''] ?? -1);
     if (pDiff !== 0) return pDiff;
-    return (a._creationTime || 0) - (b._creationTime || 0);
+    const inProgDiff = (b.status === 'in_progress' ? 1 : 0) - (a.status === 'in_progress' ? 1 : 0);
+    if (inProgDiff !== 0) return inProgDiff;
+    return (b._creationTime || 0) - (a._creationTime || 0);
   };
 
   // Day Task Counts for DateBar
@@ -301,11 +318,15 @@ const Index = () => {
     };
   }, [todos, selectedDate, todayStart, linkedChildren]);
 
-  // Tasks for the selected date (sorted by priority)
+  // Tasks for the selected date (unfinished first by priority, completed tasks at the back)
   const currentDayTasks = useMemo(() => {
     return normalizedTodos
       .filter(t => getEffectiveTaskDay(t, todayStart) === selectedDate)
-      .sort(byPriority);
+      .sort((a, b) => {
+        const doneDiff = (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0);
+        if (doneDiff !== 0) return doneDiff;
+        return byPriority(a, b);
+      });
   }, [normalizedTodos, selectedDate, todayStart, sortActive]);
 
   const currentDayDoneCount = useMemo(() => {
@@ -354,6 +375,11 @@ const Index = () => {
   const handleCompleteTask = (task: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     updateStatus({ id: task._id, status: 'done' });
+  };
+
+  const handleReopenTask = (task: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateStatus({ id: task._id, status: 'not_started' });
   };
 
   // Open Day Planner in tabs
@@ -455,30 +481,7 @@ const Index = () => {
       savedId = typeof res === 'string' ? res : (res as any)?._id;
     }
 
-    if (savedId) {
-      try {
-        const { scheduleRepeatingReminder, scheduleReminderNotification } = await import('@/utils/notifications');
-        if (repeatOn && evt.repeatPeriod) {
-          await scheduleRepeatingReminder(
-            String(savedId),
-            evt.title,
-            evt.startTime || evt.date,
-            evt.repeatPeriod as any,
-            evt.repeatCount || 1,
-            language
-          );
-        } else {
-          await scheduleReminderNotification(
-            evt.title,
-            evt.startTime || evt.date,
-            language,
-            String(savedId)
-          );
-        }
-      } catch (e) {
-        console.warn('Failed to schedule reminder notification immediately:', e);
-      }
-    }
+
   };
 
   const handleDeleteEvent = async (id: Id<"todos">) => {
@@ -522,7 +525,7 @@ const Index = () => {
     }
   };
 
-  // ─── CardSwap Items Definition for Other Features (Warm Creamy Off-White #FAF8F5) ───
+  // ─── CardSwap Items Definition for Other Features (Warm Creamy Off-White #FAF7EE with Violet & Lime) ───
   const swapFeaturesList: CardSwapItem[] = useMemo(() => [
     {
       id: 'checklist',
@@ -532,14 +535,14 @@ const Index = () => {
         : (isArabic ? 'اضغط لإضافة عناصر للقائمة' : 'Tap to add checklist items'),
       icon: 'checkbox-outline',
       badge: checklistTotalCount > 0 ? `${checklistDoneCount}/${checklistTotalCount}` : undefined,
-      accentColor: '#B85000',
-      backgroundColor: '#FAF8F5',
-      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      accentColor: '#AFE607',
+      backgroundColor: '#FAF7EE',
+      gradientColors: ['#FAF7EE', '#F5F1E4', '#FAF7EE'] as const,
       textureSource: require('@/assets/images/grain.png'),
-      borderColor: 'rgba(184, 80, 0, 0.16)',
-      iconColor: '#B85000',
-      textColor: '#B85000',
-      subtextColor: 'rgba(184, 80, 0, 0.82)',
+      borderColor: 'rgba(109, 40, 217, 0.16)',
+      iconColor: '#6D28D9',
+      textColor: '#2E1065',
+      subtextColor: 'rgba(46, 16, 101, 0.72)',
       wireframe: false,
     },
     {
@@ -550,14 +553,14 @@ const Index = () => {
         : (isArabic ? 'لا توجد تذكيرات اليوم' : 'No reminders scheduled'),
       icon: 'notifications-outline',
       badge: upcomingEvents.length > 0 ? `${upcomingEvents.length}` : undefined,
-      accentColor: '#B85000',
-      backgroundColor: '#FAF8F5',
-      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      accentColor: '#AFE607',
+      backgroundColor: '#FAF7EE',
+      gradientColors: ['#FAF7EE', '#F5F1E4', '#FAF7EE'] as const,
       textureSource: require('@/assets/images/grain.png'),
-      borderColor: 'rgba(184, 80, 0, 0.16)',
-      iconColor: '#B85000',
-      textColor: '#B85000',
-      subtextColor: 'rgba(184, 80, 0, 0.82)',
+      borderColor: 'rgba(109, 40, 217, 0.16)',
+      iconColor: '#6D28D9',
+      textColor: '#2E1065',
+      subtextColor: 'rgba(46, 16, 101, 0.72)',
       wireframe: false,
     },
     {
@@ -566,14 +569,14 @@ const Index = () => {
       subtitle: isArabic ? `${monthDoneCount} من ${monthTotalCount} مهام مكتملة` : `${monthDoneCount} of ${monthTotalCount} tasks done`,
       icon: 'calendar-outline',
       badge: activeMonthlyGoals > 0 ? `${activeMonthlyGoals} ${isArabic ? 'أهداف' : 'goals'}` : undefined,
-      accentColor: '#B85000',
-      backgroundColor: '#FAF8F5',
-      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      accentColor: '#AFE607',
+      backgroundColor: '#FAF7EE',
+      gradientColors: ['#FAF7EE', '#F5F1E4', '#FAF7EE'] as const,
       textureSource: require('@/assets/images/grain.png'),
-      borderColor: 'rgba(184, 80, 0, 0.16)',
-      iconColor: '#B85000',
-      textColor: '#B85000',
-      subtextColor: 'rgba(184, 80, 0, 0.82)',
+      borderColor: 'rgba(109, 40, 217, 0.16)',
+      iconColor: '#6D28D9',
+      textColor: '#2E1065',
+      subtextColor: 'rgba(46, 16, 101, 0.72)',
       wireframe: false,
     },
     {
@@ -581,14 +584,14 @@ const Index = () => {
       title: isArabic ? 'تحليلات ورؤى ذكية' : 'AI Insights & Wellbeing',
       subtitle: isArabic ? 'رؤى مخصصة لتحسين إنتاجيتك' : 'Personalized productivity insights',
       icon: 'sparkles-outline',
-      accentColor: '#B85000',
-      backgroundColor: '#FAF8F5',
-      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      accentColor: '#AFE607',
+      backgroundColor: '#FAF7EE',
+      gradientColors: ['#FAF7EE', '#F5F1E4', '#FAF7EE'] as const,
       textureSource: require('@/assets/images/grain.png'),
-      borderColor: 'rgba(184, 80, 0, 0.16)',
-      iconColor: '#B85000',
-      textColor: '#B85000',
-      subtextColor: 'rgba(184, 80, 0, 0.82)',
+      borderColor: 'rgba(109, 40, 217, 0.16)',
+      iconColor: '#6D28D9',
+      textColor: '#2E1065',
+      subtextColor: 'rgba(46, 16, 101, 0.72)',
       wireframe: false,
     },
     {
@@ -596,14 +599,14 @@ const Index = () => {
       title: isArabic ? 'مؤقت التركيز' : 'Focus Timer',
       subtitle: isArabic ? 'جلسات تركيز بومودورو ذكية' : 'Smart Pomodoro focus blocks',
       icon: 'timer-outline',
-      accentColor: '#B85000',
-      backgroundColor: '#FAF8F5',
-      gradientColors: ['#FAF8F5', '#F5F2EB', '#FAF8F5'] as const,
+      accentColor: '#AFE607',
+      backgroundColor: '#FAF7EE',
+      gradientColors: ['#FAF7EE', '#F5F1E4', '#FAF7EE'] as const,
       textureSource: require('@/assets/images/grain.png'),
-      borderColor: 'rgba(184, 80, 0, 0.16)',
-      iconColor: '#B85000',
-      textColor: '#B85000',
-      subtextColor: 'rgba(184, 80, 0, 0.82)',
+      borderColor: 'rgba(109, 40, 217, 0.16)',
+      iconColor: '#6D28D9',
+      textColor: '#2E1065',
+      subtextColor: 'rgba(46, 16, 101, 0.72)',
       wireframe: false,
     },
   ], [isArabic, checklistTotalCount, checklistDoneCount, upcomingEvents.length, monthDoneCount, monthTotalCount, activeMonthlyGoals]);
@@ -640,6 +643,20 @@ const Index = () => {
     >
       <StatusBar style="dark" />
 
+      {/* Top Safe Area / Status Bar backdrop matching #8b53fe */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top,
+          backgroundColor: BAR_WIDGET_COLOR,
+          zIndex: 10,
+          pointerEvents: 'none',
+        }}
+      />
+
       {todos === undefined ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.secondary} />
@@ -657,6 +674,18 @@ const Index = () => {
             nestedScrollEnabled={true}
             scrollEventThrottle={16}
           >
+            {/* Top Overscroll fill ensuring pull-down always shows seamless #8b53fe */}
+            <View
+              style={{
+                position: 'absolute',
+                top: -600,
+                left: 0,
+                right: 0,
+                height: 600,
+                backgroundColor: BAR_WIDGET_COLOR,
+              }}
+            />
+
             {/* 1. UPPER WIDGET (Header & DateBar) */}
             <HomeTopWidget
               selectedDate={selectedDate}
@@ -672,8 +701,8 @@ const Index = () => {
             <View style={styles.cardSwapSection}>
               <View style={[styles.sectionHeader, isArabic && styles.rowRtl]}>
                 <View style={[styles.sectionTitleGroup, isArabic && styles.rowRtl]}>
-                  <Ionicons name="apps-outline" size={17} color={isDarkMode ? '#C084FC' : '#7C3AED'} />
-                  <Text style={[styles.sectionTitle, { color: isDarkMode ? '#C084FC' : '#7C3AED' }]}>
+                  <Ionicons name="apps-outline" size={17} color={isDarkMode ? SECTION_VIOLET : '#8B53FE'} />
+                  <Text style={[styles.sectionTitle, { color: isDarkMode ? SECTION_VIOLET : '#8B53FE' }]}>
                     {isArabic ? 'الميزات والأدوات' : 'Features & Tools'}
                   </Text>
                 </View>
@@ -703,6 +732,7 @@ const Index = () => {
               onRunTask={handleRunTask}
               onPauseTask={handlePauseTask}
               onCompleteTask={handleCompleteTask}
+              onReopenTask={handleReopenTask}
               onEditTask={handleEditTask}
               onAddTask={() => setIsTaskModalVisible(true)}
               onViewAll={() => handleOpenDayPlanner(selectedDate)}
@@ -722,7 +752,7 @@ const Index = () => {
               { bottom: insets.bottom + 76 },
             ]}
           >
-            <Ionicons name="add" size={28} color="#000000" />
+            <Ionicons name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </ActiveTaskProvider>
       )}
@@ -746,7 +776,7 @@ const Index = () => {
             }}
             onAddNewTask={() => {
               setActiveFeature(null);
-              setIsTaskModalVisible(true);
+              setTimeout(() => setIsTaskModalVisible(true), 140);
             }}
             onAddChecklistItem={() => openChecklistItemModal(null)}
             onOpenChecklistItem={(id) => openChecklistItemModal(id)}
@@ -890,14 +920,14 @@ const styles = StyleSheet.create({
   },
   floatingCta: {
     position: 'absolute',
-    backgroundColor: LIME_ACCENT,
+    backgroundColor: '#8B53FE',
     width: 58,
     height: 58,
     borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
-    shadowColor: '#000000',
+    shadowColor: '#8B53FE',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,

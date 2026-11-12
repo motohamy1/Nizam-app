@@ -57,6 +57,8 @@ export interface CardStackProps {
   peek?: number;
   /** Force RTL layout for Arabic. */
   isRTL?: boolean;
+  /** Changing this key smoothly re-aligns stack order to the canonical `cards` order. */
+  resetOrderKey?: string | number;
   style?: StyleProp<ViewStyle>;
   cardStyle?: StyleProp<ViewStyle>;
 }
@@ -583,26 +585,53 @@ export const CardStack: React.FC<CardStackProps> = ({
   cardWidth,
   peek = 44,
   isRTL = false,
+  resetOrderKey,
   style,
   cardStyle,
 }) => {
   const count = cards.length;
-  const [order, setOrder] = useState<number[]>(() =>
-    cards.map((_, index) => index)
+  const cardKeys = useMemo(
+    () =>
+      cards.map((card, index) =>
+        React.isValidElement(card) && card.key != null
+          ? String(card.key)
+          : `idx_${index}`
+      ),
+    [cards]
   );
+
+  const [orderKeys, setOrderKeys] = useState<string[]>(() => cardKeys);
 
   const dragLiftProgress = useSharedValue(0);
   const isInteractingRef = useRef(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevResetKeyRef = useRef<string | number | undefined>(resetOrderKey);
 
-  // Synchronize order if cards array length changes
-  const stackOrder = useMemo(() => {
-    const next = order.filter((index) => index < count);
-    for (let index = 0; index < count; index++) {
-      if (!next.includes(index)) next.push(index);
+  // Re-align stack to canonical `cards` order when `resetOrderKey` changes
+  useEffect(() => {
+    if (resetOrderKey !== undefined && prevResetKeyRef.current !== resetOrderKey) {
+      prevResetKeyRef.current = resetOrderKey;
+      setOrderKeys(cardKeys);
+    }
+  }, [resetOrderKey, cardKeys]);
+
+  // Synchronize order if cards array changes
+  const stackKeys = useMemo(() => {
+    const validSet = new Set(cardKeys);
+    const next = orderKeys.filter((k) => validSet.has(k));
+    for (const k of cardKeys) {
+      if (!next.includes(k)) next.push(k);
     }
     return next;
-  }, [order, count]);
+  }, [orderKeys, cardKeys]);
+
+  const stackOrder = useMemo(() => {
+    const keyToIndex = new Map<string, number>();
+    cardKeys.forEach((k, idx) => keyToIndex.set(k, idx));
+    return stackKeys
+      .map((k) => keyToIndex.get(k))
+      .filter((idx): idx is number => idx !== undefined);
+  }, [stackKeys, cardKeys]);
 
   const computedCardWidth = useMemo(() => {
     if (typeof cardWidth === 'number') return cardWidth;
@@ -644,11 +673,13 @@ export const CardStack: React.FC<CardStackProps> = ({
 
   // Reset smoothly back to primary card (Active Task card at index 0)
   const resetToMainCard = useCallback(() => {
-    setOrder((prev) => {
-      if (prev.length === 0 || prev[0] === 0) return prev;
-      return Array.from({ length: count }, (_, i) => i);
+    setOrderKeys((prev) => {
+      if (prev.length === 0 || (prev[0] === cardKeys[0] && prev.length === cardKeys.length)) {
+        return prev;
+      }
+      return cardKeys;
     });
-  }, [count]);
+  }, [cardKeys]);
 
   // Schedule auto-return to primary card after autoResetDelay ms
   const scheduleReset = useCallback(() => {
@@ -708,15 +739,16 @@ export const CardStack: React.FC<CardStackProps> = ({
 
   // Fling-to-back sequence: updates stack order array and schedules reset
   const handleSendToBack = useCallback(() => {
-    setOrder((prev) => {
-      const next = prev.filter((id) => id < count);
-      for (let i = 0; i < count; i++) {
-        if (!next.includes(i)) next.push(i);
+    setOrderKeys((prev) => {
+      const validSet = new Set(cardKeys);
+      const next = prev.filter((k) => validSet.has(k));
+      for (const k of cardKeys) {
+        if (!next.includes(k)) next.push(k);
       }
       if (next.length < 2) return next;
       return [...next.slice(1), next[0]];
     });
-  }, [count]);
+  }, [cardKeys]);
 
   // Notify onChange of new top card
   const prevTopRef = useRef<number | null>(null);
@@ -768,7 +800,7 @@ export const CardStack: React.FC<CardStackProps> = ({
       >
         {stackOrder.map((cardId, position) => (
           <StackCardItem
-            key={cardId}
+            key={cardKeys[cardId] ?? String(cardId)}
             cardId={cardId}
             position={position}
             settings={settings}

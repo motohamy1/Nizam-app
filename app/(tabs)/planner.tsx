@@ -37,7 +37,6 @@ import TaskDetailModal from '@/components/TaskDetailModal';
 import AnimatedWavyHeader from '@/components/AnimatedWavyHeader';
 import { getEffectiveTaskDay } from '@/utils/taskDateUtils';
 import PlannerDateBar from '@/components/PlannerDateBar';
-import { AIGoalGeneratorModal } from '@/components/AIGoalGeneratorModal';
 import { GoalFormModal, GoalFormData } from '@/components/GoalFormModal';
 import { PostalStampGoalCard } from '@/components/ai-goals/PostalStampGoalCard';
 
@@ -92,6 +91,7 @@ const Planner = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Sync navigation params from home or external links
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (params.month !== undefined && params.day !== undefined) {
       const m = parseInt(params.month, 10);
@@ -108,6 +108,7 @@ const Planner = () => {
       }
     }
   }, [params.month, params.day]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   
   const [expandedTodoId, setExpandedTodoId] = useState<Id<"todos"> | null>(null);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Id<"todos"> | null>(null);
@@ -155,7 +156,6 @@ const Planner = () => {
   const deleteAchievementMut = useOfflineMutation(api.yearlyGoals.deleteAchievement, "yearlyGoals:deleteAchievement");
 
   // Month Detail Redesign State
-  const [isAiGoalModalVisible, setIsAiGoalModalVisible] = useState(false);
   const [isGoalFormModalVisible, setIsGoalFormModalVisible] = useState(false);
   const [goalFormModalMode, setGoalFormModalMode] = useState<'create' | 'edit'>('create');
   const [editingGoalItem, setEditingGoalItem] = useState<any | null>(null);
@@ -231,36 +231,34 @@ const Planner = () => {
     }
   };
 
-  const dayViewPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.6;
-        const isSignificant = Math.abs(gestureState.dx) > 15;
-        if (isArabic) {
-          return isHorizontal && isSignificant && gestureState.dx < -15;
-        }
-        return isHorizontal && isSignificant && gestureState.dx > 15;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const isQuickSwipe = Math.abs(gestureState.vx) > 0.35;
-        const isLongSwipe = Math.abs(gestureState.dx) > 55;
-        const correctDirection = isArabic ? gestureState.dx < -40 : gestureState.dx > 40;
+  const dayViewPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.6;
+          const isSignificant = Math.abs(gestureState.dx) > 15;
+          if (isArabic) {
+            return isHorizontal && isSignificant && gestureState.dx < -15;
+          }
+          return isHorizontal && isSignificant && gestureState.dx > 15;
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const isQuickSwipe = Math.abs(gestureState.vx) > 0.35;
+          const isLongSwipe = Math.abs(gestureState.dx) > 55;
+          const correctDirection = isArabic ? gestureState.dx < -40 : gestureState.dx > 40;
 
-        if ((isQuickSwipe || isLongSwipe) && correctDirection) {
-          handleGoBack();
-        }
-      },
-    })
-  ).current;
+          if ((isQuickSwipe || isLongSwipe) && correctDirection) {
+            handleGoBack();
+          }
+        },
+      }),
+    [isArabic, handleGoBack]
+  );
 
   // Handle system back button ONLY when planner screen is focused
   useFocusEffect(
     useCallback(() => {
       const backAction = () => {
-        if (isAiGoalModalVisible) {
-          setIsAiGoalModalVisible(false);
-          return true;
-        }
         if (isGoalFormModalVisible) {
           setIsGoalFormModalVisible(false);
           setEditingGoalItem(null);
@@ -283,7 +281,7 @@ const Planner = () => {
       );
 
       return () => backHandler.remove();
-    }, [selectedMonth, selectedDay, isFromHome, isAiGoalModalVisible, isGoalFormModalVisible])
+    }, [selectedMonth, selectedDay, isFromHome, isGoalFormModalVisible])
   );
 
   
@@ -387,6 +385,8 @@ const Planner = () => {
           category: formData.category,
           color: formData.color,
           icon: formData.icon,
+          templateId: formData.templateId,
+          visualStyleId: formData.visualStyleId,
           milestones: formData.milestones,
           categoryId: formData.categoryId,
           subCategoryId: formData.subCategoryId,
@@ -414,6 +414,8 @@ const Planner = () => {
           category: formData.category,
           color: formData.color,
           icon: formData.icon,
+          templateId: formData.templateId,
+          visualStyleId: formData.visualStyleId,
           milestones: formData.milestones,
           categoryId: formData.categoryId,
           subCategoryId: formData.subCategoryId,
@@ -957,44 +959,29 @@ const Planner = () => {
                 : 'Build an end-to-end monthly roadmap with actionable milestones, checklists, and achievements in seconds.'}
             </Text>
 
-            {/* Actions Row: Manual entry CTA button + AI Generate button */}
-            <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, isArabic && { flexDirection: 'row-reverse' }]}>
-              {/* Call-to-action button to enter a goal manually */}
-              <TouchableOpacity
-                style={styles.monthAiManualBtn}
-                onPress={handleOpenCreateGoal}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="create-outline" size={14} color={colors.text} />
-                <Text style={styles.monthAiManualBtnText}>
-                  {isArabic ? 'إدخال يدوي' : 'Enter Manually'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* AI Chat Generate Button */}
-              <TouchableOpacity
-                style={[{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: '#8B5CF6',
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                }, isArabic && { flexDirection: 'row-reverse' }]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsAiGoalModalVisible(true);
-                }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="sparkles" size={13} color="#FFFFFF" />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>
-                  {isArabic ? 'توليد ذكي' : 'Generate'}
-                </Text>
-                <Ionicons name={isArabic ? "arrow-back" : "arrow-forward"} size={13} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+            {/* Unified Goal Creation CTA with AI Co-Pilot */}
+            <TouchableOpacity
+              style={[{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: isDarkMode ? '#17122A' : '#7C3AED',
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: isDarkMode ? '#382860' : '#6D28D9',
+              }, isArabic && { flexDirection: 'row-reverse' }]}
+              onPress={handleOpenCreateGoal}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="sparkles" size={15} color="#AFE607" />
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>
+                {isArabic ? 'إضافة هدف مع المساعد الذكي' : 'Add Goal with AI Co-Pilot'}
+              </Text>
+              <Ionicons name={isArabic ? "chevron-back" : "chevron-forward"} size={14} color="#FFFFFF" style={{ opacity: 0.7 }} />
+            </TouchableOpacity>
           </View>
 
           {/* ─── 3. Generated Goals Section ─── */}
@@ -1993,7 +1980,7 @@ const Planner = () => {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container]}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
@@ -2071,19 +2058,6 @@ const Planner = () => {
       )}
 
       <ScreenGuide visible={showGuide} tips={plannerTips} onDismiss={dismissGuide} isArabic={isArabic} />
-
-      <AIGoalGeneratorModal
-        visible={isAiGoalModalVisible}
-        onClose={() => setIsAiGoalModalVisible(false)}
-        year={activeYear}
-        month={selectedMonth ?? currentMonth}
-        userId={userId || ''}
-        isArabic={isArabic}
-        existingCategories={existingGoalCategories}
-        onPlanApplied={() => {
-          setIsAiGoalModalVisible(false);
-        }}
-      />
 
       <GoalFormModal
         visible={isGoalFormModalVisible}

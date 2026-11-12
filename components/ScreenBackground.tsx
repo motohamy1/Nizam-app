@@ -148,7 +148,7 @@ export const ScreenBackground: React.FC<ScreenBackgroundProps> = ({ children, st
 
   return (
     <View
-      style={[styles.container, { backgroundColor: '#0A0B0A' }, style]}
+      style={[styles.container, { backgroundColor: colors.bg }, style]}
       onLayout={(e) => setBgDims({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
     >
       {/* Near-black base with restrained ambient light, never a green wash. */}

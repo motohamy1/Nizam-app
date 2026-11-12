@@ -1,6 +1,24 @@
 import { v } from "convex/values";
 import { action, mutation } from "./_generated/server";
 import { api } from "./_generated/api";
+import { Doc, Id } from "./_generated/dataModel";
+
+export async function resolveNoteDoc(ctx: any, noteId?: string | null) {
+  if (!noteId) return null;
+  try {
+    const direct = await ctx.db.get(noteId as Id<"todos">);
+    if (direct) return direct;
+  } catch (_) {}
+
+  if (typeof noteId === "string") {
+    const byLocalId = await ctx.db
+      .query("todos")
+      .withIndex("by_local_id", (q: any) => q.eq("localId", noteId))
+      .first();
+    if (byLocalId) return byLocalId;
+  }
+  return null;
+}
 
 /**
  * Clean model output: strip all variations of thinking/reasoning tags,
@@ -100,7 +118,7 @@ async function callLLM(options: {
         const bodyPayload: any = {
           model: modelName,
           messages: groqMessages,
-          temperature: 0.2,
+          temperature: 0.1,
           max_tokens: 2048,
         };
 
@@ -175,8 +193,9 @@ async function callLLM(options: {
           systemInstruction: { parts: [{ text: enforcedSystem }] },
           contents: geminiContents,
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0.1,
             maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
           },
         };
         if (options.jsonMode) {
@@ -191,7 +210,19 @@ async function callLLM(options: {
 
         if (res.ok) {
           const data = (await res.json()) as any;
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          const candidate = data.candidates?.[0];
+          const parts = candidate?.content?.parts;
+          let rawText = "";
+          if (Array.isArray(parts)) {
+            rawText = parts
+              .filter((p: any) => !p.thought)
+              .map((p: any) => p.text || "")
+              .join("")
+              .trim();
+          } else if (parts?.[0]?.text) {
+            rawText = parts[0].text.trim();
+          }
+
           if (rawText) {
             const cleaned = cleanModelResponse(rawText, options.jsonMode);
             if (cleaned) return cleaned;
@@ -213,7 +244,7 @@ async function callLLM(options: {
  */
 export const generateNoteSummary = action({
   args: {
-    noteId: v.optional(v.id("todos")),
+    noteId: v.optional(v.union(v.id("todos"), v.string())),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
     transcript: v.optional(v.string()),
@@ -226,7 +257,7 @@ export const generateNoteSummary = action({
     let transcriptLang = args.language;
 
     if (args.noteId) {
-      const note = await ctx.runQuery(api.todos.getById, { id: args.noteId });
+      const note = (await ctx.runQuery(api.todos.getById, { id: args.noteId })) as Doc<"todos"> | null;
       if (note) {
         if (!noteText) noteText = note.text || "Untitled";
         if (!noteDesc) noteDesc = note.description || "";
@@ -318,10 +349,12 @@ ${noteContent}
  */
 export const clearNoteChatHistory = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.noteId, {
+    const note = await resolveNoteDoc(ctx, args.noteId);
+    if (!note) return;
+    await ctx.db.patch(note._id, {
       aiChatHistory: [],
     });
   },
@@ -347,7 +380,7 @@ export const clearAllNotesChatHistory = mutation({
  */
 export const extractActionItems = action({
   args: {
-    noteId: v.optional(v.id("todos")),
+    noteId: v.optional(v.union(v.id("todos"), v.string())),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
     transcript: v.optional(v.string()),
@@ -360,7 +393,7 @@ export const extractActionItems = action({
     let transcriptLang = args.language;
 
     if (args.noteId) {
-      const note = await ctx.runQuery(api.todos.getById, { id: args.noteId });
+      const note = (await ctx.runQuery(api.todos.getById, { id: args.noteId })) as Doc<"todos"> | null;
       if (note) {
         if (!noteText) noteText = note.text || "Untitled";
         if (!noteDesc) noteDesc = note.description || "";
@@ -445,7 +478,7 @@ ${noteContent}
  */
 export const chatWithNote = action({
   args: {
-    noteId: v.optional(v.id("todos")),
+    noteId: v.optional(v.union(v.id("todos"), v.string())),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
     transcript: v.optional(v.string()),
@@ -469,7 +502,7 @@ export const chatWithNote = action({
     let transcriptLang = args.language;
 
     if (args.noteId) {
-      const note = await ctx.runQuery(api.todos.getById, { id: args.noteId });
+      const note = (await ctx.runQuery(api.todos.getById, { id: args.noteId })) as Doc<"todos"> | null;
       if (note) {
         if (!noteText) noteText = note.text || "Untitled";
         if (!noteDesc) noteDesc = note.description || "";
@@ -575,11 +608,13 @@ ${noteContext}`;
  */
 export const saveNoteSummary = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
     summary: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.noteId, {
+    const note = await resolveNoteDoc(ctx, args.noteId);
+    if (!note) return;
+    await ctx.db.patch(note._id, {
       aiSummary: cleanModelResponse(args.summary),
     });
   },
@@ -590,12 +625,12 @@ export const saveNoteSummary = mutation({
  */
 export const appendChatMessage = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
     userMessage: v.string(),
     modelReply: v.string(),
   },
   handler: async (ctx, args) => {
-    const note = await ctx.db.get(args.noteId);
+    const note = await resolveNoteDoc(ctx, args.noteId);
     if (!note) return;
 
     const currentHistory = note.aiChatHistory || [];
@@ -620,7 +655,7 @@ export const appendChatMessage = mutation({
     // Cap chat history to last 50 messages to keep document light
     const cappedHistory = newHistory.slice(-50);
 
-    await ctx.db.patch(args.noteId, {
+    await ctx.db.patch(note._id, {
       aiChatHistory: cappedHistory,
     });
   },
@@ -631,7 +666,7 @@ export const appendChatMessage = mutation({
  */
 export const convertActionItemsToTasks = mutation({
   args: {
-    noteId: v.id("todos"),
+    noteId: v.union(v.id("todos"), v.string()),
     tasks: v.array(
       v.object({
         text: v.string(),
@@ -640,7 +675,7 @@ export const convertActionItemsToTasks = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const sourceNote = await ctx.db.get(args.noteId);
+    const sourceNote = await resolveNoteDoc(ctx, args.noteId);
     if (!sourceNote) return;
 
     const userId = sourceNote.userId;

@@ -8,10 +8,9 @@ import {
 import Svg, {
   Defs,
   RadialGradient,
-  LinearGradient,
   Stop,
   Circle,
-  Path,
+  Rect,
 } from 'react-native-svg';
 import Animated, {
   useSharedValue,
@@ -28,122 +27,89 @@ import * as Haptics from 'expo-haptics';
 import { BALL_PRESETS } from './presets';
 import type { CrystalizedBallProps, CrystalizedBallPreset } from './presets';
 
-// Particle definition for cosmic stardust inside orb
-interface DustParticle {
+// Seeded PRNG for stable internal particle distribution
+function seededRandom(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface OrbParticle {
   id: number;
-  radiusRatio: number;
-  baseAngle: number;
+  x: number;
+  y: number;
   size: number;
   color: string;
+  opacity: number;
 }
 
 export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
-  preset = 'ember',
+  preset = 'plasma',
   color: customColor,
   size = 54,
   style,
-  isRunning = true,
-  isCountDown = true,
-  timerDirection = 'down',
-  progress = 0,
+  isRunning = false,
+  isCompleted = false,
   timerLabel,
   onPress,
 }) => {
-  const presetConfig = BALL_PRESETS[preset as CrystalizedBallPreset] || BALL_PRESETS.ember;
+  const presetConfig = BALL_PRESETS[preset as CrystalizedBallPreset] || BALL_PRESETS.plasma;
+  const primaryViolet = customColor || presetConfig.color || '#C084FC';
+  const neonLime = '#AFE607';
 
-  const primaryColor = customColor || presetConfig.color || '#FF6B35';
-  const coreColor = '#FFE8D6';
-  const deepSpaceColor = '#1A0B05';
-  const rimLightColor = primaryColor;
-  const filamentColor1 = primaryColor;
-  const filamentColor2 = '#FFA07A';
-  const auraGlow = primaryColor;
-
-  // Geometry
-  const sphereRadius = (size / 2) * 0.88;
+  const sphereRadius = (size / 2) * 0.90;
   const center = size / 2;
 
-  // Reanimated Shared Values for dynamic crystal motion
+  // Reanimated rotations for internal plasma stardust
   const rotationOuter = useSharedValue(0);
   const rotationInner = useSharedValue(0);
   const pulse = useSharedValue(1);
-  const shimmer = useSharedValue(0.7);
 
   useEffect(() => {
     cancelAnimation(rotationOuter);
     cancelAnimation(rotationInner);
     cancelAnimation(pulse);
-    cancelAnimation(shimmer);
 
     if (isRunning) {
-      // Dynamic continuous orbit for the plasma layers
       rotationOuter.value = withRepeat(
-        withTiming(360, {
-          duration: 6000,
-          easing: Easing.linear,
-        }),
+        withTiming(360, { duration: 6000, easing: Easing.linear }),
         -1,
         false
       );
 
       rotationInner.value = withRepeat(
-        withTiming(-360, {
-          duration: 4200,
-          easing: Easing.linear,
-        }),
+        withTiming(-360, { duration: 4200, easing: Easing.linear }),
         -1,
         false
       );
 
-      // Organic energy pulse
       pulse.value = withRepeat(
         withSequence(
-          withTiming(1.10, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.95, { duration: 1100, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.06, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.96, { duration: 800, easing: Easing.inOut(Easing.ease) })
         ),
-        -1,
-        true
-      );
-
-      shimmer.value = withRepeat(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
         -1,
         true
       );
     } else {
-      // Ambient idle drift so the ball is ALWAYS ALIVE and RUNNING
       rotationOuter.value = withRepeat(
-        withTiming(360, {
-          duration: 22000,
-          easing: Easing.linear,
-        }),
+        withTiming(360, { duration: 22000, easing: Easing.linear }),
         -1,
         false
       );
 
       rotationInner.value = withRepeat(
-        withTiming(-360, {
-          duration: 17000,
-          easing: Easing.linear,
-        }),
+        withTiming(-360, { duration: 17000, easing: Easing.linear }),
         -1,
         false
       );
 
-      pulse.value = withRepeat(
-        withSequence(
-          withTiming(1.04, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.98, { duration: 2200, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      );
-
-      shimmer.value = withRepeat(
-        withTiming(0.9, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
-        -1,
-        true
-      );
+      pulse.value = withTiming(1, { duration: 300 });
     }
   }, [isRunning]);
 
@@ -156,40 +122,33 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
   }));
 
   const animatedAuraStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value * 1.15 }],
-    opacity: 0.38 * pulse.value,
+    transform: [{ scale: pulse.value * 1.08 }],
+    opacity: (isRunning ? 0.42 : 0.22) * pulse.value,
   }));
 
-  const animatedShimmerStyle = useAnimatedStyle(() => ({
-    opacity: 0.65 + shimmer.value * 0.35,
-  }));
+  // Internal stardust particles
+  const particles = useMemo(() => {
+    const list: OrbParticle[] = [];
+    const rand = seededRandom(77);
+    const tones = ['#FFFFFF', '#E9D5FF', '#C084FC', '#9333EA', neonLime];
 
-  // Deterministic dust particles split across the 2 counter-rotating orbits
-  const dustGroup1: DustParticle[] = useMemo(() => {
-    const particles: DustParticle[] = [];
-    const count = 8;
-    for (let i = 0; i < count; i++) {
-      const radiusRatio = 0.28 + ((i * 19) % 50) / 100;
-      const baseAngle = ((i * 360) / count) * (Math.PI / 180);
-      const pSize = 1.2 + ((i * 5) % 15) / 10;
-      const color = i % 2 === 0 ? '#FFFFFF' : filamentColor1;
-      particles.push({ id: i, radiusRatio, baseAngle, size: pSize, color });
+    for (let i = 0; i < 48; i++) {
+      const angle = rand() * Math.PI * 2;
+      const r = (0.2 + Math.sqrt(rand()) * 0.72) * sphereRadius;
+      list.push({
+        id: i,
+        x: center + Math.cos(angle) * r,
+        y: center + Math.sin(angle) * r,
+        size: i % 4 === 0 ? 1.6 : 1.1,
+        color: tones[i % tones.length],
+        opacity: 0.65 + rand() * 0.35,
+      });
     }
-    return particles;
-  }, [filamentColor1]);
+    return list;
+  }, [sphereRadius, center, neonLime]);
 
-  const dustGroup2: DustParticle[] = useMemo(() => {
-    const particles: DustParticle[] = [];
-    const count = 8;
-    for (let i = 0; i < count; i++) {
-      const radiusRatio = 0.22 + ((i * 23) % 55) / 100;
-      const baseAngle = ((i * 360) / count + 45) * (Math.PI / 180);
-      const pSize = 1.1 + ((i * 7) % 16) / 10;
-      const color = i % 2 === 0 ? '#FFF2E6' : filamentColor2;
-      particles.push({ id: i + 100, radiusRatio, baseAngle, size: pSize, color });
-    }
-    return particles;
-  }, [filamentColor2]);
+  const group1 = useMemo(() => particles.slice(0, 24), [particles]);
+  const group2 = useMemo(() => particles.slice(24), [particles]);
 
   const uniqueId = useMemo(() => Math.random().toString(36).substring(2, 9), []);
 
@@ -200,7 +159,7 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.88}
+      activeOpacity={0.85}
       onPress={handlePress}
       style={[
         styles.container,
@@ -208,36 +167,35 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
         style,
       ]}
     >
-      {/* 1. Ambient Pulsing Aura Glow Behind the Orb */}
+      {/* 1. Subtle Outer Glow */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
           styles.glowLayer,
           {
-            backgroundColor: auraGlow,
+            backgroundColor: primaryViolet,
             borderRadius: size / 2,
           },
           animatedAuraStyle,
         ]}
       />
 
-      {/* 2. Base Sphere Depth SVG */}
+      {/* 2. Base Plasma Sphere Core */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
             <RadialGradient
               id={`sphereCore-${uniqueId}`}
-              cx="38%"
-              cy="32%"
+              cx="40%"
+              cy="35%"
               r="65%"
-              fx="38%"
-              fy="32%"
+              fx="40%"
+              fy="35%"
             >
-              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
-              <Stop offset="25%" stopColor={coreColor} stopOpacity="0.85" />
-              <Stop offset="65%" stopColor={primaryColor} stopOpacity="0.95" />
-              <Stop offset="90%" stopColor={deepSpaceColor} stopOpacity="1" />
-              <Stop offset="100%" stopColor="#05060A" stopOpacity="1" />
+              <Stop offset="0%" stopColor="#4A1D88" stopOpacity="0.95" />
+              <Stop offset="55%" stopColor="#240D4A" stopOpacity="0.98" />
+              <Stop offset="90%" stopColor="#0B0812" stopOpacity="1" />
+              <Stop offset="100%" stopColor="#05030A" stopOpacity="1" />
             </RadialGradient>
           </Defs>
           <Circle
@@ -249,164 +207,40 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
         </Svg>
       </View>
 
-      {/* 3. Rotating Plasma Layer 1 (Clockwise) */}
+      {/* 3. Rotating Stardust Layer 1 (Clockwise) */}
       <Animated.View style={[StyleSheet.absoluteFill, animatedOuterStyle]} pointerEvents="none">
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <Defs>
-            <LinearGradient
-              id={`filament1-${uniqueId}`}
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
-              <Stop offset="40%" stopColor={filamentColor1} stopOpacity="0.85" />
-              <Stop offset="100%" stopColor="transparent" stopOpacity="0" />
-            </LinearGradient>
-          </Defs>
-          <Path
-            d={`M ${center - sphereRadius * 0.65} ${center - sphereRadius * 0.1}
-                Q ${center} ${center - sphereRadius * 0.75} ${center + sphereRadius * 0.65} ${center - sphereRadius * 0.25}
-                Q ${center + sphereRadius * 0.2} ${center + sphereRadius * 0.6} ${center - sphereRadius * 0.55} ${center + sphereRadius * 0.45} Z`}
-            fill={`url(#filament1-${uniqueId})`}
-            opacity={0.75}
-          />
-          {dustGroup1.map((p) => {
-            const px = center + Math.cos(p.baseAngle) * (sphereRadius * p.radiusRatio);
-            const py = center + Math.sin(p.baseAngle) * (sphereRadius * p.radiusRatio);
-            return (
-              <Circle
-                key={p.id}
-                cx={px}
-                cy={py}
-                r={p.size}
-                fill={p.color}
-                opacity={0.85}
-              />
-            );
-          })}
+          {group1.map((p) => (
+            <Circle
+              key={p.id}
+              cx={p.x}
+              cy={p.y}
+              r={p.size / 2}
+              fill={p.color}
+              opacity={p.opacity}
+            />
+          ))}
         </Svg>
       </Animated.View>
 
-      {/* 4. Counter-Rotating Plasma Layer 2 (Counter-Clockwise) */}
+      {/* 4. Counter-Rotating Stardust Layer 2 (Counter-Clockwise) */}
       <Animated.View style={[StyleSheet.absoluteFill, animatedInnerStyle]} pointerEvents="none">
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <Defs>
-            <LinearGradient
-              id={`filament2-${uniqueId}`}
-              x1="100%"
-              y1="0%"
-              x2="0%"
-              y2="100%"
-            >
-              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
-              <Stop offset="50%" stopColor={filamentColor2} stopOpacity="0.85" />
-              <Stop offset="100%" stopColor="transparent" stopOpacity="0" />
-            </LinearGradient>
-          </Defs>
-          <Path
-            d={`M ${center - sphereRadius * 0.4} ${center + sphereRadius * 0.55}
-                Q ${center + sphereRadius * 0.7} ${center + sphereRadius * 0.1} ${center + sphereRadius * 0.3} ${center - sphereRadius * 0.6}
-                Q ${center - sphereRadius * 0.35} ${center - sphereRadius * 0.2} ${center - sphereRadius * 0.4} ${center + sphereRadius * 0.55} Z`}
-            fill={`url(#filament2-${uniqueId})`}
-            opacity={0.65}
-          />
-          {dustGroup2.map((p) => {
-            const px = center + Math.cos(p.baseAngle) * (sphereRadius * p.radiusRatio);
-            const py = center + Math.sin(p.baseAngle) * (sphereRadius * p.radiusRatio);
-            return (
-              <Circle
-                key={p.id}
-                cx={px}
-                cy={py}
-                r={p.size}
-                fill={p.color}
-                opacity={0.85}
-              />
-            );
-          })}
+          {group2.map((p) => (
+            <Rect
+              key={p.id}
+              x={p.x - p.size / 2}
+              y={p.y - p.size / 2}
+              width={p.size}
+              height={p.size}
+              fill={p.color}
+              opacity={p.opacity}
+            />
+          ))}
         </Svg>
       </Animated.View>
 
-      {/* 5. Glass Reflection, Specular Crescent & Shimmer Sheen */}
-      <Animated.View style={[StyleSheet.absoluteFill, animatedShimmerStyle]} pointerEvents="none">
-        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <Defs>
-            <LinearGradient
-              id={`glassSheen-${uniqueId}`}
-              x1="15%"
-              y1="10%"
-              x2="85%"
-              y2="90%"
-            >
-              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.65" />
-              <Stop offset="30%" stopColor="#FFFFFF" stopOpacity="0.15" />
-              <Stop offset="70%" stopColor="transparent" stopOpacity="0" />
-              <Stop offset="100%" stopColor={rimLightColor} stopOpacity="0.45" />
-            </LinearGradient>
-          </Defs>
-          <Circle
-            cx={center}
-            cy={center}
-            r={sphereRadius - 0.5}
-            fill={`url(#glassSheen-${uniqueId})`}
-          />
-          <Path
-            d={`M ${center - sphereRadius * 0.72} ${center - sphereRadius * 0.25}
-                A ${sphereRadius} ${sphereRadius} 0 0 1 ${center + sphereRadius * 0.25} ${center - sphereRadius * 0.72}`}
-            stroke="rgba(255, 255, 255, 0.88)"
-            strokeWidth={1.8}
-            strokeLinecap="round"
-            fill="none"
-          />
-          <Circle
-            cx={center}
-            cy={center}
-            r={sphereRadius}
-            stroke="rgba(255, 255, 255, 0.45)"
-            strokeWidth={0.8}
-            fill="none"
-          />
-
-          {/* Interactive Progress Ring / Orbit Arc (strictly for countdown/progress) */}
-          {typeof progress === 'number' && !isNaN(progress) && timerDirection !== 'up' && (() => {
-            const ringR = sphereRadius - 1.2;
-            const circumference = 2 * Math.PI * ringR;
-            const validProgress = Math.min(1, Math.max(0, progress));
-            const strokeDashoffset = circumference * (1 - validProgress);
-
-            return (
-              <>
-                {/* Background Ring Track */}
-                <Circle
-                  cx={center}
-                  cy={center}
-                  r={ringR}
-                  stroke="rgba(0, 0, 0, 0.18)"
-                  strokeWidth={2.4}
-                  fill="none"
-                />
-                {/* Animated / Progress Arc */}
-                <Circle
-                  cx={center}
-                  cy={center}
-                  r={ringR}
-                  stroke={isRunning ? '#0B0F19' : primaryColor}
-                  strokeWidth={2.6}
-                  strokeDasharray={`${circumference} ${circumference}`}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  fill="none"
-                  transform={`rotate(-90 ${center} ${center})`}
-                />
-              </>
-            );
-          })()}
-        </Svg>
-      </Animated.View>
-
-      {/* 6. Foreground Time & Play/Pause */}
+      {/* 5. Central Time Label & Play/Pause/Done Icon */}
       <View style={styles.overlayContent} pointerEvents="none">
         <View style={styles.timeOverlayContainer}>
           {Boolean(timerLabel) && (
@@ -415,9 +249,9 @@ export const CrystalizedBallNative: React.FC<CrystalizedBallProps> = ({
             </Text>
           )}
           <Ionicons
-            name={isRunning ? 'pause' : 'play'}
-            size={Boolean(timerLabel) ? 8.5 : 12}
-            color="#0B0F19"
+            name={isCompleted ? 'checkmark' : isRunning ? 'pause' : 'play'}
+            size={Boolean(timerLabel) ? 9 : 13}
+            color={neonLime}
           />
         </View>
       </View>
@@ -447,14 +281,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   timerText: {
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '900',
-    color: '#0B0F19',
+    color: '#FFFFFF',
     letterSpacing: -0.3,
-    textShadowColor: 'rgba(255, 255, 255, 0.75)',
+    textShadowColor: 'rgba(192, 132, 252, 0.90)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 1,
+    textShadowRadius: 3,
+    marginBottom: 0.5,
   },
 });
 

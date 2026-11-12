@@ -77,14 +77,16 @@ export const DynamicVoiceCard: React.FC<DynamicVoiceCardProps> = ({
     onInsertToNote(textToInsert);
   };
 
-  const accentColor = colors.primary || '#6366F1';
+  const accentColor = isDark ? '#AFE607' : colors.primary;
+  const violetAccent = '#8B5CF6';
 
   return (
     <View
       style={[
         styles.container,
         {
-          borderColor: isDark ? 'rgba(99, 102, 241, 0.45)' : 'rgba(99, 102, 241, 0.35)',
+          backgroundColor: isDark ? '#0B0812' : colors.surface,
+          borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : colors.border,
         },
       ]}
     >
@@ -94,7 +96,7 @@ export const DynamicVoiceCard: React.FC<DynamicVoiceCardProps> = ({
           <View
             style={[
               styles.iconCircle,
-              { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.12)' },
+              { backgroundColor: isDark ? 'rgba(175, 230, 7, 0.15)' : 'rgba(108, 56, 233, 0.12)' },
             ]}
           >
             <Ionicons name="mic" size={15} color={accentColor} />
@@ -107,12 +109,12 @@ export const DynamicVoiceCard: React.FC<DynamicVoiceCardProps> = ({
               style={[
                 styles.wordBadge,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                  backgroundColor: isDark ? 'rgba(175, 230, 7, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  borderColor: isDark ? 'rgba(175, 230, 7, 0.25)' : 'rgba(0, 0, 0, 0.08)',
                 },
               ]}
             >
-              <Text style={[styles.wordBadgeText, { color: colors.textMuted }]}>
+              <Text style={[styles.wordBadgeText, { color: isDark ? '#AFE607' : colors.textMuted }]}>
                 {isArabic ? `${wordCount} كلمة` : `${wordCount} words`}
               </Text>
             </View>
@@ -196,8 +198,8 @@ export const DynamicVoiceCard: React.FC<DynamicVoiceCardProps> = ({
           onPress={handleInsert}
           activeOpacity={0.85}
         >
-          <Ionicons name="document-text-outline" size={15} color="#FFFFFF" />
-          <Text style={styles.insertBtnText}>
+          <Ionicons name="document-text-outline" size={15} color={isDark ? '#0B0812' : '#FFFFFF'} />
+          <Text style={[styles.insertBtnText, { color: isDark ? '#0B0812' : '#FFFFFF' }]}>
             {isArabic ? 'إدراج في الملاحظة' : 'Insert into Note'}
           </Text>
         </TouchableOpacity>
@@ -207,15 +209,15 @@ export const DynamicVoiceCard: React.FC<DynamicVoiceCardProps> = ({
             style={[
               styles.askAIBtn,
               {
-                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.16)' : 'rgba(99, 102, 241, 0.08)',
-                borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+                backgroundColor: isDark ? 'rgba(139, 92, 246, 0.16)' : 'rgba(108, 56, 233, 0.08)',
+                borderColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(108, 56, 233, 0.25)',
               },
             ]}
             onPress={() => onAskAI(isEditing ? editText : transcript)}
             activeOpacity={0.85}
           >
-            <Ionicons name="sparkles" size={14} color={accentColor} />
-            <Text style={[styles.askAIBtnText, { color: accentColor }]}>
+            <Ionicons name="sparkles" size={14} color={isDark ? '#AFE607' : violetAccent} />
+            <Text style={[styles.askAIBtnText, { color: isDark ? '#AFE607' : violetAccent }]}>
               {isArabic ? 'سؤال AI' : 'Ask AI'}
             </Text>
           </TouchableOpacity>

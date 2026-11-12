@@ -41,30 +41,35 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
 
     const activeTaskIds = new Set<string>();
 
-    todos.forEach((todo) => {
-      activeTaskIds.add(todo._id);
-      if (todo.status === 'in_progress' && todo.timerStartTime && todo.timerDuration && todo.timerDirection !== 'up') {
-        const elapsed = getServerNow() - todo.timerStartTime;
-        const remaining = Math.max(0, todo.timerDuration - elapsed);
+    const checkAndSchedule = (item: any, isSubtask = false) => {
+      if (!item?._id) return;
+      activeTaskIds.add(item._id);
+      if (item.status === 'in_progress' && item.timerStartTime && item.timerDuration && item.timerDirection !== 'up') {
+        const elapsed = getServerNow() - item.timerStartTime;
+        const remaining = Math.max(0, item.timerDuration - elapsed);
         
         if (remaining > 0) {
-           const lastScheduled = scheduledNotifications.current.get(todo._id);
-           const scheduleKey = `${todo.timerStartTime}-${todo.timerDuration}`;
-           if (lastScheduled !== scheduleKey) {
-             if (lastScheduled) {
-               cancelTaskNotification(todo._id);
-             }
-             scheduleTimerCompletion(todo._id, todo.text, remaining);
-             scheduledNotifications.current.set(todo._id, scheduleKey);
-           }
+          const scheduleKey = `${item.timerStartTime}-${item.timerDuration}`;
+          const lastScheduled = scheduledNotifications.current.get(item._id);
+          if (lastScheduled !== scheduleKey) {
+            scheduleTimerCompletion(item._id, item.text || 'Timer', remaining, isSubtask, languageRef.current);
+            scheduledNotifications.current.set(item._id, scheduleKey);
+          }
         }
       } else {
-        if (scheduledNotifications.current.has(todo._id)) {
-          cancelTaskNotification(todo._id);
-          scheduledNotifications.current.delete(todo._id);
+        if (scheduledNotifications.current.has(item._id)) {
+          cancelTaskNotification(item._id);
+          scheduledNotifications.current.delete(item._id);
         }
       }
-    });
+    };
+
+    todos.forEach((todo) => checkAndSchedule(todo, false));
+    if (Array.isArray(subtasks)) {
+      subtasks.forEach((sub) => {
+        if (!isTempId(sub?._id)) checkAndSchedule(sub, true);
+      });
+    }
 
     for (const [taskId] of scheduledNotifications.current.entries()) {
       if (!activeTaskIds.has(taskId)) {
@@ -72,12 +77,14 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
         scheduledNotifications.current.delete(taskId);
       }
     }
-  }, [todos]);
+  }, [todos, subtasks]);
 
   useEffect(() => {
     // Guard against the 1s sweeper re-dispatching the same auto-status change
     // on every tick while the server echo is still in flight.
     const autoDispatched = new Set<string>();
+    // Set of timer instances that already fired their completion notification
+    const completedNotified = new Set<string>();
 
     const dispatchAutoStatus = (id: string, status: string) => {
       const key = `${id}:${status}`;
@@ -88,7 +95,7 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
       });
     };
 
-    const checkTasks = (currentTodos: any[]) => {
+    const checkTasks = (currentTodos: any[], isFromBackground = false) => {
       if (!currentTodos || !Array.isArray(currentTodos)) return;
 
       const now = Date.now();
@@ -117,8 +124,6 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
                   if (isTempId(todo._id)) {
                     patchTempTodo(todo._id, { timerDuration: newDuration });
                   } else if (setTimerRef.current) {
-                    // setTimer adjusts elapsed internally and keeps the
-                    // running clock consistent; updateStatus has no duration arg.
                     Promise.resolve(
                       setTimerRef.current({ id: todo._id, duration: newDuration })
                     ).catch(() => {});
@@ -130,10 +135,16 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
                 } else {
                   dispatchAutoStatus(todo._id, 'done');
                 }
-                // The countdown finishing IS the task completing — announce it.
-                // Previously only manual completion paths fired this, so a
-                // timer-ended task silently flipped to done.
-                showTaskCompletedNotification(todo.text, languageRef.current);
+
+                const completionKey = `${todo._id}:${todo.timerStartTime}`;
+                // If this is resuming from background and expired in the past (> 2.5s ago),
+                // the OS scheduled notification already rang at the exact expiry time!
+                // Do NOT ring again on app resume/unlock.
+                const expiredLongAgo = elapsed - todo.timerDuration > 2500;
+                if (!isFromBackground && !expiredLongAgo && !completedNotified.has(completionKey)) {
+                  completedNotified.add(completionKey);
+                  showTaskCompletedNotification(todo.text, languageRef.current, todo._id);
+                }
                 return;
               }
             }
@@ -183,7 +194,7 @@ export function useTaskTimers(todos: any[] | undefined, updateStatus: any, subta
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (appState.current?.match(/inactive|background/) && nextAppState === 'active') {
         if (todosRef.current) {
-          checkTasks(todosRef.current);
+          checkTasks(todosRef.current, true);
         }
       }
       appState.current = nextAppState;
